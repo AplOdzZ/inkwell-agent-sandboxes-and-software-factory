@@ -1,0 +1,263 @@
+/*
+ * Voisinage — styles.
+ * Couleurs : uniquement les variables de la page hôte
+ *   --bg --panel --ink --muted --line --accent --accent-soft --cred --cred-soft
+ *   --done --done-soft --del --del-soft --font-display --font-body --font-mono
+ * plus les couleurs des familles de liens (--lien-*), définies ci-dessous en clair et en sombre.
+ * La page hôte peut les redéfinir.
+ */
+
+:root {
+  --lien-code: #1f5fbf;
+  --lien-donnees: #0b7a75;
+  --lien-config: #b45f06;
+  --lien-copie: #7b3fb8;
+  --lien-doc: #6b6b6b;
+  --lien-autre: #8a3b6a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --lien-code: #7aa8f0;
+    --lien-donnees: #4fd1c5;
+    --lien-config: #f0a94a;
+    --lien-copie: #c39bf0;
+    --lien-doc: #a8a8a8;
+    --lien-autre: #e59bc4;
+  }
+}
+
+.vsn { position: relative; color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.4; min-width: 0; }
+.vsn *, .vsn *::before, .vsn *::after { box-sizing: border-box; }
+.vsn button { font: inherit; color: inherit; }
+.vsn [hidden] { display: none !important; }
+.vsn :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.vsn .vsn-mono { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere; }
+.vsn .vsn-muted { color: var(--muted); }
+.vsn .vsn-petit { font-size: .85em; }
+
+/* familles : une couleur par variable, jamais seule (le type est toujours écrit) */
+.vsn .vsn-f-code { --fam: var(--lien-code); }
+.vsn .vsn-f-donnees { --fam: var(--lien-donnees); }
+.vsn .vsn-f-config { --fam: var(--lien-config); }
+.vsn .vsn-f-copie { --fam: var(--lien-copie); }
+.vsn .vsn-f-doc { --fam: var(--lien-doc); }
+.vsn .vsn-f-autre { --fam: var(--lien-autre); }
+.vsn .vsn-pastille { display: inline-block; width: .7em; height: .7em; border-radius: 50%; background: var(--fam, var(--muted)); vertical-align: baseline; flex: none; }
+.vsn .vsn-f-doc .vsn-pastille, .vsn .vsn-pastille.vsn-f-doc { border-radius: 2px; }
+
+/* ------------------------------------------------------------ barre de recherche */
+.vsn-barre-haut { margin-bottom: 16px; }
+.vsn-recherche { position: relative; }
+.vsn-recherche-champ {
+  width: 100%; padding: 10px 12px; font: inherit; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 8px;
+}
+.vsn-recherche-champ::placeholder { color: var(--muted); }
+.vsn-suggestions {
+  position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / .18);
+  max-height: 60vh; overflow: auto;
+}
+.vsn-suggestion { padding: 8px 10px; border-radius: 6px; cursor: pointer; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.vsn-suggestion.vsn-actif { background: var(--accent-soft); }
+.vsn-suggestion-vide { padding: 8px 10px; color: var(--muted); }
+
+/* ------------------------------------------------------------ éléments répétés */
+.vsn .vsn-nom { font-weight: 600; overflow-wrap: anywhere; }
+.vsn .vsn-dir { color: var(--muted); font-family: var(--font-mono); font-size: .76em; overflow-wrap: anywhere; display: block; }
+.vsn .vsn-titre { font-family: var(--font-display); font-size: 1.5em; line-height: 1.2; margin: 0 0 6px; }
+.vsn .vsn-titre:focus { outline: none; }
+.vsn .vsn-titre:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.vsn .vsn-titre .vsn-dir { margin-top: 2px; font-weight: 400; }
+.vsn .vsn-vide, .vsn .vsn-vide-col { color: var(--muted); margin: 8px 0; }
+.vsn .vsn-ligne1 { display: flex; align-items: center; gap: 6px; }
+.vsn .vsn-ligne3 { display: block; font-size: .82em; }
+.vsn .vsn-type { font-weight: 600; }
+.vsn .vsn-marques { display: block; font-size: .74em; color: var(--muted); font-style: italic; }
+
+.vsn .vsn-levier {
+  display: inline-block; width: .8em; height: .8em; flex: none; background: var(--accent);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); vertical-align: middle;
+}
+
+.vsn .vsn-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.vsn .vsn-badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .74em; font-weight: 600; line-height: 1.5; border: 1px solid transparent; white-space: nowrap; }
+.vsn .vsn-badge-relu { background: var(--accent); color: var(--bg); }
+.vsn .vsn-badge-apercu { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.vsn .vsn-badge-fate-garder { background: var(--done-soft); color: var(--done); border-color: var(--done); }
+.vsn .vsn-badge-fate-adapter { background: var(--cred-soft); color: var(--cred); border-color: var(--cred); }
+.vsn .vsn-badge-fate-supprimer { background: var(--del-soft); color: var(--del); border-color: var(--del); }
+
+.vsn .vsn-etiquette { display: inline-block; padding: 1px 8px; border-radius: 4px; background: var(--accent-soft); color: var(--ink); font-size: .8em; }
+.vsn .vsn-etiquette-levier { display: inline-flex; align-items: center; gap: 4px; }
+
+.vsn .vsn-bouton {
+  padding: 8px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; min-height: 40px;
+}
+.vsn .vsn-bouton:hover { border-color: var(--accent); }
+.vsn .vsn-bouton[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.vsn .vsn-bouton-fort { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+.vsn .vsn-bouton-fort:hover { filter: brightness(1.08); }
+
+.vsn .vsn-entete { margin-bottom: 14px; }
+.vsn .vsn-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 4px 0 8px; }
+.vsn .vsn-role { margin: 6px 0 10px; max-width: 70ch; }
+.vsn .vsn-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.vsn .vsn-legende { list-style: none; margin: 0 0 14px; padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; font-size: .82em; }
+.vsn .vsn-echantillon { display: inline-block; width: 22px; height: 12px; border: 2px solid var(--muted); border-radius: 3px; vertical-align: middle; }
+.vsn .vsn-pointille { border-style: dashed !important; }
+
+/* ------------------------------------------------------------ vue 1 : schéma */
+.vsn .vsn-schema { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-bottom: 20px; }
+.vsn .vsn-traits { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; overflow: visible; }
+.vsn .vsn-schema > .vsn-col, .vsn .vsn-blocs-grille { position: relative; z-index: 1; }
+.vsn[data-largeur="large"] .vsn-schema:not(.vsn-schema-blocs) { grid-template-columns: minmax(0, 1fr) minmax(190px, 240px) minmax(0, 1fr); column-gap: 72px; align-items: start; }
+.vsn[data-largeur="large"] .vsn-col-centre { align-self: center; }
+
+.vsn .vsn-col { min-width: 0; }
+.vsn .vsn-col-titre { font-family: var(--font-display); font-size: 1.05em; margin: 0; }
+.vsn .vsn-col-compte { margin: 2px 0 8px; font-size: .88em; }
+.vsn .vsn-col-corps { display: flex; flex-direction: column; gap: 8px; }
+.vsn .vsn-groupe { margin-top: 6px; font-size: .78em; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.vsn .vsn-col .vsn-bouton { margin-top: 10px; width: 100%; }
+
+.vsn .vsn-voisin, .vsn .vsn-touche, .vsn .vsn-fichier {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 8px 10px; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--fam, var(--line)); border-radius: 8px;
+}
+.vsn div.vsn-voisin { cursor: default; border-left-style: dashed; }
+.vsn .vsn-voisin:hover, .vsn .vsn-touche:hover, .vsn .vsn-fichier:hover { border-color: var(--fam, var(--accent)); background: var(--accent-soft); }
+.vsn .vsn-voisin.vsn-pointille { border-width: 1px 1px 1px 5px; }
+
+.vsn .vsn-centre {
+  display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; background: var(--accent-soft); border: 2px solid var(--accent); border-radius: 10px;
+}
+.vsn .vsn-centre-etiquette { font-size: .72em; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+
+.vsn .vsn-trait-ligne { fill: none; stroke: var(--fam); stroke-width: 1.8; }
+.vsn .vsn-trait-zone { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; }
+.vsn .vsn-trait-pointe { fill: var(--fam); stroke: none; }
+.vsn .vsn-trait.vsn-pointille .vsn-trait-ligne { stroke-dasharray: 5 4; }
+.vsn .vsn-trait.vsn-f-doc .vsn-trait-ligne { stroke-width: 1.2; }
+.vsn .vsn-survol .vsn-trait { opacity: .25; }
+.vsn .vsn-survol .vsn-trait.vsn-actif { opacity: 1; }
+.vsn .vsn-trait.vsn-actif .vsn-trait-ligne { stroke-width: 3.4; }
+.vsn .vsn-trait { pointer-events: auto; }
+
+/* ------------------------------------------------------------ liste des liens */
+.vsn .vsn-section { margin: 18px 0; }
+.vsn .vsn-section-titre { font-family: var(--font-display); font-size: 1.1em; margin: 0 0 8px; }
+.vsn .vsn-filtres { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.vsn .vsn-filtre { padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); cursor: pointer; font-size: .86em; min-height: 34px; }
+.vsn .vsn-filtre[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+.vsn .vsn-liste { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.vsn .vsn-ligne-lien { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 8px 12px; border-bottom: 1px solid var(--line); border-left: 5px solid var(--fam, var(--line)); }
+.vsn .vsn-ligne-lien:last-child { border-bottom: 0; }
+.vsn .vsn-sens { font-weight: 600; min-width: 5.5em; }
+.vsn .vsn-ligne-lien .vsn-type { min-width: 8em; }
+.vsn .vsn-lien-fichier { background: none; border: 1px dashed transparent; padding: 0 2px; text-align: left; color: var(--accent); text-decoration: underline; cursor: pointer; font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere; }
+.vsn span.vsn-lien-fichier { color: var(--ink); text-decoration: none; border-color: var(--muted); border-radius: 3px; cursor: default; }
+.vsn .vsn-preuve { color: var(--muted); }
+.vsn .vsn-confiance { font-size: .78em; padding: 0 6px; border-radius: 4px; background: var(--accent-soft); }
+.vsn .vsn-confiance-faible { background: var(--cred-soft); color: var(--cred); font-weight: 600; }
+.vsn .vsn-ligne-lien .vsn-note { flex-basis: 100%; font-size: .85em; color: var(--muted); }
+
+/* ------------------------------------------------------------ fiche machine */
+.vsn .vsn-fiche { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); margin: 18px 0; }
+.vsn .vsn-fiche > summary { padding: 10px 14px; cursor: pointer; font-weight: 600; }
+.vsn .vsn-fiche[open] > summary { border-bottom: 1px solid var(--line); }
+.vsn .vsn-fiche-note { margin: 10px 14px 0; font-size: .85em; }
+.vsn .vsn-fiche > p, .vsn .vsn-fiche-bloc { margin: 0; padding: 10px 14px; }
+.vsn .vsn-fiche-bloc h4 { margin: 0 0 4px; font-size: .78em; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.vsn .vsn-fiche-bloc p { margin: 0; }
+.vsn .vsn-fiche-bloc ul { margin: 0; padding-left: 18px; }
+.vsn .vsn-fiche-bloc li { margin: 3px 0; }
+.vsn .vsn-attention { background: var(--cred-soft); border-radius: 6px; }
+
+/* ------------------------------------------------------------ vue 2 : impact */
+.vsn .vsn-bilan { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+.vsn .vsn-bilan-ligne { margin: 0 0 4px; }
+.vsn .vsn-verifier { margin: 10px 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.vsn .vsn-verifier.vsn-attention { border-color: var(--cred); }
+.vsn .vsn-verifier h3 { margin: 0 0 4px; font-size: 1em; }
+.vsn .vsn-verifier.vsn-attention h3 { color: var(--cred); }
+.vsn .vsn-verifier ul { margin: 0; padding-left: 18px; }
+.vsn .vsn-colonnes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.vsn[data-largeur="large"] .vsn-colonnes { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 18px; }
+.vsn .vsn-niveau { position: relative; }
+.vsn[data-largeur="large"] .vsn-niveau + .vsn-niveau::before {
+  content: ""; position: absolute; left: -12px; top: 0; bottom: 0; border-left: 2px solid var(--line);
+}
+.vsn .vsn-role-court {
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; font-size: .82em; color: var(--muted);
+}
+.vsn .vsn-touche .vsn-preuve { font-size: .76em; }
+.vsn .vsn-groupe-dossier { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.vsn .vsn-groupe-bouton {
+  display: flex; width: 100%; align-items: center; gap: 8px; padding: 8px 10px; background: none; border: 0; cursor: pointer; text-align: left; flex-wrap: wrap;
+}
+.vsn .vsn-groupe-bouton .vsn-compte, .vsn .vsn-bloc-entete .vsn-compte { color: var(--muted); font-size: .82em; margin-left: auto; }
+.vsn .vsn-groupe-corps { padding: 0 8px 8px; display: flex; flex-direction: column; gap: 8px; }
+.vsn .vsn-chevron { width: 0; height: 0; border: 5px solid transparent; border-left: 7px solid var(--ink); flex: none; transition: transform .15s; }
+[aria-expanded="true"] > .vsn-chevron { transform: rotate(90deg); }
+
+/* ------------------------------------------------------------ vue 3 : blocs */
+.vsn .vsn-blocs-grille { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.vsn[data-largeur="large"] .vsn-blocs-grille { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); grid-auto-flow: dense; gap: 44px 56px; padding: 8px 0; }
+.vsn[data-largeur="large"] .vsn-bloc.vsn-ouvert { grid-column: span 2; }
+.vsn .vsn-bloc { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
+.vsn .vsn-bloc.vsn-ouvert { border-color: var(--accent); }
+.vsn .vsn-bloc.vsn-flash { box-shadow: 0 0 0 4px var(--accent); }
+.vsn .vsn-bloc-entete {
+  display: flex; width: 100%; align-items: center; gap: 8px; padding: 12px 14px; background: none; border: 0; cursor: pointer; text-align: left; flex-wrap: wrap;
+}
+.vsn .vsn-bloc-entete:hover { background: var(--accent-soft); }
+.vsn .vsn-bloc-nom { font-family: var(--font-display); font-weight: 600; font-size: 1.05em; overflow-wrap: anywhere; }
+.vsn .vsn-liens-blocs { list-style: none; margin: 0; padding: 0 10px 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.vsn .vsn-bloc > .vsn-petit { padding: 0 14px 10px; margin: 0; }
+.vsn .vsn-lien-bloc { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font-size: .82em; }
+.vsn .vsn-lien-bloc:hover { border-color: var(--accent); }
+.vsn .vsn-lien-bloc .vsn-bloc-nom { font-size: 1em; font-weight: 600; }
+.vsn .vsn-fleche-bloc { display: inline-block; width: 22px; border-top: 1px solid var(--ink); }
+.vsn .vsn-bloc-fichiers { list-style: none; margin: 0; padding: 4px 8px 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.vsn .vsn-fichier { border-left-color: var(--accent); }
+.vsn .vsn-fichier .vsn-ligne1 { flex-wrap: wrap; }
+.vsn .vsn-trait-bloc line { stroke: var(--muted); stroke-linecap: round; opacity: .55; }
+.vsn .vsn-survol .vsn-trait-bloc { opacity: .3; }
+.vsn .vsn-survol .vsn-trait-bloc.vsn-actif { opacity: 1; }
+.vsn .vsn-trait-bloc.vsn-actif line { stroke: var(--accent); opacity: 1; }
+.vsn .vsn-etiquettes { z-index: 2; }
+.vsn .vsn-etiquette-bloc rect { fill: var(--panel); stroke: var(--muted); stroke-width: 1; }
+.vsn .vsn-etiquette-bloc text { fill: var(--ink); font-family: var(--font-body); font-size: 12px; font-weight: 700; }
+.vsn .vsn-survol .vsn-etiquette-bloc { opacity: .35; }
+.vsn .vsn-survol .vsn-etiquette-bloc.vsn-actif { opacity: 1; }
+.vsn .vsn-etiquette-bloc.vsn-actif rect { stroke: var(--accent); }
+.vsn .vsn-schema-blocs > .vsn-traits { z-index: 0; }
+
+/* ------------------------------------------------------------ accueil */
+.vsn .vsn-puces { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.vsn .vsn-puce { padding: 6px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; text-align: left; }
+.vsn .vsn-puce:hover { border-color: var(--accent); }
+
+/* ------------------------------------------------------------ bulle */
+.vsn-bulle {
+  position: fixed; z-index: 1000; max-width: min(420px, calc(100vw - 16px)); padding: 10px 12px; font-family: var(--font-body); font-size: 13px; line-height: 1.4;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--accent); border-radius: 8px; box-shadow: 0 8px 28px rgb(0 0 0 / .28); pointer-events: none;
+}
+.vsn-bulle .vsn-bulle-bloc + .vsn-bulle-bloc { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.vsn-bulle .vsn-bulle-titre { margin-bottom: 4px; }
+.vsn-bulle .vsn-mono { font-family: var(--font-mono); font-size: .9em; overflow-wrap: anywhere; }
+.vsn-bulle .vsn-muted { color: var(--muted); }
+.vsn-bulle .vsn-note { margin-top: 4px; font-style: italic; }
+.vsn-bulle .vsn-pastille { display: inline-block; width: .7em; height: .7em; border-radius: 50%; background: var(--fam, var(--muted)); }
+.vsn-bulle .vsn-f-code, .vsn-bulle .vsn-pastille.vsn-f-code { --fam: var(--lien-code); }
+.vsn-bulle .vsn-pastille.vsn-f-donnees { --fam: var(--lien-donnees); }
+.vsn-bulle .vsn-pastille.vsn-f-config { --fam: var(--lien-config); }
+.vsn-bulle .vsn-pastille.vsn-f-copie { --fam: var(--lien-copie); }
+.vsn-bulle .vsn-pastille.vsn-f-doc { --fam: var(--lien-doc); border-radius: 2px; }
+.vsn-bulle .vsn-pastille.vsn-f-autre { --fam: var(--lien-autre); }
+
+@media (prefers-reduced-motion: reduce) {
+  .vsn .vsn-chevron { transition: none; }
+}

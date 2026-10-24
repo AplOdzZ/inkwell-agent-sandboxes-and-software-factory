@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voisinage — démo</title>
+<link rel="stylesheet" href="voisinage.css">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f4ee; --panel: #ffffff; --ink: #1d1d1b; --muted: #5f5e58; --line: #d8d4c8;
+    --accent: #2f4fa3; --accent-soft: #e4e9f7;
+    --cred: #8a5a00; --cred-soft: #fbf0d9;
+    --done: #1f6f43; --done-soft: #dff2e6;
+    --del: #a1302a; --del-soft: #f9e1df;
+    --font-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14151a; --panel: #1d1f26; --ink: #ecebe6; --muted: #a2a19a; --line: #353844;
+      --accent: #8fa8f0; --accent-soft: #272e4a;
+      --cred: #e8b45a; --cred-soft: #3a2f17;
+      --done: #6fcf9b; --done-soft: #17342a;
+      --del: #f08a82; --del-soft: #3d1f1e;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); }
+  main { max-width: 1180px; margin: 0 auto; padding: 16px; }
+  h1 { font-family: var(--font-display); font-size: 1.6rem; margin: 0 0 4px; }
+  .sous-titre { color: var(--muted); margin: 0 0 16px; }
+  .onglets { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px; border-bottom: 2px solid var(--line); }
+  .onglets button {
+    padding: 10px 16px; background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -2px;
+    color: var(--muted); font: inherit; cursor: pointer; min-height: 44px;
+  }
+  .onglets button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+  .onglets button:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+  #erreur { color: var(--del); background: var(--del-soft); padding: 10px 14px; border-radius: 8px; }
+  #selection { color: var(--muted); font-size: .85rem; margin: 8px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Carte du dépôt</h1>
+  <p class="sous-titre">Lecture seule — chargée depuis <code>../carte.json</code>.</p>
+  <div class="onglets" role="tablist" aria-label="Vues">
+    <button type="button" role="tab" id="onglet-show" data-vue="show" aria-selected="true">1 · Voisinage</button>
+    <button type="button" role="tab" id="onglet-impact" data-vue="impact" aria-selected="false">2 · Impact</button>
+    <button type="button" role="tab" id="onglet-ensemble" data-vue="ensemble" aria-selected="false">3 · Blocs</button>
+  </div>
+  <div id="erreur" role="alert" hidden></div>
+  <div id="vue"></div>
+  <p id="selection" aria-live="polite"></p>
+</main>
+
+<script src="voisinage.js"></script>
+<script>
+(async function () {
+  const erreur = document.getElementById('erreur');
+  const onglets = Array.from(document.querySelectorAll('.onglets button'));
+  const trace = document.getElementById('selection');
+  try {
+    const [carte, suivi] = await Promise.all([
+      fetch('../carte.json').then((r) => { if (!r.ok) throw new Error('carte.json : ' + r.status); return r.json(); }),
+      fetch('suivi.exemple.json').then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    ]);
+
+    function marquer(nom) {
+      onglets.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.vue === nom)));
+    }
+
+    const vue = Voisinage.mount(document.getElementById('vue'), {
+      carte, suivi,
+      onSelect: (chemin) => { trace.textContent = 'Fichier choisi : ' + chemin; },
+      onVue: (nom) => marquer(nom)
+    });
+    window.vue = vue; // pratique pour essayer depuis la console
+
+    onglets.forEach((b) => b.addEventListener('click', () => {
+      if (b.dataset.vue === 'show') vue.show();
+      else if (b.dataset.vue === 'impact') vue.impact();
+      else vue.ensemble();
+    }));
+    vue.show();
+  } catch (e) {
+    erreur.hidden = false;
+    erreur.textContent = 'Impossible de charger la démo : ' + e.message + '. Servez le dossier avec « python3 -m http.server » (le chargement par fetch ne marche pas en file://).';
+  }
+}());
+</script>
+</body>
+</html>

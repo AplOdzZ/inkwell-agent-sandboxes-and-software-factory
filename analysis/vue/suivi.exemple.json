@@ -1,0 +1,26 @@
+{
+  "blocs": {
+    "A": "Vue d'ensemble",
+    "B": "Configuration"
+  },
+  "files": [
+    {"p": "README.md", "b": "A"},
+    {"p": "TREE.md", "b": "A"},
+    {"p": "LICENSE", "b": "A"},
+    {"p": ".env.sample", "b": "B"},
+    {"p": "justfile", "b": "B"},
+    {"p": "adws/adw_sssf_config/sssf.config.yaml", "b": "B"}
+  ],
+  "notes": {
+    "README.md": {"status": "fait", "role": "Exemple : porte d'entrée du dépôt, relu en entier."},
+    "TREE.md": {"status": "apercu", "role": "Exemple : arbre du dépôt, survolé seulement."},
+    "adws/adw_modules/agents.py": {"status": "fait", "role": "Exemple : exécute un appel d'agent."}
+  },
+  "fates": [
+    {"p": "LICENSE", "fate": "garder", "reason": "Exemple : obligation légale."},
+    {"p": "adws/adw_modules", "fate": "garder", "reason": "Exemple : un dossier entier s'applique à tout ce qu'il contient."},
+    {"p": "adws/adw_modules/agent_pi.py", "fate": "adapter", "reason": "Exemple : le chemin le plus précis l'emporte sur le dossier."},
+    {"p": "prompts", "fate": "adapter", "reason": "Exemple : à réécrire pour un autre projet."},
+    {"p": "images", "fate": "supprimer", "reason": "Exemple : visuels propres au projet d'origine."}
+  ]
+}
