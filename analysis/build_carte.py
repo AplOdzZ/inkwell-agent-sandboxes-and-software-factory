@@ -23,14 +23,21 @@ def tracked():
     return set(out.stdout.split())
 
 
+def excluded(path):
+    return path.startswith("images/") or path.endswith((".png", ".svg", ".lock"))
+
+
 def main(dirs):
     files, links = {}, {}
     for d in dirs:
         for p in sorted(glob.glob(os.path.join(d, "*.json"))):
             data = json.load(open(p))
             for f in data.get("fichiers", []):
-                files[f["chemin"]] = f
+                if not excluded(f["chemin"]):
+                    files[f["chemin"]] = f
             for l in data.get("liens", []):
+                if excluded(l["de"]) or excluded(l["vers"]):
+                    continue
                 key = (l["de"], l["vers"], l["type"])
                 if key in links:
                     prev = links[key]
@@ -52,6 +59,11 @@ def main(dirs):
         src = l["preuve"].rsplit(":", 1)[0]
         if src not in git_files:
             problems.append(f"preuve hors dépôt: {l['preuve']}")
+        # La preuve d'un lien est toujours une ligne du fichier `de`.
+        if src != de:
+            problems.append(f"preuve hors du fichier de: {l['preuve']} ({de} -> {vers}, {typ})")
+        if l.get("confiance") not in ("haute", "faible"):
+            problems.append(f"confiance invalide {l.get('confiance')!r}: {de} -> {vers}, {typ}")
 
     carte = {
         "meta": {
@@ -66,24 +78,38 @@ def main(dirs):
     }
     json.dump(carte, open(OUT, "w"), ensure_ascii=False, indent=2)
 
-    out_deg, in_deg = {}, {}
+    def top10(links_subset):
+        out_deg, in_deg = {}, {}
+        for l in links_subset:
+            out_deg[l["de"]] = out_deg.get(l["de"], 0) + 1
+            in_deg[l["vers"]] = in_deg.get(l["vers"], 0) + 1
+        nodes = set(out_deg) | set(in_deg)
+        top = sorted(nodes, key=lambda n: (-(out_deg.get(n, 0) + in_deg.get(n, 0)), n))[:10]
+        return [{"chemin": n, "entrants": in_deg.get(n, 0), "sortants": out_deg.get(n, 0),
+                 "total": in_deg.get(n, 0) + out_deg.get(n, 0)} for n in top]
+
     inverse = {}
     for l in carte["liens"]:
-        out_deg[l["de"]] = out_deg.get(l["de"], 0) + 1
-        in_deg[l["vers"]] = in_deg.get(l["vers"], 0) + 1
         inverse.setdefault(l["vers"], []).append({"de": l["de"], "type": l["type"], "preuve": l["preuve"]})
-    nodes = set(out_deg) | set(in_deg)
-    top = sorted(nodes, key=lambda n: (-(out_deg.get(n, 0) + in_deg.get(n, 0)), n))[:10]
     json.dump({
-        "top10_relies": [{"chemin": n, "entrants": in_deg.get(n, 0), "sortants": out_deg.get(n, 0),
-                          "total": in_deg.get(n, 0) + out_deg.get(n, 0)} for n in top],
+        "top10_relies": top10(carte["liens"]),
+        "top10_relies_hors_decrit": top10([l for l in carte["liens"] if l["type"] != "decrit"]),
         "liens_inverses": dict(sorted(inverse.items())),
     }, open(RANK, "w"), ensure_ascii=False, indent=2)
 
-    print(f"fichiers={len(files)} liens={len(links)} problemes={len(problems)}")
+    in_scope = {g for g in git_files if not excluded(g) and not g.startswith("analysis/")}
+    missing = sorted(in_scope - set(files))
+    extra = sorted(set(files) - in_scope)
+    print(f"fichiers={len(files)} liens={len(links)} problemes={len(problems)} "
+          f"perimetre={len(in_scope)} sans_fiche={len(missing)} fiche_hors_perimetre={len(extra)}")
+    if "-v" in sys.argv:
+        for m in missing:
+            print("  sans fiche:", m)
+    for e in extra:
+        print("  fiche hors périmètre:", e)
     for p in problems:
         print("  -", p)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main([a for a in sys.argv[1:] if a != "-v"])

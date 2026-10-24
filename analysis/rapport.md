@@ -1,75 +1,222 @@
 # Rapport : carte du dépôt Inkwell
 
-Dépôt `disler/inkwell-agent-sandboxes-and-software-factory`, commit `92f1701`, branche `analyse/carte`.
-État : **étape 1 (pilote)**. Seuls `adws/adw_modules/` et `adws/adw_sssf_config/` sont couverts.
+Dépôt `disler/inkwell-agent-sandboxes-and-software-factory`, commit `92f1701`, branche `analyse/carte`. État : **étape 2 (complète)**.
 
-> Taux d'erreur du contrôle qualité avant correction : 3 éléments faux sur 33 contrôlés, soit **9,1 %**. C'est sous le seuil de 10 %, mais de peu. Les 3 erreurs sont corrigées.
+> **Contrôle qualité.**
+> - Étape 1 : 3 erreurs sur 33 éléments contrôlés, soit **9,1 %**.
+> - Étape 2 : 4 erreurs sur 58, soit **6,9 %**.
+>
+> Les deux taux restent **sous le seuil de 10 %**, l'étape 1 de peu. Toutes les erreurs trouvées sont corrigées. Un balayage automatique ajouté ensuite a trouvé 10 preuves décalées d'une ligne en plus, toutes corrigées.
 
 ## Couverture
 
-- **Fichiers couverts :** 21 fiches complètes, toutes lues en entier une seule fois (148 095 octets) :
-  - `adws/adw_modules/` : 16 fichiers ;
-  - `adws/adw_sssf_config/` : 5 fichiers.
-- **Liens :** 172 au total.
-  - Par type : `configure` 90, `importe` 25, `lit` 23, `appelle` 22, `ecrit` 9, `charge_extension` 1, `rend_prompt` 1, `decrit` 1.
-  - 8 sont à confiance faible : surtout des appels passés par des objets injectés (`run.tracer`, etc.).
-- **Exclus (périmètre) :** `images/`, `*.png`, `*.svg`, `*.lock`, `uv.lock`, `bun.lock`.
-- **Restent pour l'étape 2 :** environ 224 des 245 fichiers suivis dans le périmètre.
-- **Liens inverses et classements :** calculés par script dans `analysis/classements.json`, à partir de `analysis/build_carte.py`.
+- **Fichiers couverts : 245 sur 245** dans le périmètre, soit tous les fichiers suivis hors exclusions et hors `analysis/`.
+  - **Fiches complètes : 196.** Parmi elles, 43 modèles de `templates/` :
+    - 28 identiques à leur original, qui renvoient à sa fiche ;
+    - 15 différents, dont les écarts sont résumés ligne par ligne dans le champ `differences`.
+  - **Fiches courtes : 49**, pour `specs/*.md`, `app_docs/`, `prompts/`, le front `apps/inkwell/public/` et les composants et le CSS du visualiseur.
+  - Par type : `doc` 63, `code` 58, `modele` 44, `prompt` 28, `recette_just` 20, `script` 18, `config` 13, `test` 1.
+- **Liens : 1 191**, dont 46 en confiance faible.
+  - Par type : `decrit` 693, `importe` 141, `appelle` 92, `lit` 70, `ecrit` 58, `configure` 56, `copie` 43, `lance` 36, `charge_extension` 1, `rend_prompt` 1.
+- **Exclus :** `images/`, `*.png`, `*.svg`, `*.lock` (dont `uv.lock`, `bun.lock`). Les liens vers ces fichiers sont retirés à la fusion.
+- **Volume lu en entier :** environ 980 000 octets, soit 148 095 à l'étape 1 et environ 830 600 à l'étape 2. Les fiches courtes n'ont été lues qu'en tête.
+- **Contrôles automatiques dans `build_carte.py`, sans aucun problème restant :**
+  - chaque `de` et chaque `vers` existe, ou est marqué motif, hors dépôt ou produit à l'exécution ;
+  - **la preuve est une ligne du fichier `de`** ;
+  - `confiance` vaut `haute` ou `faible` ;
+  - chaque fichier du périmètre a une fiche.
+- **Fichiers produits :**
+  - liens inverses et classements : `analysis/classements.json` ;
+  - audit : `analysis/audit_data_dir.md` (questions 1 à 6).
 
-## Contrôle qualité (étape 1)
+## Corrections de méthode faites à l'étape 2 (demande de l'utilisateur)
 
-Un sous-agent vérificateur, qui n'a produit aucune fiche, a contrôlé **20 liens, 5 fiches et 8 affirmations de l'audit**, tirés au hasard avec la graine 92.
+- Les 35 liens `configure` de l'étape 1 dont la preuve était dans le code sont transformés en liens `lit`, du code vers `adws/adw_sssf_config/*.config.yaml` (motif, marqués `indirect`).
+  - On obtient un lien par fichier de code, qui porte la liste des clés lues.
+  - Deux cas sont supprimés :
+    - `data_types.py`, qui est un schéma et ne lit rien ;
+    - `setup.just`, dont le lien `lit` existe déjà (`setup.just:176`).
+- `configure` ne sert plus qu'aux liens dont la preuve est une ligne de la config, quand la config désigne un prompt, une extension ou un chemin.
 
-Résultats avant correction :
+## Contrôle qualité
 
-| Élément | Exacts | Faux |
-|---|---|---|
-| Liens | 18 | 2 |
-| Fiches | 4 | 1 |
-| Affirmations de l'audit | 8 | 0 |
+Le vérificateur est un sous-agent qui n'a produit aucune fiche. Il ouvre chaque ligne citée.
 
-Les 3 erreurs, toutes corrigées :
+| Étape | Contrôlés | Erreurs avant correction | Types d'erreurs |
+|---|---|---|---|
+| 1 | 20 liens, 5 fiches, 8 affirmations d'audit | 2 liens, 1 fiche | Lien non étayé (`justfile` → config) ; ligne de preuve décalée (`agents.py:36` au lieu de `:37`, erreur systématique sur 5 liens) ; citation imprécise dans une contradiction |
+| 2 | 40 liens, 10 fiches, 8 affirmations d'audit | 2 liens, 2 fiches | Preuve décalée d'une ligne (`TREE.md:57` au lieu de `:56`) ; type `appelle` pour une porte passée en référence (désormais marqué `indirect` avec renvoi à `agents.py:154`) ; plages de `fonctions_cles` fausses (2) ; nombre de phases faux |
 
-1. **Lien non étayé.** `justfile` → `sssf.config.yaml` (`lit`) : `justfile:22` déclare une variable qui n'est jamais utilisée. Le lien est supprimé. La lecture réelle passe par `just/adws.just`.
-2. **Ligne de preuve décalée.** Les liens `configure` config → `agents.py` citaient `:36`, la boucle. La bonne ligne est `:37`, la recopie des `defaults`. Corrigé dans les 5 configs, car l'erreur était systématique.
-3. **Citation imprécise dans une contradiction.** Fiche `sssf.frontier.config.yaml` : « change nothing » est dans `purpose` aux lignes 80 et 105, pas dans un commentaire `tools:` à la ligne 86.
-
-Une erreur annexe est aussi corrigée : une note citait `agent_pi.py:263` au lieu de `:264` pour `-e`.
+**Balayage complémentaire.** Il vérifie que la ligne citée par chaque `decrit` nomme bien la cible. Il a trouvé un décalage systématique d'une ligne sur `TREE.md` (lignes 51-60 et 110) et un sur `handoff.md:133`, soit 10 liens, tous corrigés. Les 16 affirmations d'audit contrôlées sont exactes.
 
 ## Ce qui n'a pas pu être établi
 
-- Ce que fait `adws/adw_data/harness_engineering/subagents.ts` : ce fichier n'a pas encore été lu. On ne sait donc pas si un sous-agent peut écrire hors du dépôt.
-- Le comportement de `git diff --numstat` sur les noms non ASCII, les renommages et les fichiers binaires (confiance faible, rien n'a été exécuté).
-- Qui intercepte `PermissionBreach` au-delà de `runner.py` : à voir dans `adws/adw_*.py` à l'étape 2.
-- Les liens entrants depuis les fichiers non encore couverts, et les `decrit` venant de la documentation.
-- `observability.poll_ms` n'a pas de lecteur en Python, seulement le schéma. Le visualiseur reste à vérifier.
+- Si Pi relit bien les extensions `-e` à chaque lancement, et quels skills ou fichiers de contexte (`.claude/`, `AGENTS.md`, `.pi/`) Pi ou Claude Code chargent d'eux-mêmes. Rien dans le dépôt ne le montre.
+- Le contenu de l'image de la VM exe.dev : le `~/.pi/agent` d'origine, et l'absence d'identifiants git, qui n'est affirmée que par un commentaire.
+- La validité de `--session` (`subagents.ts:232`) par rapport à `--session-id` (`agent_pi.py:257`).
+- Le comportement de `git diff --numstat` sur les noms non ASCII, les renommages et les fichiers binaires (rien n'a été exécuté).
+- Le risque du `tar xf` côté hôte (`teardown.just:112`), qui dépend de la version de tar.
+- `server.test.ts`, `.gitignore` et `LICENSE` ont des fiches complètes construites par Grep et lecture partielle, pas par une lecture intégrale.
+- Les commits cités par les documents et absents de l'historique (par ex. `8ed94eb` dans `gotchas.md`).
 
-## Contradictions trouvées (documentation ou commentaire contre code)
+## Bugs du code relevés au passage (hors carte, non corrigés)
 
-1. **Profil frontier.** L'en-tête `adws/adw_sssf_config/sssf.frontier.config.yaml:4-5` dit que seul le choix des modèles change. Or ce profil omet `protected_files` et **toutes** les clés `writes` : aucun agent n'y est plus en lecture seule (`permissions.py:146-150` ; valeur par défaut à `data_types.py:335`).
-2. **Violation tolérée.** `permissions.py:23-25` dit qu'une violation « aborts the phase ». Le code tolère pourtant jusqu'à 3 chemins, si tous ont été annulés (`permissions.py:248-253`).
-3. **`data_dir` traité à part.** `permissions.py:70-71` dit que `data_dir` n'a pas besoin de cas particulier puisqu'il est ignoré par git. Or `always_writable` le traite explicitement (`:125-139`), et `adws/adw_data/` contient des fichiers **suivis** : les prompts et les extensions.
-4. **Porte `diff_matches_claims`.** La docstring `gates.py:62` annonce une confrontation au diff. Le code vérifie seulement que les fichiers existent (`gates.py:64-67`).
-5. **Module inexistant.** `git_helper.py:61` cite `documentation.py`, qui n'existe nulle part dans le dépôt. C'est `changes.py:52-84` qui compose le diff.
-6. **Signature des portes.** Les commentaires de `data_types.py:294` décrivent `gate(...) -> list[str]`. Les portes renvoient en réalité un `GateReport` (`gates.py:27` ; une liste n'est acceptée que comme cas ancien, `agents.py:226-230`).
-7. **Types d'événements.** Le commentaire de `data_types.py:359` omet les types `thinking` et `agent_message`, que `agents.py:250` émet pourtant.
-8. **`defaults.writes`.** `agents.py:37` propage `defaults.writes`, mais `ConfigDefaults` n'a pas ce champ (`data_types.py:325-338`).
-9. **Module mort.** `agent_cc.py:1-6` se présente comme un adaptateur, mais aucun module ne l'importe, et `agents.validate` refuse tout `coding_agent` autre que `pi` (`agents.py:61-63`).
+- `adws/adw_quality.py:33` et `adws/adw_plan_build_test_quality.py:58` appellent `quality.run_quality`, qui n'existe pas dans `adws/adw_modules/quality.py`. Seules `run_inkwell_tests` (`:198`) et `run_inkwell_quality` (`:223`) y sont définies. Ces deux ADW plantent, et le commit de `adw_plan_build_test_quality` est inatteignable.
+- `.claude/skills/sssf/scripts/make_adw.py:55` génère `run.succeeded`, qui n'existe plus (`runner.py:114-122`).
+- `adws/adw_modules/git_helper.py:56-58` (`changed_files`) tronque le premier chemin à cause de `.strip()`. Cette fonction n'a aucun appelant.
 
-## Les dix fichiers les plus reliés (étape 1, calcul par script)
+## Les dix fichiers les plus reliés (calcul par script)
 
-| # | Fichier | Entrants | Sortants | Total |
-|---|---|---|---|---|
-| 1 | `adws/adw_sssf_config/sssf.config.yaml` | 15 | 18 | 33 |
-| 2 | `adws/adw_modules/agents.py` | 7 | 16 | 23 |
-| 3 | `adws/adw_modules/runner.py` | 8 | 12 | 20 |
-| 4 | `adws/adw_sssf_config/sssf.deepestseek.config.yaml` | 0 | 18 | 18 |
-| 5 | `adws/adw_sssf_config/sssf.frontier.config.yaml` | 0 | 18 | 18 |
-| 6 | `adws/adw_sssf_config/sssf.open-weights.config.yaml` | 0 | 18 | 18 |
-| 7 | `adws/adw_sssf_config/sssf.top-speed.config.yaml` | 0 | 18 | 18 |
-| 8 | `adws/adw_modules/data_types.py` | 15 | 0 | 15 |
-| 9 | `adws/adw_modules/agent_pi.py` | 7 | 6 | 13 |
-| 10 | `adws/adw_modules/utils.py` | 12 | 1 | 13 |
+| # | Tous liens | Entrants | Sortants | Total | Sans les `decrit` | Total |
+|---|---|---|---|---|---|---|
+| 1 | `TREE.md` | 2 | 75 | 77 | `adws/adw_modules/agents.py` | 45 |
+| 2 | `adws/adw_modules/agents.py` | 39 | 17 | 56 | `adws/adw_modules/utils.py` | 38 |
+| 3 | `adws/adw_sssf_config/sssf.config.yaml` | 37 | 11 | 48 | `adws/adw_modules/session.py` | 33 |
+| 4 | `adws/adw_modules/utils.py` | 39 | 1 | 40 | `adws/adw_sssf_config/sssf.config.yaml` | 29 |
+| 5 | `.claude/skills/sssf-sandbox-orchestrator/SKILL.md` | 5 | 34 | 39 | `adws/adw_modules/data_types.py` | 23 |
+| 6 | `.claude/skills/sssf/cookbooks/sssf_overview.md` | 1 | 38 | 39 | `adws/adw_modules/gates.py` | 23 |
+| 7 | `adws/adw_modules/session.py` | 31 | 8 | 39 | `adws/adw_simple_sdlc.py` | 22 |
+| 8 | `adws/adw_modules/data_types.py` | 36 | 0 | 36 | `adws/adw_modules/quality.py` | 20 |
+| 9 | `.claude/skills/sssf/SKILL.md` | 8 | 23 | 31 | `adws/adw_plan_build_test.py` | 19 |
+| 10 | `adws/adw_modules/gates.py` | 28 | 2 | 30 | `adws/adw_plan_build_test_quality.py` | 19 |
 
-Ce classement est provisoire : les liens entrants depuis `adws/adw_*.py`, `just/` et la documentation viendront à l'étape 2.
+## Contradictions (documentation ou commentaire contre code)
+
+Il y en a 125 au total, générées depuis le champ `contradictions` de `carte.json`. Chaque entrée donne le fichier de la fiche, la preuve côté doc, la preuve côté code et un résumé.
+
+Les plus lourdes de conséquences :
+
+1. Le profil frontier n'a ni `protected_files` ni `writes`, alors que son en-tête dit ne changer que le choix des modèles.
+2. `permissions.py:23-25` annonce un arrêt, alors que le code tolère jusqu'à 3 chemins annulés.
+3. Le modèle `templates/.../permissions.py` n'a ni ce seuil ni la restauration des fichiers.
+4. Les docs du harvest (`teardown_and_reap.md:42-46` et `specs/sandbox-mount-system.html`) décrivent un `git bundle --all` vers `main` ou `refs/heads/sandbox/*`. Le code fait une plage `commit_sha..sbx/<id>`, fetchée dans `refs/sandbox/<id>`.
+5. Plusieurs docs citent des recettes à la racine (`just rosters`, `just teardown`, `just runs`) qui sont en réalité dans des modules (`obs`, `sbx`), ou qui n'existent pas.
+
+### Liste complète
+
+1. **`.claude/commands/prime.md`** : doc `.claude/commands/prime.md:11` / code `justfile:38`. prime.md annonce quatre espaces de noms ; le justfile racine en declare cinq (`inkwell`, `local`, `adw`, `sbx`, `obs`, lignes 38-50). install.md:32 et :78 listent bien les cinq. La phrase du resume (ligne 29) repete "four namespaces".
+2. **`.claude/commands/prime.md`** : doc `.claude/commands/prime.md:21` / code `just/sandbox/lifecycle/create.just:17`. prime.md cite `just/sandbox/create.just` ; la recette create est dans `just/sandbox/lifecycle/create.just` (les phases sont sous lifecycle/).
+3. **`.claude/skills/sandbox-exe-dev/SKILL.md`** : doc `.claude/skills/sandbox-exe-dev/SKILL.md:29` / code `.claude/skills/sandbox-exe-dev/exedev_cli/src/main.py:182`. La doc (et le message de doctor) citent `ai_docs/exedev/faq-host-key.md` comme source de l'empreinte de cle d'hote ; ce fichier n'existe pas dans le depot (git ls-files ai_docs ne donne que ai_docs/exedev_sandbox_mounting.md).
+4. **`.claude/skills/sandbox-exe-dev/SKILL.md`** : doc `.claude/skills/sandbox-exe-dev/SKILL.md:332` / code `justfile:47`. La doc montre `mod? sbx 'just/sandbox/mod.just'` (module optionnel) alors que le justfile racine declare `mod sbx 'just/sandbox/mod.just'` sans `?`.
+5. **`.claude/skills/sandbox-exe-dev/cookbook/browser.md`** : doc `.claude/skills/sandbox-exe-dev/cookbook/browser.md:130-132` / code `.claude/skills/sandbox-exe-dev/exedev_cli/src/commands/browser.py:40`. La doc dit d'executer `uv run exedev browser init` quand l'environnement n'est pas initialise et pretend que le code est byte-identique a /agent-sandboxes (ligne 165) ; le code affiche en realite `uv run sbx browser init` (et `sbx browser start/close` aux lignes 62-66, 125-126, 151-152, 196-197, 219, 253, 274, 489), des commandes inexistantes dans ce CLI.
+6. **`.claude/skills/sandbox-exe-dev/cookbook/fleet.md`** : doc `.claude/skills/sandbox-exe-dev/cookbook/fleet.md:41` / code `.claude/skills/sandbox-exe-dev/exedev_cli/src/commands/files.py:184`. La doc conseille de passer `--include-all` a `files download-dir` pour inclure dist/build ; l'option reelle s'appelle `--all` (dest `include_all`).
+7. **`.claude/skills/sandbox-exe-dev/exedev_cli/src/commands/browser.py`** : doc `.claude/skills/sandbox-exe-dev/exedev_cli/src/commands/browser.py:40` / code `.claude/skills/sandbox-exe-dev/exedev_cli/pyproject.toml:13`. Les messages d'aide (lignes 40, 49, 61-66, 125-126, 151-152, 196-197, 219, 253, 274, 489) disent d'executer `uv run sbx browser ...`, alors que la commande installee par pyproject.toml s'appelle `exedev`.
+8. **`.claude/skills/sandbox-exe-dev/exedev_cli/src/modules/ssh_runner.py`** : doc `.claude/skills/sandbox-exe-dev/exedev_cli/src/modules/ssh_runner.py:131` / code `.claude/skills/sandbox-exe-dev/exedev_cli/src/modules/ssh_runner.py:188`. Le docstring annonce un journal `/tmp/exedev-bg-<n>.log` alors que le code utilise le chemin fixe `/tmp/exedev-bg.log` (le SKILL.md et exec.py indiquent aussi le chemin fixe).
+9. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/debug_a_failed_gate.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/debug_a_failed_gate.md:193` / code `just/sandbox/lifecycle/setup.just:27`. La doc affirme que le gate pingue toujours le roster par defaut ; `setup RUN_ID CONFIG=""` permet de lui passer le roster a pinguer (setup.just:172-176).
+10. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/debug_a_failed_gate.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/debug_a_failed_gate.md:29` / code `just/sandbox/lifecycle/setup.just:269`. La doc cite le message de setup.just pour l'exit 3 comme 'no cost reported and/or no rate table' ; le code affiche 'assertion D — no spend delta and/or no rate table in models.json' (message code perime, la doc decrit le comportement actuel de D).
+11. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/debug_a_failed_gate.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/debug_a_failed_gate.md:308` / code `sandbox_mount/guest/provision.sh:34`. La doc place le symlink de bun a l'etape 3/10 de provision.sh ; provision.sh a 9 etapes et bun (avec le symlink vers /usr/local/bin, lignes 52-53) est l'etape 2/9.
+12. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/debug_a_failed_gate.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/debug_a_failed_gate.md:347` / code `just/sandbox/lifecycle/teardown.just:22`. La doc ecrit `just teardown <run-id>` (lignes 347-348, coupe sur deux lignes) ; il n'y a pas de recette racine `teardown`, la commande est `just sbx lifecycle teardown <run-id>`.
+13. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/debug_a_failed_gate.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/debug_a_failed_gate.md:3` / code `just/sandbox/lifecycle/setup.just:1`. La doc place le gate dans `just/sandbox/setup.just` ; le fichier est `just/sandbox/lifecycle/setup.just`.
+14. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/execute_work.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/execute_work.md:125` / code `just/sandbox/lifecycle/execute.just:48`. La doc dit que `execute` code en dur `adw sdlc` ; la recette accepte `ADW` (nom de n'importe quelle recette `just adw`) et `CONFIG`, `*EXTRA`.
+15. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/fan_out_n.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/fan_out_n.md:87` / code `just/sandbox/lifecycle/execute.just:48`. La doc dit que `lifecycle execute` n'a pas d'argument de config et que la solution de contournement est un ssh direct ; la recette a deja `CONFIG=""` (3e argument, ajoute en `--config` final), `ADW="sdlc"` et `*EXTRA`. Le contournement decrit est donc obsolete (et le pid est bien enregistre via la recette).
+16. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/fan_out_n.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/fan_out_n.md:114` / code `just/sandbox/lifecycle/setup.just:27`. La doc dit que le gate C pingue toujours le roster par defaut ; `setup` prend un argument `CONFIG` (transmis en positionnel a la partie distante) qui choisit le roster pingue, avec repli sur SSSF_CONFIG puis le defaut.
+17. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/just_command_model.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/just_command_model.md:14` / code `justfile:47`. La doc dit que les recettes sbx sont "flattened into the root" ; `mod sbx` les met dans un espace de noms (`just sbx ...`), comme la ligne 13 de la meme doc le dit.
+18. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/observe_and_report.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/observe_and_report.md:121` / code `sandbox_mount/guest/provision.sh:132`. La doc dit que l'etape 8 de provision cree la base ; c'est l'etape 7/9.
+19. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/observe_and_report.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/observe_and_report.md:123` / code `sandbox_mount/guest/provision.sh:118`. La doc dit que l'etape 7 lance `bunx vite build` ; c'est l'etape 6/9.
+20. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/teardown_and_reap.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/teardown_and_reap.md:42` / code `just/sandbox/manage/harvest.just:71`. La doc decrit un bundle `--all` (/tmp/run.bundle) fait par teardown ; le code fait un bundle de PLAGE `<commit_sha>..sbx/<run-id>` (/tmp/harvest.bundle) dans la recette `harvest`, que teardown appelle (teardown.just:132) ; teardown ne fait pas lui-meme de `git bundle`.
+21. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/teardown_and_reap.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/teardown_and_reap.md:46` / code `just/sandbox/manage/harvest.just:39`. La doc dit de fetcher vers `refs/heads/sandbox/<run-id>/*` (branches locales) ; harvest fetch dans `refs/sandbox/<run-id>` (hors branches) et ne touche jamais une branche.
+22. **`.claude/skills/sssf-sandbox-orchestrator/cookbooks/teardown_and_reap.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/cookbooks/teardown_and_reap.md:6` / code `.claude/skills/sssf-sandbox-orchestrator/references/phases.md:190`. Contradiction doc contre doc : teardown_and_reap.md dit que teardown/reap n'ont jamais ete executes ; phases.md dit que teardown a ete exerce sur un sandbox vivant. (prime.md:27 reprend 'not yet exercised'.) Le code ne permet pas de trancher.
+23. **`.claude/skills/sssf-sandbox-orchestrator/references/gotchas.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/references/gotchas.md:68` / code `sandbox_mount/guest/provision.sh:132`. La doc place l'init de la base de trace a l'etape 8/10 ; provision.sh a 9 etapes et c'est 7/9.
+24. **`.claude/skills/sssf-sandbox-orchestrator/references/gotchas.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/references/gotchas.md:69` / code `sandbox_mount/guest/provision.sh:118`. La doc place `bunx vite build` a l'etape 7/10 ; c'est 6/9 dans provision.sh.
+25. **`.claude/skills/sssf-sandbox-orchestrator/references/models.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/references/models.md:90` / code `sandbox_mount/guest/provision.sh:77`. La doc place l'ecriture de ~/.pi/agent/models.json a l'etape 5/10 ; c'est 4/9 (9 etapes au total).
+26. **`.claude/skills/sssf-sandbox-orchestrator/references/phases.md`** : doc `.claude/skills/sssf-sandbox-orchestrator/references/phases.md:88` / code `just/sandbox/lifecycle/setup.just:27`. La doc dit que les modeles du gate C viennent de `$SSSF_CONFIG` ; le code utilise d'abord l'argument `CONFIG` de la recette (setup.just:176 : repli sur SSSF_CONFIG puis le defaut), car ssh ne transporte pas l'environnement.
+27. **`.claude/skills/sssf/SKILL.md`** : doc `.claude/skills/sssf/SKILL.md:76` / code `.claude/skills/sssf/templates/justfile:89`. Dit que le visualiseur 'ships in a later pass' et qu'on observe par sqlite en attendant ; or apps/visualizer est suivi par git et run_adw.md:122 / install.md:25 decrivent 'just obs'.
+28. **`.claude/skills/sssf/SKILL.md`** : doc `.claude/skills/sssf/SKILL.md:76` / code `.claude/skills/sssf/templates/sssf.config.yaml:5`. Annonce le modele par defaut gemini-3.6-flash via openrouter ; le modele de config stampe par install a pour defaut openrouter/deepseek/deepseek-v4-flash-0731 (le gemini-3.6-flash n'est le defaut que dans adws/adw_sssf_config/sssf.config.yaml:5).
+29. **`.claude/skills/sssf/cookbooks/create_adw.md`** : doc `.claude/skills/sssf/cookbooks/create_adw.md:27` / code `adws/adw_modules/quality.py:198`. Cite quality.run_tests(run) ; dans le depot installe la fonction s'appelle run_inkwell_tests (quality.py:198), run_tests n'existe que dans le modele templates/adws/adw_modules/quality.py:177.
+30. **`.claude/skills/sssf/cookbooks/create_adw.md`** : doc `.claude/skills/sssf/cookbooks/create_adw.md:48` / code `.claude/skills/sssf/scripts/make_adw.py:25`. Annonce que make_adw genere le squelette canonique ; son en-tete declare dependencies sans 'rich' (le squelette doc ligne 57 et adws/adw_plan_build.py:3 l'incluent) et finit par run.succeeded (make_adw.py:55) alors que la doc impose run.finish() (ligne 94) et que runner.py:114-122 a remplace succeeded.
+31. **`.claude/skills/sssf/cookbooks/create_config.md`** : doc `.claude/skills/sssf/cookbooks/create_config.md:53` / code `.claude/skills/sssf/references/config.md:110`. Dit que les outils integres de Pi sont read, bash, edit, write ; references/config.md:110 et update_config.md:32 en listent sept (grep, find, ls en plus).
+32. **`.claude/skills/sssf/cookbooks/create_config.md`** : doc `.claude/skills/sssf/cookbooks/create_config.md:24` / code `adws/adw_modules/agent_pi.py:264`. Decrit harness_engineering comme des 'pi extension names' ; le code passe chaque entree telle quelle a 'pi -e' (chemins de fichier, cf. adws/adw_sssf_config/sssf.config.yaml:49).
+33. **`.claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md`** : doc `.claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md:108` / code `just/obs.just:39`. Cite 'just phases <adw_id>' ; dans le depot la recette est 'just obs phases' (module obs, justfile:50) ; seul le justfile modele a une recette phases a la racine (templates/justfile:71).
+34. **`.claude/skills/sssf/cookbooks/install.md`** : doc `.claude/skills/sssf/cookbooks/install.md:25` / code `justfile:50`. Annonce les recettes 'just demo' et 'just obs' a la racine ; le justfile modele (templates/justfile:29,88) les a, mais le justfile du depot n'a pas 'demo' (just/obs.just est un module : 'just obs <recette>').
+35. **`.claude/skills/sssf/cookbooks/install.md`** : doc `.claude/skills/sssf/cookbooks/install.md:40` / code `.claude/skills/sssf/templates/sssf.config.yaml:5`. Dit que le defaut est gemini-3.6-flash ; la config stampee a pour defaut openrouter/deepseek/deepseek-v4-flash-0731.
+36. **`.claude/skills/sssf/cookbooks/run_adw.md`** : doc `.claude/skills/sssf/cookbooks/run_adw.md:31` / code `just/obs.just:18`. Cite 'just rosters', 'just phases', 'just procs', 'just kill' a la racine ; dans le depot ce sont des recettes du module obs (just/obs.just:18,39,47,53, donc 'just obs rosters'). Le justfile modele (templates/justfile) n'a ni rosters ni kill (templates/justfile:5 les renvoie a une 'example branch').
+37. **`.claude/skills/sssf/cookbooks/sssf_overview.md`** : doc `.claude/skills/sssf/cookbooks/sssf_overview.md:40` / code `.claude/skills/sssf/templates/sssf.config.yaml:5`. Defaut annonce gemini-3.6-flash ; la config stampee a pour defaut openrouter/deepseek/deepseek-v4-flash-0731.
+38. **`.claude/skills/sssf/cookbooks/update_adw.md`** : doc `.claude/skills/sssf/cookbooks/update_adw.md:58` / code `adws/adw_modules/quality.py:198`. Utilise quality.run_tests(run) et dit que les blocs stampes sont des placeholders echo (ligne 80) ; le quality.py du depot expose run_inkwell_tests (ligne 198) avec de vraies commandes bun ; seul le modele (templates/.../quality.py:177) correspond a la doc.
+39. **`.claude/skills/sssf/cookbooks/update_config.md`** : doc `.claude/skills/sssf/cookbooks/update_config.md:68` / code `.claude/skills/sssf/templates/sssf.config.yaml:49`. Dit que le roster de depart n'a aucune extension harness ; la config modele (lignes 49 et 88) livre subagents.ts pour planner et scout (confirme par install.md:30).
+40. **`.claude/skills/sssf/cookbooks/update_config.md`** : doc `.claude/skills/sssf/cookbooks/update_config.md:26` / code `.claude/skills/sssf/templates/sssf.config.yaml:109`. 'violet/cyan/amber/green' : les couleurs du modele sont violet (43), cyan (65), ambre (82), rose (109), fuchsia (126) ; pas de vert.
+41. **`.claude/skills/sssf/cookbooks/update_modules.md`** : doc `.claude/skills/sssf/cookbooks/update_modules.md:24` / code `.claude/skills/sssf/cookbooks/update_modules.md:23`. console.py est liste deux fois avec deux descriptions presque identiques (lignes 23 et 24) ; doublon interne.
+42. **`.claude/skills/sssf/references/config.md`** : doc `.claude/skills/sssf/references/config.md:49` / code `adws/adw_modules/agent_pi.py:264`. Dit 'Pi: extension names' et l'exemple (lignes 32-33) liste 'json-enforcer' ; le code passe chaque entree a 'pi -e' et la ligne 200 du meme document dit 'file paths'.
+43. **`.claude/skills/sssf/references/config.md`** : doc `.claude/skills/sssf/references/config.md:200` / code `.claude/skills/sssf/templates/sssf.config.yaml:49`. 'The starter roster ships with none' ; la config modele reference subagents.ts pour planner (49) et scout (88).
+44. **`.claude/skills/sssf/references/config.md`** : doc `.claude/skills/sssf/references/config.md:46` / code `.claude/skills/sssf/templates/sssf.config.yaml:5`. 'Default gemini-3.6-flash' ; defaut du modele stampe : openrouter/deepseek/deepseek-v4-flash-0731.
+45. **`.claude/skills/sssf/references/observability.md`** : doc `.claude/skills/sssf/references/observability.md:15` / code `adws/adw_modules/agents.py:248`. La table des types d'evenements n'en liste que dix ; agents.py:248-251 emet aussi des evenements 'thinking' et 'agent_message' (absents du modele templates/.../agents.py).
+46. **`.claude/skills/sssf/scripts/install.py`** : doc `.claude/skills/sssf/scripts/install.py:11` / code `.claude/skills/sssf/cookbooks/install.md:23`. Le docstring dit '4 starter agents' ; templates/prompt_engineering contient 5 dossiers (planner, builder, scout, reviewer, documenter) et install.md:23 en liste cinq.
+47. **`.claude/skills/sssf/scripts/make_adw.py`** : doc `.claude/skills/sssf/scripts/make_adw.py:55` / code `adws/adw_modules/runner.py:114`. Le squelette genere finit par 'return 0 if run.succeeded else 1' ; runner.py:114-122 definit run.finish(accepted=) en remplacement de la propriete succeeded (absente du module) et SKILL.md:72 impose run.finish() ; l'ADW genere risque d'echouer a l'execution.
+48. **`.claude/skills/sssf/scripts/make_adw.py`** : doc `.claude/skills/sssf/scripts/make_adw.py:25` / code `adws/adw_plan_build.py:3`. Les dependances du squelette genere omettent 'rich' alors que console.py importe rich (console.py:11) et que le squelette de create_adw.md:57 et les ADW du depot l'incluent.
+49. **`README.md`** : doc `README.md:60` / code `justfile:38`. Le tableau « Required Tech » parle de « all four namespaces » alors que le justfile déclare cinq modules : inkwell (38), local (41), adw (44), sbx (47), obs (50) ; le README lui-même dit « Five namespaces » à la ligne 245.
+50. **`TREE.md`** : doc `TREE.md:19` / code `justfile:38`. TREE dit « 4 namespaces and nothing else: adw, sbx, local, obs » ; le justfile en déclare 5, avec en plus `mod inkwell 'just/inkwell.just'` (ligne 38), et just/inkwell.just (recettes run, dev, test) n'apparaît pas dans la section just/ de TREE.
+51. **`TREE.md`** : doc `TREE.md:127` / code `prompts/README.md:1`. TREE dit « five ready-made tasks (01-05) » ; prompts/ suit 16 fichiers : 01 à 08 (dont 06-redesign-quiet-room.md, 07, 08), plus demo/ (3), README.md et d'autres prompts (git ls-files prompts).
+52. **`TREE.md`** : doc `TREE.md:105` / code `.claude/skills/herdr/SKILL.md:1`. Titre « the three skills » ; .claude/skills contient quatre dossiers (herdr, sandbox-exe-dev, sssf, sssf-sandbox-orchestrator) et TREE ne décrit pas herdr.
+53. **`TREE.md`** : doc `TREE.md:111` / code `.claude/skills/sssf-sandbox-orchestrator/cookbooks/access_a_running_sandbox.md:1`. TREE annonce « 7 cookbooks, 4 references » pour sssf-sandbox-orchestrator ; git ls-files compte 8 cookbooks (access_a_running_sandbox, debug_a_failed_gate, execute_work, fan_out_n, just_command_model, mount_one, observe_and_report, teardown_and_reap) et 5 références (gotchas, kickoff_paths, models, phases, run_record).
+54. **`TREE.md`** : doc `TREE.md:89` / code `adws/adw_sssf_config/sssf.deepestseek.config.yaml:1`. TREE ne cite que sssf.config.yaml et sssf.frontier.config.yaml ; le dossier contient cinq rosters (aussi deepestseek, open-weights, top-speed), comme le dit README.md:148 (omission).
+55. **`adws/adw_build_review.py`** : doc `adws/adw_build_review.py:67` / code `adws/adw_build_review.py:58`. Le message dit 'after 3 revision(s)' mais la boucle sort a i==3 avant revise_3 : seules 2 revisions (revise_1, revise_2) s'executent pour 3 revues.
+56. **`adws/adw_build_test.py`** : doc `adws/adw_build_test.py:10` / code `adws/adw_build_test.py:52-67`. Le docstring decrit 'fix -> test ... borne' ; au 3e tour fix_3 s'execute apres test_3 rouge et n'est jamais re-teste (pas de break avant fix a i==MAX_FIX_LOOPS), donc son travail ne peut pas etre accepte.
+57. **`adws/adw_data/harness_engineering/subagents.ts`** : doc `adws/adw_data/harness_engineering/subagents.ts:12` / code `adws/adw_sssf_config/sssf.config.yaml:49`. L'en-tete documente `pi -e extensions/subagent-widget.ts` ; le fichier reel est charge depuis adws/adw_data/harness_engineering/subagents.ts.
+58. **`adws/adw_data/harness_engineering/themeMap.ts`** : doc `adws/adw_data/harness_engineering/themeMap.ts:4` / code `adws/adw_data/harness_engineering/themeMap.ts:35`. Le fichier annonce des themes dans .pi/themes/ (non suivi par git) et une cle 'subagent-widget' ; l'extension reelle s'appelle 'subagents', donc le theme retombe sur synthwave (ligne 78-80).
+59. **`adws/adw_data/prompt_engineering/builder/system.md`** : doc `adws/adw_data/prompt_engineering/builder/system.md:14` / code `adws/adw_modules/permissions.py:144`. 'Toute ecriture hors portee est annulee' : les chemins sous adws/adw_data/ (donc ces prompts) sont toujours permis et jamais annules.
+60. **`adws/adw_data/prompt_engineering/scout/system.md`** : doc `adws/adw_data/prompt_engineering/scout/system.md:19` / code `adws/adw_data/harness_engineering/subagents.ts:235`. 'Tenir les sous-agents en lecture seule' : le sous-agent recoit l'outil bash, rien dans le code ne l'empeche d'ecrire.
+61. **`adws/adw_modules/agent_cc.py`** : doc `adws/adw_modules/agent_cc.py:1-6` / code `adws/adw_modules/agents.py:61`. Le module n'est importe nulle part dans adws/adw_modules : agents.validate refuse deja coding_agent != pi (agents.py:61-63), donc run() de agent_cc n'est jamais atteint.
+62. **`adws/adw_modules/agents.py`** : doc `adws/adw_modules/data_types.py:294` / code `adws/adw_modules/agents.py:155`. Le commentaire d'AgentCall dit gate(envelope, run) -> list[str], mais le code attend un GateReport et n'accepte une liste que comme porte 'legacy' (_as_report, agents.py:226-230).
+63. **`adws/adw_modules/agents.py`** : doc `adws/adw_modules/agents.py:37` / code `adws/adw_modules/data_types.py:325-338`. load_config propage `defaults.writes` aux agents, mais ConfigDefaults n'a pas de champ writes : la cle n'est ni validee ni documentee dans le schema (aucune config du depot ne l'utilise).
+64. **`adws/adw_modules/data_types.py`** : doc `adws/adw_modules/data_types.py:359` / code `adws/adw_modules/agents.py:250`. Le commentaire liste les types d'evenement (phase_start\|...\|error) sans `thinking` ni `agent_message`, pourtant emis par _event_forwarder (type=message.pop('kind')).
+65. **`adws/adw_modules/data_types.py`** : doc `adws/adw_modules/data_types.py:294` / code `adws/adw_modules/gates.py:27`. Commentaire `gate(envelope, run) -> list[str]` alors que les portes renvoient un GateReport.
+66. **`adws/adw_modules/gates.py`** : doc `adws/adw_modules/gates.py:62` / code `adws/adw_modules/gates.py:64-67`. Docstring 'Every file claimed changed must exist on disk' : le code verifie seulement l'existence ; il ne confronte pas la liste au diff git reel.
+67. **`adws/adw_modules/git_helper.py`** : doc `adws/adw_modules/git_helper.py:61` / code `adws/adw_modules/changes.py:52-84`. Le commentaire dit que le diff est compose en ChangeSet par `documentation.py` ; ce module n'existe pas dans adws/adw_modules, c'est changes.py qui le fait.
+68. **`adws/adw_modules/permissions.py`** : doc `adws/adw_modules/permissions.py:23-25` / code `adws/adw_modules/permissions.py:248-253`. Le haut du module dit qu'une violation 'aborts the phase' ; le code tolere jusqu'a 3 chemins tous annules (RECOVERED) et continue avec une simple note console.
+69. **`adws/adw_modules/permissions.py`** : doc `adws/adw_modules/permissions.py:70-71` / code `adws/adw_modules/permissions.py:125-139`. snapshot dit que le runtime sous data_dir 'needs no special case' car ignore par git ; mais always_writable le traite explicitement, et data_dir (adws/adw_data/) contient des fichiers SUIVIS (prompts, extensions) qui ne sont pas ignores.
+70. **`adws/adw_plan_build_test.py`** : doc `adws/adw_plan_build_test.py:10` / code `adws/adw_plan_build_test.py:52-67`. fix_3 s'execute apres test_3 rouge sans re-test ; le commit est de toute facon bloque (test.passed faux).
+71. **`adws/adw_plan_build_test_quality.py`** : doc `adws/adw_plan_build_test_quality.py:61` / code `adws/adw_modules/quality.py:223`. Le commentaire dit que run_quality() inclut le bloc test ; run_quality n'existe pas et run_inkwell_quality (quality.py:223-246) n'a pas de bloc tests (lignes 225-232).
+72. **`adws/adw_plan_build_test_quality.py`** : doc `adws/adw_plan_build_test_quality.py:10` / code `adws/adw_plan_build_test_quality.py:56-63`. Le docstring annonce verify -> test -> fix en deux phases code ; le code n'a qu'une phase verify_i et alias test_result = quality_result.
+73. **`adws/adw_quality.py`** : doc `adws/adw_quality.py:5` / code `adws/adw_modules/quality.py:223`. Le script appelle quality.run_quality (ligne 33), absent du module ; la fonction livree s'appelle run_inkwell_quality.
+74. **`adws/adw_simple_sdlc.py`** : doc `adws/adw_simple_sdlc.py:11-12` / code `adws/adw_simple_sdlc.py:97-129`. Le docstring presente test/fix et review/revise comme des boucles qui s'arretent proprement ; en realite la revue s'execute meme si la suite est rouge apres test_3 (aucun arret), fix_3 n'est jamais re-teste, et avec MAX_REVISION_LOOPS=2 une seule revision (revise_1) peut s'executer.
+75. **`adws/adw_simple_sdlc.py`** : doc `adws/adw_simple_sdlc.py:36-37` / code `adws/adw_simple_sdlc.py:87-89`. 'Le plan est commit' : commit_plan fait git add -A, donc committe aussi tout fichier deja sale de l'arbre, pas seulement la spec.
+76. **`adws/adw_sssf_config/sssf.frontier.config.yaml`** : doc `adws/adw_sssf_config/sssf.frontier.config.yaml:4-5` / code `adws/adw_modules/data_types.py:335 ; adws/adw_modules/permissions.py:146-150`. L'en-tête dit « Nothing here but the roster changes » mais ce profil omet defaults.protected_files (repli sur la valeur par défaut de data_types.py:335, donc protégé) ET toutes les clés `writes` : planner, scout, reviewer et documenter deviennent writes=None donc non restreints au dépôt (permissions.py:150), contrairement aux autres profils où scout/reviewer sont en `writes: []` et planner/documenter limités. Les intentions affichées (commentaires `tools:` « no edit » aux lignes 47 et 109, `purpose` « change nothing » aux lignes 80 et 105) ne sont plus appliquées par permissions.
+77. **`ai_docs/exedev_sandbox_mounting.md`** : doc `ai_docs/exedev_sandbox_mounting.md:3` / code `sandbox_mount/guest/provision.sh:1`. Le document se dit « Research only. Nothing here is built » ; le dépôt contient désormais sandbox_mount/ (provision.sh, run_record.py, runs_table.py) et just/sandbox/ qui implémentent le montage.
+78. **`ai_docs/exedev_sandbox_mounting.md`** : doc `ai_docs/exedev_sandbox_mounting.md:160` / code `sandbox_mount/guest/provision.sh:222`. Le document propose de sonder la sentinelle /exe.dev/READY ; le code touche /tmp/PROVISION_READY (provision.sh:222, attendue par just/sandbox/lifecycle/setup.just:76).
+79. **`ai_docs/exedev_sandbox_mounting.md`** : doc `ai_docs/exedev_sandbox_mounting.md:156` / code `sandbox_mount/guest/provision.sh:1`. Cite mount/provision.sh (et mount/setup.sh ligne 143) ; ces chemins n'existent pas, le script réel est sandbox_mount/guest/provision.sh.
+80. **`ai_docs/exedev_sandbox_mounting.md`** : doc `ai_docs/exedev_sandbox_mounting.md:247` / code `adws/adw_sssf_config/sssf.config.yaml:5`. Le §5 dit que .env a besoin de OPENROUTER_API_KEY / FIREWORKS_API_KEY / OPENAI_API_KEY et que le roster contient fireworks/…/kimi-k3 et openai/gpt-5.6-terra ; le roster livré n'utilise que des modèles openrouter/… (lignes 5, 41, 107, 125) et .env.sample ne définit que OPENROUTER_* (le §13 du document décide d'ailleurs « One mechanism: OpenRouter »).
+81. **`ai_docs/exedev_sandbox_mounting.md`** : doc `ai_docs/exedev_sandbox_mounting.md:620` / code `adws/adw_sssf_config/sssf.config.yaml:125`. Le tableau du roster donne documenter = openrouter/deepseek/deepseek-v4-flash-0731 et builder = openrouter/moonshotai/kimi-k2.6 ; la config met documenter sur openrouter/openai/gpt-5.6-luna (ligne 125) et le builder (ligne 64) n'a pas de modèle propre, il hérite du défaut deepseek-v4-flash-0731 (ligne 5) ; kimi-k2.6 n'apparaît pas dans sssf.config.yaml.
+82. **`apps/inkwell/README.md`** : doc `apps/inkwell/README.md:37` / code `apps/inkwell/public/index.html:43`. Le README place sous « Editor Footer » les réglages de police, le mode focus, l'aide raccourcis, le sélecteur de mode, publish et delete ; dans index.html ils sont dans le menu de la barre du haut (<header class="topbar">, lignes 43-100), le <footer class="footer"> (104-108) ne contient que word-count et save-state.
+83. **`apps/inkwell/README.md`** : doc `apps/inkwell/README.md:31` / code `apps/inkwell/public/index.html:84`. Le README parle du bouton « shortcuts ? » du pied de page ; le bouton #shortcuts-toggle est dans le menu panel de la barre du haut.
+84. **`apps/inkwell/README.md`** : doc `apps/inkwell/README.md:45` / code `apps/inkwell/public/index.html:59`. « footer mode-switch buttons » : le groupe .mode-switch est dans le menu du haut (ligne 59), pas dans le pied de page.
+85. **`apps/inkwell/README.md`** : doc `apps/inkwell/README.md:11` / code `apps/inkwell/server.ts:116`. Le tableau des routes omet GET /api/stats (116), GET /api/tags (138) et GET /api/posts/:id/stats (263), pourtant implémentées et testées (omission, pas contradiction de comportement).
+86. **`just/inkwell.just`** : doc `just/inkwell.just:8` / code `just/inkwell.just:33`. Le commentaire dit que les recettes tournent en bash ; seules run et dev ont un shebang bash, `test` (ligne 33) n'en a pas et tourne sous le shell par defaut de just (sh).
+87. **`just/sandbox/lifecycle/create.just`** : doc `just/sandbox/lifecycle/create.just:3` / code `just/sandbox/lifecycle/mod.just:16`. Dit 'IMPORTED by the root justfile' ; il est importe par le module lifecycle/mod.just, dont il partage le scope (pas celui du justfile).
+88. **`just/sandbox/lifecycle/execute.just`** : doc `just/sandbox/lifecycle/execute.just:1` / code `just/sandbox/lifecycle/execute.just`. L'en-tete nomme just/sandbox/execute.just ; le fichier est just/sandbox/lifecycle/execute.just.
+89. **`just/sandbox/lifecycle/execute.just`** : doc `just/sandbox/lifecycle/execute.just:2` / code `just/sandbox/lifecycle/mod.just:19`. Dit 'IMPORTED by the root justfile' et 'five sibling phase files' ; importe par lifecycle/mod.just, avec cinq freres.
+90. **`just/sandbox/lifecycle/fill.just`** : doc `just/sandbox/lifecycle/fill.just:3` / code `just/sandbox/lifecycle/mod.just:17`. Dit 'Imported into the root justfile' ; importe par le module lifecycle/mod.just.
+91. **`just/sandbox/lifecycle/fill.just`** : doc `just/sandbox/lifecycle/fill.just:48` / code `just/sandbox/lifecycle/fill.just:43-61`. Le commentaire evoque un 'golden-VM cp path' ou app/ arrive perime ; aucune recette ne copie un app/ depuis une VM doree, seul le chemin fetch/clone existe.
+92. **`just/sandbox/lifecycle/observe.just`** : doc `just/sandbox/lifecycle/observe.just:1` / code `just/sandbox/lifecycle/observe.just`. L'en-tete nomme just/sandbox/observe.just ; le fichier est just/sandbox/lifecycle/observe.just.
+93. **`just/sandbox/lifecycle/observe.just`** : doc `just/sandbox/lifecycle/observe.just:5` / code `just/sandbox/lifecycle/mod.just:20`. Dit 'IMPORTED by the root justfile' ; importe par lifecycle/mod.just.
+94. **`just/sandbox/lifecycle/observe.just`** : doc `just/sandbox/lifecycle/observe.just:101` / code `sandbox_mount/guest/provision.sh:132`. Dit que le trace db est cree a 'step 8' de provision.sh ; c'est l'etape '7/9 trace db' (la 8 est warm uv).
+95. **`just/sandbox/lifecycle/setup.just`** : doc `just/sandbox/lifecycle/setup.just:1` / code `just/sandbox/lifecycle/setup.just`. L'en-tete nomme just/sandbox/setup.just ; le fichier est just/sandbox/lifecycle/setup.just.
+96. **`just/sandbox/lifecycle/setup.just`** : doc `just/sandbox/lifecycle/setup.just:3` / code `just/sandbox/lifecycle/mod.just:18`. Dit 'Imported by the root justfile' ; importe par lifecycle/mod.just.
+97. **`just/sandbox/lifecycle/teardown.just`** : doc `just/sandbox/lifecycle/teardown.just:3` / code `just/sandbox/lifecycle/mod.just:21`. Dit 'IMPORTED into the root justfile' ; importe par lifecycle/mod.just.
+98. **`just/sandbox/lifecycle/teardown.just`** : doc `sandbox_mount/host/run_record.py:151` / code `just/sandbox/lifecycle/teardown.just:168`. Le docstring dit qu'un closed_at non nul signifie que la cle est revoquee ; teardown ferme le record (168) avant la porte de verification (185-196) qui peut echouer avec la cle encore listee.
+99. **`just/sandbox/manage/harvest.just`** : doc `just/sandbox/manage/harvest.just:3` / code `just/sandbox/manage/mod.just:16`. Dit 'Imported into the root justfile' ; importe par manage/mod.just.
+100. **`just/sandbox/manage/harvest.just`** : doc `just/sandbox/manage/harvest.just:25-27` / code `just/sandbox/manage/harvest.just:64`. Dit n'ecrire que des refs sous refs/sandbox/ ; il ecrit aussi un fichier bundle sur l'hote (86) et, sur la VM, cree la branche sbx/<id> si elle manque (64).
+101. **`just/sandbox/manage/list.just`** : doc `just/sandbox/manage/list.just:1` / code `just/sandbox/manage/list.just`. L'en-tete nomme just/sandbox/runs.just ; le fichier est just/sandbox/manage/list.just.
+102. **`just/sandbox/manage/list.just`** : doc `just/sandbox/manage/list.just:5-7` / code `just/sandbox/manage/list.just:16-25`. Dit que la recette lit aussi, pour un run vivant, la base de traces sur la VM ; le code ne lit que les records locaux et la liste exe.dev.
+103. **`just/sandbox/manage/list.just`** : doc `just/sandbox/manage/list.just:13` / code `just/sandbox/manage/mod.just:15`. Dit 'Imported by the root justfile' ; importe par manage/mod.just.
+104. **`just/sandbox/manage/mod.just`** : doc `just/sandbox/manage/mod.just:2-5` / code `just/sandbox/manage/harvest.just:85-101`. Dit que, hors `reap`, rien dans manage ne change quoi que ce soit ; `harvest` (importe ici) ecrit .sandbox/runs/<id>.bundle et force la creation de la reference git refs/sandbox/<id> sur l'hote, et cree une branche et /tmp/harvest.bundle sur la VM.
+105. **`just/sandbox/mount.just`** : doc `just/sandbox/mount.just:7` / code `just/sandbox/mod.just:32`. Dit 'Imported by the root justfile' ; il est importe par just/sandbox/mod.just (module sbx), le justfile racine ne l'importe pas.
+106. **`justfile`** : doc `justfile:13` / code `just/obs.just:53`. Le commentaire dit que `kill` est 'below' dans ce fichier ; la recette kill est dans le module just/obs.just, pas dans le justfile racine.
+107. **`justfile`** : doc `justfile:20-22` / code `just/obs.just:20`. Le commentaire dit que la variable `config` est 'still needed at root' pour les recettes d'observabilite ; aucune recette du justfile n'utilise `config` (ligne 22 seule) et obs.just code les chemins en dur sans SSSF_CONFIG.
+108. **`sandbox_mount/guest/provision.sh`** : doc `just/sandbox/lifecycle/observe.just:101` / code `sandbox_mount/guest/provision.sh:132`. observe.just attribue la creation du trace db a 'step 8' ; elle est a l'etape 7/9.
+109. **`sandbox_mount/host/run_record.py`** : doc `sandbox_mount/host/run_record.py:151` / code `just/sandbox/lifecycle/teardown.just:168`. closed_at non nul est decrit comme 'cle revoquee' ; teardown ferme le record avant le controle final de revocation (185-196) et aussi quand aucune cle n'a ete mintee (143-144).
+110. **`sandbox_mount/host/runs_table.py`** : doc `sandbox_mount/host/runs_table.py:2` / code `just/sandbox/manage/list.just:16`. Dit servir 'just runs' ; la recette est `just sbx manage list`, aucune recette `runs` n'existe.
+111. **`sandbox_mount/host/runs_table.py`** : doc `sandbox_mount/host/runs_table.py:31` / code `just/sandbox/mount.just:11`. Suggere 'just mount <task-name>' ; la commande est `just sbx mount <run-id>`.
+112. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:208` / code `just/sandbox/lifecycle/create.just:17`. Le document place les six phases dans just/sandbox/<phase>.just ; elles sont dans just/sandbox/lifecycle/<phase>.just (modules lifecycle/manage/run/orch).
+113. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:150` / code `justfile:47`. Le document utilise just mount / just create / just execute / just teardown à plat ; le code les espace sous le module sbx (justfile:47 mod sbx ; just/sandbox/mount.just:19 affiche just sbx lifecycle execute, just sbx run agent, just sbx manage harvest).
+114. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:214` / code `sandbox_mount/guest/provision.sh:29`. strip_manifest.txt (l.214, 431, 439), sandbox_mount/host/setup_sandbox.py et host/teardown.py (l.191, 431) n'existent pas (git ls-files) et provision.sh n'a aucune étape de strip : sa première étape est « 1/9 repo root ».
+115. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:290` / code `sandbox_mount/guest/provision.sh:205`. Le document décrit 8 étapes dont le strip en premier et le sentinelle en dernier ; le script a 9 étapes (1/9 à 9/9, plus 8b claude onboarding) sans strip.
+116. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:297` / code `sandbox_mount/guest/provision.sh:222`. Le sentinelle est /tmp/SETUP_READY dans le document (l.297, 432), /tmp/PROVISION_READY dans le code.
+117. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:304` / code `just/sandbox/lifecycle/setup.just:86`. Le document parle de quatre assertions (l.304, 655) ou de trois (l.209, 435) ; le code a cinq assertions A à E (git, pi models, ping roster, coût non nul, crédit restant).
+118. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:435` / code `just/sandbox/lifecycle/setup.just:10`. L'étape 8 (l.435) et l'acceptation (l.467) disent que l'échec du gate détruit la VM ; le code (setup.just:10, 48) ne détruit jamais, conformément au document l.312 et 696.
+119. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:395` / code `just/sandbox/manage/harvest.just:71`. Le document met git bundle dans teardown (bundle de main, fetch main:sandbox/<id>) ; le code a une recette harvest séparée qui crée un bundle <commit_sha>..refs/heads/sbx/<id> et le fetch dans refs/sandbox/<id> (harvest.just:100), sans fusion ; teardown l'appelle (teardown.just:128-134).
+120. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:406` / code `just/sandbox/manage/list.just:16`. just runs et just compare <run-ids> sont prévus ; il n'existe que la recette list (sbx manage list) et aucune recette compare.
+121. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:641` / code `just/sandbox/lifecycle/observe.just:135`. L'exemple de run record donne ports.obs = 5173 ; le code enregistre obs = 4600 (OBS_PORT, observe.just:34), comme le document le dit l.363.
+122. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:317` / code `adws/adw_modules/agent_pi.py:311`. Le document cite agent_pi.py:276 pour la lecture de usage.cost.total ; la lecture est à la ligne 311.
+123. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:118` / code `just/sandbox/lifecycle/execute.just:48`. « Outstanding » dit que sbx execute ne peut pas varier le roster ; execute prend un paramètre CONFIG (et ADW) depuis.
+124. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:119` / code `just/sandbox/lifecycle/setup.just:18`. « Outstanding » dit que le gate C lit SSSF_CONFIG dans le bac à sable ; setup prend désormais CONFIG en argument (setup.just:18-27).
+125. **`specs/sandbox-mount-system.html`** : doc `specs/sandbox-mount-system.html:215` / code `sandbox_mount/guest/models.json.tmpl:9`. Le document annonce neuf identifiants de roster (l.215, 713) et un tableau de coûts à dix lignes (l.328-337, 8 modèles l.676) ; le modèle en contient dix (lignes 9 à 126, dont openai/gpt-5.6-sol absent du tableau de ping l.700-709).
+
