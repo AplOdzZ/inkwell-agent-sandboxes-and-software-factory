@@ -1,0 +1,4056 @@
+{
+  "meta": {
+    "depot": "disler/inkwell-agent-sandboxes-and-software-factory",
+    "commit": "92f1701",
+    "genere_le": "2026-10-24",
+    "fichiers_couverts": 21,
+    "fichiers_exclus": [
+      "images/",
+      "*.png",
+      "*.svg",
+      "*.lock",
+      "uv.lock",
+      "bun.lock"
+    ]
+  },
+  "fichiers": [
+    {
+      "chemin": "adws/adw_modules/__init__.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 0,
+      "role": "Fichier vide qui fait de adws/adw_modules/ un paquet Python importable (imports relatifs `from . import ...` des autres modules).",
+      "levier": {
+        "valeur": false,
+        "pourquoi": "Mecanique : fichier vide, rien a personnaliser."
+      },
+      "fonctions_cles": [],
+      "lit": [],
+      "ecrit": [],
+      "lance": [],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [],
+      "secrets": null,
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_modules/agent_cc.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 15,
+      "role": "Stub de l'interface Claude Code (coding_agent: claude_code) : toute execution leve NotImplementedError ; la fabrique v1 ne sait lancer que Pi.",
+      "levier": {
+        "valeur": false,
+        "pourquoi": "Mecanique : stub. Seul endroit a modifier si on voulait un jour brancher `claude -p` (v2), mais rien n'est appele aujourd'hui."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "run",
+          "lignes": "11-15",
+          "ce_quelle_fait": "Leve NotImplementedError avec un message demandant de mettre coding_agent: pi."
+        }
+      ],
+      "lit": [],
+      "ecrit": [],
+      "lance": [],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [
+        {
+          "cle": "agents[].coding_agent",
+          "ligne": 13
+        }
+      ],
+      "secrets": null,
+      "copie_de": null,
+      "contradictions": [
+        {
+          "doc": "adws/adw_modules/agent_cc.py:1-6",
+          "code": "adws/adw_modules/agents.py:61",
+          "resume": "Le module n'est importe nulle part dans adws/adw_modules : agents.validate refuse deja coding_agent != pi (agents.py:61-63), donc run() de agent_cc n'est jamais atteint."
+        }
+      ]
+    },
+    {
+      "chemin": "adws/adw_modules/agent_pi.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 321,
+      "role": "Interface avec le coding agent Pi : resout le modele via `pi --list-models`, lance `pi -p --mode json` dans le depot, lit son JSONL ligne par ligne (ecrit en brut dans raw_output.jsonl) et normalise les evenements (appels d'outils, messages, tokens, cout).",
+      "levier": {
+        "valeur": true,
+        "pourquoi": "Ici se construit la ligne de commande de Pi (--tools, -e extensions, --thinking, --system-prompt, --session-id) ; changer PI_PATH/PI_MODELS_PATH ou les flags passes a Pi change ce que les agents peuvent faire. Le reste (parsing des evenements) est de la mecanique."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "_pi_catalog",
+          "lignes": "43-64",
+          "ce_quelle_fait": "Lance `pi --list-models` (cache lru) et parse fournisseur / modele / fenetre de contexte."
+        },
+        {
+          "nom": "resolve_model",
+          "lignes": "67-90",
+          "ce_quelle_fait": "Transforme un motif de modele en (fournisseur, id) exact ; ValueError si introuvable ou ambigu."
+        },
+        {
+          "nom": "context_window",
+          "lignes": "108-117",
+          "ce_quelle_fait": "Lit ~/.pi/agent/models.json (PI_MODELS_PATH) puis le catalogue pour trouver la fenetre de contexte."
+        },
+        {
+          "nom": "assistant_message_records",
+          "lignes": "131-163",
+          "ce_quelle_fait": "Extrait pensee et texte d'un message_end assistant en enregistrements de trace."
+        },
+        {
+          "nom": "ToolCallTracker",
+          "lignes": "176-240",
+          "ce_quelle_fait": "Fusionne les evenements tool_execution_* de Pi en un enregistrement par appel d'outil termine."
+        },
+        {
+          "nom": "run",
+          "lignes": "243-321",
+          "ce_quelle_fait": "Construit la commande pi (--tools, -e), la lance avec cwd=repo, stdin=DEVNULL, ecrit raw_output.jsonl, cumule tokens/cout et leve RuntimeError si code != 0 sans texte."
+        }
+      ],
+      "lit": [
+        {
+          "quoi": "~/.pi/agent/models.json (ou $PI_MODELS_PATH)",
+          "ligne": 110
+        }
+      ],
+      "ecrit": [
+        {
+          "quoi": "request.raw_output_path = adws/adw_data/sessions/<adw_id>/<agent>/raw_output.jsonl",
+          "ligne": 284
+        }
+      ],
+      "lance": [
+        {
+          "commande": "pi --list-models",
+          "ligne": 48
+        },
+        {
+          "commande": "pi -p --mode json --provider --model --thinking --session-id --session-dir --system-prompt [--tools a,b] [-e ext]... <prompt>",
+          "ligne": 253
+        }
+      ],
+      "reseau": [],
+      "variables_env": [
+        {
+          "nom": "PI_PATH",
+          "ligne": 22,
+          "lue_ou_ecrite": "lue"
+        },
+        {
+          "nom": "PI_MODELS_PATH",
+          "ligne": 23,
+          "lue_ou_ecrite": "lue"
+        }
+      ],
+      "cles_config": [
+        {
+          "cle": "agents[].model",
+          "ligne": 252
+        },
+        {
+          "cle": "agents[].thinking",
+          "ligne": 256
+        },
+        {
+          "cle": "agents[].tools",
+          "ligne": 261
+        },
+        {
+          "cle": "agents[].harness_engineering",
+          "ligne": 263
+        }
+      ],
+      "secrets": "Aucune cle manipulee ici, mais l'environnement complet de l'operateur (operator_env, utils.py:31) est transmis au processus Pi (agent_pi.py:49 et :281) : les cles API qui s'y trouvent (ex. OPENROUTER_API_KEY, .env.sample:24) sont donc visibles de Pi et de son outil bash.",
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_modules/agents.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 313,
+      "role": "Charge/valide la config SSSF et execute un appel d'agent : rend les prompts, lance Pi, parse l'enveloppe JSON avec relances, applique les portes (gates), puis verifie les permissions d'ecriture avant d'accepter l'enveloppe et de tracer le resultat.",
+      "levier": {
+        "valeur": true,
+        "pourquoi": "Coeur du comportement d'un agent : chemin de config par defaut, JSON_FIX_ATTEMPTS, texte des corrections, ordre portes -> permissions -> enveloppe. Personnaliser ici change la boucle de controle de tous les ADW."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "load_config",
+          "lignes": "33-41",
+          "ce_quelle_fait": "Lit le YAML, injecte les `defaults` (coding_agent, model, thinking, color, tools, writes, harness_engineering) dans chaque agent puis construit SSSFConfig."
+        },
+        {
+          "nom": "validate",
+          "lignes": "52-73",
+          "ce_quelle_fait": "Echoue vite : agent defini, coding_agent == pi, fichiers prompt system/user existants, modele resolvable."
+        },
+        {
+          "nom": "execute",
+          "lignes": "78-221",
+          "ce_quelle_fait": "Un appel d'agent complet : prompts -> snapshot -> pi -> parse -> portes -> permissions.enforce -> persistance enveloppe -> trace."
+        },
+        {
+          "nom": "_parse_with_retries",
+          "lignes": "280-300",
+          "ce_quelle_fait": "Re-prompt la meme session (2 fois max) si le JSON ne correspond pas au type de sortie."
+        },
+        {
+          "nom": "_event_forwarder",
+          "lignes": "240-263",
+          "ce_quelle_fait": "Transforme les evenements Pi en evenements de trace (tool_call, thinking, agent_message)."
+        },
+        {
+          "nom": "_agent_session_id",
+          "lignes": "233-237",
+          "ce_quelle_fait": "Reutilise la session Pi d'un agent si le modele n'a pas change (agent_map), sinon en cree une."
+        },
+        {
+          "nom": "_persist_envelope",
+          "lignes": "303-313",
+          "ce_quelle_fait": "Ecrit l'enveloppe en base et envelope.json dans le dossier de l'agent."
+        }
+      ],
+      "lit": [
+        {
+          "quoi": "adws/adw_sssf_config/sssf.config.yaml (chemin par defaut ; --config des ADW peut en donner un autre)",
+          "ligne": 34
+        },
+        {
+          "quoi": "adws/adw_data/prompt_engineering/<agent>/system.md et user.md (existence verifiee)",
+          "ligne": 66
+        }
+      ],
+      "ecrit": [
+        {
+          "quoi": "adws/adw_data/sessions/<adw_id>/<agent>/ (dossier)",
+          "ligne": 82
+        },
+        {
+          "quoi": "adws/adw_data/sessions/<adw_id>/<agent>/prompts/system.md et user.md (copie d'audit, via prompts.save)",
+          "ligne": 91
+        },
+        {
+          "quoi": "adws/adw_data/sessions/<adw_id>/<agent>/envelope.json",
+          "ligne": 313
+        }
+      ],
+      "lance": [],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [
+        {
+          "cle": "defaults.coding_agent / model / thinking / color / tools / writes",
+          "ligne": 37
+        },
+        {
+          "cle": "defaults.harness_engineering",
+          "ligne": 40
+        },
+        {
+          "cle": "agents[].prompt_engineering.system / .user",
+          "ligne": 64
+        },
+        {
+          "cle": "agents[].model",
+          "ligne": 69
+        },
+        {
+          "cle": "agents[].tools",
+          "ligne": 123
+        },
+        {
+          "cle": "agents[].harness_engineering",
+          "ligne": 124
+        },
+        {
+          "cle": "agents[].writes",
+          "ligne": 189
+        },
+        {
+          "cle": "defaults.protected_files",
+          "ligne": 190
+        },
+        {
+          "cle": "agents[].purpose",
+          "ligne": 101
+        }
+      ],
+      "secrets": null,
+      "copie_de": null,
+      "contradictions": [
+        {
+          "doc": "adws/adw_modules/data_types.py:294",
+          "code": "adws/adw_modules/agents.py:155",
+          "resume": "Le commentaire d'AgentCall dit gate(envelope, run) -> list[str], mais le code attend un GateReport et n'accepte une liste que comme porte 'legacy' (_as_report, agents.py:226-230)."
+        },
+        {
+          "doc": "adws/adw_modules/agents.py:37",
+          "code": "adws/adw_modules/data_types.py:325-338",
+          "resume": "load_config propage `defaults.writes` aux agents, mais ConfigDefaults n'a pas de champ writes : la cle n'est ni validee ni documentee dans le schema (aucune config du depot ne l'utilise)."
+        }
+      ]
+    },
+    {
+      "chemin": "adws/adw_modules/changes.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 103,
+      "role": "Capture deterministe des changements via git : choisit la base de comparaison, ecrit le diff complet dans context_handoff/changes.diff et renvoie un ChangeSet, adaptable en enveloppe (ChangesOutput) pour l'agent documenteur.",
+      "levier": {
+        "valeur": true,
+        "pourquoi": "Regle de choix de la base (branche / arbre sale / dernier commit) et format du fichier diff ; max_diff_lines vient de ChangeCapture (data_types.py:180)."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "resolve_base",
+          "lignes": "24-49",
+          "ce_quelle_fait": "Verifie depot et ref, calcule le merge-base et la raison (HEAD en avance / arbre sale / dernier commit)."
+        },
+        {
+          "nom": "capture",
+          "lignes": "52-84",
+          "ce_quelle_fait": "Collecte fichiers, non suivis, compteurs, stat et diff (tronque) et ecrit context_handoff/changes.diff."
+        },
+        {
+          "nom": "as_envelope",
+          "lignes": "87-103",
+          "ce_quelle_fait": "Enveloppe ChangesOutput a partir d'un ChangeSet."
+        }
+      ],
+      "lit": [],
+      "ecrit": [
+        {
+          "quoi": "adws/adw_data/sessions/<adw_id>/context_handoff/changes.diff",
+          "ligne": 74
+        }
+      ],
+      "lance": [],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [
+        {
+          "cle": "defaults.data_dir (indirect via run.context_handoff_dir)",
+          "ligne": 73
+        }
+      ],
+      "secrets": null,
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_modules/console.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 131,
+      "role": "Reporter console (rich) : chaque ligne affichee est aussi ecrite comme evenement `log` dans la trace, pour que l'UI raconte la meme histoire que le terminal.",
+      "levier": {
+        "valeur": false,
+        "pourquoi": "Mecanique d'affichage ; seules les couleurs (KIND_COLOR) et MAX_LINE sont cosmetiques."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "Console._emit",
+          "lignes": "40-46",
+          "ce_quelle_fait": "Imprime et enregistre en meme temps un evenement log via tracer.event."
+        },
+        {
+          "nom": "Console.session_finished",
+          "lignes": "53-71",
+          "ce_quelle_fait": "Panneau recapitulatif (statut, phases, tokens, cout, adw_id, db, commande `just phases`)."
+        },
+        {
+          "nom": "Console.gate_result",
+          "lignes": "111-123",
+          "ce_quelle_fait": "Affiche chaque verification d'une porte."
+        },
+        {
+          "nom": "Console.note",
+          "lignes": "94-96",
+          "ce_quelle_fait": "Ligne libre dans la phase courante (utilisee par permissions pour signaler une annulation tolérée)."
+        }
+      ],
+      "lit": [],
+      "ecrit": [],
+      "lance": [],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [],
+      "secrets": null,
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_modules/data_types.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 447,
+      "role": "Modeles pydantic du systeme : phases, enveloppes de sortie des agents, resultats qualite, capture de changements, portes, et surtout le SCHEMA DE CONFIG (AgentConfig, ConfigDefaults, ObservabilityConfig, SSSFConfig) avec les valeurs par defaut (protected_files, data_dir, db).",
+      "levier": {
+        "valeur": true,
+        "pourquoi": "Definit les cles acceptees dans sssf.config.yaml et leurs defauts (ex. protected_files par defaut, data_dir, modele par defaut) et les types d'enveloppe que les agents doivent produire."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "PhaseParams._description_must_be_earned",
+          "lignes": "31-53",
+          "ce_quelle_fait": "Refuse une description de phase vide ou qui repete le nom."
+        },
+        {
+          "nom": "EnvelopeBase et sous-classes",
+          "lignes": "72-128",
+          "ce_quelle_fait": "Types de sortie d'agent (Plan/Build/Scout/Review/Document)."
+        },
+        {
+          "nom": "GateReport",
+          "lignes": "264-283",
+          "ce_quelle_fait": "Liste de verifications ; violations derivees des verifications en echec."
+        },
+        {
+          "nom": "AgentConfig",
+          "lignes": "304-322",
+          "ce_quelle_fait": "Schema d'un agent, dont `writes` (None = libre, [] = lecture seule, liste = seulement ceux-la)."
+        },
+        {
+          "nom": "ConfigDefaults",
+          "lignes": "325-338",
+          "ce_quelle_fait": "Defauts de roster, dont protected_files (adws/adw_modules/, adws/adw_sssf_config/, adws/adw_*.py) et data_dir adws/adw_data."
+        },
+        {
+          "nom": "ObservabilityConfig",
+          "lignes": "341-343",
+          "ce_quelle_fait": "db par defaut adws/adw_data/sssf.db, poll_ms 500."
+        },
+        {
+          "nom": "UsageBreakdown",
+          "lignes": "388-433",
+          "ce_quelle_fait": "Cumul tokens et couts par composant."
+        }
+      ],
+      "lit": [],
+      "ecrit": [],
+      "lance": [],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [
+        {
+          "cle": "agents[].writes",
+          "ligne": 322
+        },
+        {
+          "cle": "defaults.protected_files",
+          "ligne": 335
+        },
+        {
+          "cle": "defaults.data_dir",
+          "ligne": 338
+        },
+        {
+          "cle": "observability.db",
+          "ligne": 342
+        },
+        {
+          "cle": "observability.poll_ms",
+          "ligne": 343
+        },
+        {
+          "cle": "agents[].tools / defaults.tools",
+          "ligne": 313
+        },
+        {
+          "cle": "agents[].harness_engineering / defaults.harness_engineering",
+          "ligne": 312
+        },
+        {
+          "cle": "agents[].coding_agent",
+          "ligne": 306
+        },
+        {
+          "cle": "agents[].model",
+          "ligne": 307
+        },
+        {
+          "cle": "agents[].thinking",
+          "ligne": 308
+        },
+        {
+          "cle": "agents[].color",
+          "ligne": 309
+        },
+        {
+          "cle": "agents[].purpose",
+          "ligne": 310
+        },
+        {
+          "cle": "agents[].prompt_engineering.system / .user",
+          "ligne": 299
+        }
+      ],
+      "secrets": null,
+      "copie_de": null,
+      "contradictions": [
+        {
+          "doc": "adws/adw_modules/data_types.py:359",
+          "code": "adws/adw_modules/agents.py:250",
+          "resume": "Le commentaire liste les types d'evenement (phase_start|...|error) sans `thinking` ni `agent_message`, pourtant emis par _event_forwarder (type=message.pop('kind'))."
+        },
+        {
+          "doc": "adws/adw_modules/data_types.py:294",
+          "code": "adws/adw_modules/gates.py:27",
+          "resume": "Commentaire `gate(envelope, run) -> list[str]` alors que les portes renvoient un GateReport."
+        }
+      ]
+    },
+    {
+      "chemin": "adws/adw_modules/gates.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 108,
+      "role": "Portes de validation des CLAIMS d'une enveloppe (artefacts existent / non vides / JSON valide, fichiers declares changes existent, verdict de revue coherent, commande shell sortant a 0). Un echec renvoie une correction a la meme session d'agent.",
+      "levier": {
+        "valeur": true,
+        "pourquoi": "On ajoute/retire ici les verifications mecaniques appliquees aux enveloppes (la liste utilisee par chaque ADW est dans les scripts adw_*.py)."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "artifacts_exist",
+          "lignes": "27-33",
+          "ce_quelle_fait": "Chaque chemin de envelope.artifacts doit exister."
+        },
+        {
+          "nom": "files_non_empty",
+          "lignes": "36-44",
+          "ce_quelle_fait": "Chaque artefact fichier ne doit pas etre vide."
+        },
+        {
+          "nom": "json_parses",
+          "lignes": "47-58",
+          "ce_quelle_fait": "Les artefacts .json doivent se parser."
+        },
+        {
+          "nom": "diff_matches_claims",
+          "lignes": "61-68",
+          "ce_quelle_fait": "Chaque fichier de changed_files doit exister (ne compare PAS au vrai diff git)."
+        },
+        {
+          "nom": "verdict_consistent",
+          "lignes": "71-95",
+          "ce_quelle_fait": "Coherence approved / blocking / findings d'une revue."
+        },
+        {
+          "nom": "tests_pass",
+          "lignes": "98-108",
+          "ce_quelle_fait": "Fabrique de porte : `subprocess.run(command, shell=True)` doit sortir 0."
+        }
+      ],
+      "lit": [
+        {
+          "quoi": "chemins declares dans envelope.artifacts (motif dynamique)",
+          "ligne": 30
+        },
+        {
+          "quoi": "artefacts *.json declares (lecture du contenu)",
+          "ligne": 54
+        }
+      ],
+      "ecrit": [],
+      "lance": [
+        {
+          "commande": "<command> (shell=True, fournie par l'ADW)",
+          "ligne": 101
+        }
+      ],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [],
+      "secrets": null,
+      "copie_de": null,
+      "contradictions": [
+        {
+          "doc": "adws/adw_modules/gates.py:62",
+          "code": "adws/adw_modules/gates.py:64-67",
+          "resume": "Docstring 'Every file claimed changed must exist on disk' : le code verifie seulement l'existence ; il ne confronte pas la liste au diff git reel."
+        }
+      ]
+    },
+    {
+      "chemin": "adws/adw_modules/git_helper.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 120,
+      "role": "Enveloppe fine autour de git (sous-processus) : branche courante, creation de branche, racine du depot, commit_all (add -A + commit), statut, refs, merge-base, diff (fichiers, stat, compteurs, texte), fichiers non suivis.",
+      "levier": {
+        "valeur": false,
+        "pourquoi": "Mecanique git. Seule decision de fond : commit_all fait `git add -A` (tout fichier non ignore est committe)."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "_git",
+          "lignes": "9-13",
+          "ce_quelle_fait": "Lance git, leve RuntimeError si code != 0, renvoie stdout .strip()."
+        },
+        {
+          "nom": "repo_root",
+          "lignes": "31-40",
+          "ce_quelle_fait": "Toplevel git, sinon cwd."
+        },
+        {
+          "nom": "commit_all",
+          "lignes": "43-53",
+          "ce_quelle_fait": "git add -A, refuse s'il n'y a rien, git commit -m, renvoie le sha court."
+        },
+        {
+          "nom": "changed_files",
+          "lignes": "56-58",
+          "ce_quelle_fait": "Parse `git status --porcelain` (aucun appelant trouve dans adws/ ni sandbox_mount/)."
+        },
+        {
+          "nom": "untracked_files",
+          "lignes": "92-94",
+          "ce_quelle_fait": "git ls-files --others --exclude-standard."
+        },
+        {
+          "nom": "diff_files / diff_stat / diff_counts / diff_text",
+          "lignes": "97-120",
+          "ce_quelle_fait": "git diff --name-only / --stat / --numstat / complet contre une base."
+        }
+      ],
+      "lit": [],
+      "ecrit": [],
+      "lance": [
+        {
+          "commande": "git rev-parse / checkout -b / add -A / commit -m / status --porcelain / merge-base / ls-files --others --exclude-standard / diff",
+          "ligne": 10
+        },
+        {
+          "commande": "git add -A",
+          "ligne": 49
+        },
+        {
+          "commande": "git commit -m <message>",
+          "ligne": 52
+        }
+      ],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [],
+      "secrets": null,
+      "copie_de": null,
+      "contradictions": [
+        {
+          "doc": "adws/adw_modules/git_helper.py:61",
+          "code": "adws/adw_modules/changes.py:52-84",
+          "resume": "Le commentaire dit que le diff est compose en ChangeSet par `documentation.py` ; ce module n'existe pas dans adws/adw_modules, c'est changes.py qui le fait."
+        }
+      ]
+    },
+    {
+      "chemin": "adws/adw_modules/permissions.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 256,
+      "role": "Verifie APRES COUP ce qu'un agent a modifie : fingerprint de l'arbre git avant/apres, comparaison avec la liste `writes` de l'agent, `protected_files` du roster et le dossier runtime `data_dir`. Annule (unlink / git checkout / restauration des octets) les ecritures hors perimetre et leve PermissionBreach si c'est irrecuperable ou plus de 3.",
+      "levier": {
+        "valeur": true,
+        "pourquoi": "Seul endroit qui borne ce qu'un agent peut changer : RECOVERED_LIMIT (3), always_writable (tout data_dir), ordre de decision de permitted(), mecanique de snapshot. Les valeurs des listes sont dans sssf.config.yaml."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "snapshot",
+          "lignes": "65-83",
+          "ce_quelle_fait": "dict chemin -> 'ajouts,suppressions' (git diff HEAD --numstat) ou 'untracked' (git ls-files --others --exclude-standard) ; ignores git absents."
+        },
+        {
+          "nom": "changed_paths",
+          "lignes": "86-89",
+          "ce_quelle_fait": "Chemins dont l'empreinte differe entre avant et apres (apparu, disparu, reecrit)."
+        },
+        {
+          "nom": "_matches / _glob",
+          "lignes": "92-122",
+          "ce_quelle_fait": "Prefixe si le motif finit par '/', glob si * ou ? (* ne franchit pas '/', ** oui), sinon egalite exacte."
+        },
+        {
+          "nom": "always_writable",
+          "lignes": "125-139",
+          "ce_quelle_fait": "Renvoie [data_dir + '/'] : tout adws/adw_data/ est ecrivable par tout agent."
+        },
+        {
+          "nom": "permitted",
+          "lignes": "142-150",
+          "ce_quelle_fait": "Ordre : always_writable -> writes de l'agent -> protected_files -> (writes is None)."
+        },
+        {
+          "nom": "preserve / _restore",
+          "lignes": "153-188",
+          "ce_quelle_fait": "Garde en memoire les octets (<= 1 Mio) des chemins deja sales pour les restaurer."
+        },
+        {
+          "nom": "_roll_back",
+          "lignes": "191-217",
+          "ce_quelle_fait": "Restaure, supprime (non suivi) ou `git checkout -- path`."
+        },
+        {
+          "nom": "enforce",
+          "lignes": "220-256",
+          "ce_quelle_fait": "Compare, annule, continue avec une note si tout annule et <= 3 chemins, sinon leve PermissionBreach."
+        }
+      ],
+      "lit": [
+        {
+          "quoi": "octets de chaque chemin deja modifie du depot (motif dynamique)",
+          "ligne": 172
+        }
+      ],
+      "ecrit": [
+        {
+          "quoi": "restauration des octets d'un chemin deja sale (motif dynamique)",
+          "ligne": 185
+        },
+        {
+          "quoi": "suppression d'un fichier non suivi cree par l'agent (motif dynamique)",
+          "ligne": 211
+        }
+      ],
+      "lance": [
+        {
+          "commande": "git diff HEAD --numstat",
+          "ligne": 74
+        },
+        {
+          "commande": "git ls-files --others --exclude-standard",
+          "ligne": 79
+        },
+        {
+          "commande": "git checkout -- <path>",
+          "ligne": 215
+        }
+      ],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [
+        {
+          "cle": "defaults.data_dir",
+          "ligne": 139
+        },
+        {
+          "cle": "agents[].writes",
+          "ligne": 146
+        },
+        {
+          "cle": "defaults.protected_files",
+          "ligne": 148
+        }
+      ],
+      "secrets": null,
+      "copie_de": null,
+      "contradictions": [
+        {
+          "doc": "adws/adw_modules/permissions.py:23-25",
+          "code": "adws/adw_modules/permissions.py:248-253",
+          "resume": "Le haut du module dit qu'une violation 'aborts the phase' ; le code tolere jusqu'a 3 chemins tous annules (RECOVERED) et continue avec une simple note console."
+        },
+        {
+          "doc": "adws/adw_modules/permissions.py:70-71",
+          "code": "adws/adw_modules/permissions.py:125-139",
+          "resume": "snapshot dit que le runtime sous data_dir 'needs no special case' car ignore par git ; mais always_writable le traite explicitement, et data_dir (adws/adw_data/) contient des fichiers SUIVIS (prompts, extensions) qui ne sont pas ignores."
+        }
+      ]
+    },
+    {
+      "chemin": "adws/adw_modules/prompts.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 21,
+      "role": "Charge un fichier de prompt, remplace les `{{variable}}` et sauvegarde le texte exact envoye (copie d'audit).",
+      "levier": {
+        "valeur": false,
+        "pourquoi": "Mecanique de templating (remplacement de chaines simple). Le contenu des prompts est ailleurs (adws/adw_data/prompt_engineering/)."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "render",
+          "lignes": "8-12",
+          "ce_quelle_fait": "Lit le fichier a chaque appel et remplace {{cle}} par la valeur."
+        },
+        {
+          "nom": "save",
+          "lignes": "15-21",
+          "ce_quelle_fait": "Cree le dossier et ecrit le prompt rendu."
+        }
+      ],
+      "lit": [
+        {
+          "quoi": "fichier de prompt passe en argument (adws/adw_data/prompt_engineering/<agent>/{system,user}.md)",
+          "ligne": 9
+        }
+      ],
+      "ecrit": [
+        {
+          "quoi": "adws/adw_data/sessions/<adw_id>/<agent>/prompts/{system,user}.md",
+          "ligne": 20
+        }
+      ],
+      "lance": [],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [],
+      "secrets": null,
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_modules/quality.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 246,
+      "role": "Blocs de qualite deterministes pour l'app Inkwell : lint (oxlint via bun), 'typecheck' et build (bun build) du frontend/backend, et la suite de tests `bun test`. Chaque commande est journalisee dans context_handoff/quality/ et tracee ; les echecs reviennent au builder via une enveloppe VerifyOutput.",
+      "levier": {
+        "valeur": true,
+        "pourquoi": "Les commandes (fichiers vises, version oxlint 1.36.0, timeouts, liste des blocs de run_inkwell_quality) definissent ce que 'ca marche' veut dire pour l'app. Le fichier est specifique a Inkwell."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "_run",
+          "lignes": "49-117",
+          "ce_quelle_fait": "Lance une commande (cwd=repo, env operateur, timeout), ecrit command.log, trace un tool_call, renvoie QualityCheckResult."
+        },
+        {
+          "nom": "frontend_lint / backend_lint",
+          "lignes": "120-135",
+          "ce_quelle_fait": "bun x oxlint@1.36.0 sur apps/inkwell/public/app.js / server.ts."
+        },
+        {
+          "nom": "frontend_typecheck / backend_typecheck",
+          "lignes": "138-157",
+          "ce_quelle_fait": "bun build (cible browser / bun) dans le dossier de session."
+        },
+        {
+          "nom": "frontend_build / backend_build",
+          "lignes": "160-179",
+          "ce_quelle_fait": "bun build --minify."
+        },
+        {
+          "nom": "tests / run_inkwell_tests",
+          "lignes": "182-205",
+          "ce_quelle_fait": "bun test apps/inkwell/server.test.ts (timeout 600 s) en QualityResult."
+        },
+        {
+          "nom": "as_envelope",
+          "lignes": "208-220",
+          "ce_quelle_fait": "QualityResult -> VerifyOutput."
+        },
+        {
+          "nom": "run_inkwell_quality",
+          "lignes": "223-246",
+          "ce_quelle_fait": "Enchaine les 6 blocs lint/typecheck/build et collecte toutes les echecs."
+        }
+      ],
+      "lit": [
+        {
+          "quoi": "apps/inkwell/public/app.js (lu par bun)",
+          "ligne": 125
+        },
+        {
+          "quoi": "apps/inkwell/server.ts (lu par bun)",
+          "ligne": 134
+        },
+        {
+          "quoi": "apps/inkwell/server.test.ts (lu par bun)",
+          "ligne": 193
+        }
+      ],
+      "ecrit": [
+        {
+          "quoi": "adws/adw_data/sessions/<adw_id>/context_handoff/quality/NN_<check>/command.log",
+          "ligne": 82
+        },
+        {
+          "quoi": "adws/adw_data/sessions/<adw_id>/context_handoff/quality/NN_<check>/bundle/ (sortie de bun build)",
+          "ligne": 139
+        }
+      ],
+      "lance": [
+        {
+          "commande": "bun x oxlint@1.36.0 <fichier>",
+          "ligne": 125
+        },
+        {
+          "commande": "bun build --target=browser|bun [--minify] <entree> --outdir <bundle>",
+          "ligne": 144
+        },
+        {
+          "commande": "bun test apps/inkwell/server.test.ts",
+          "ligne": 193
+        }
+      ],
+      "reseau": [
+        {
+          "hote": "registre npm (bun x oxlint@1.36.0 telecharge le paquet)",
+          "ligne": 125
+        }
+      ],
+      "variables_env": [
+        {
+          "nom": "BUN_PATH",
+          "ligne": 39,
+          "lue_ou_ecrite": "lue"
+        }
+      ],
+      "cles_config": [],
+      "secrets": "Aucune cle manipulee ; env complet de l'operateur transmis aux commandes (quality.py:54).",
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_modules/runner.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 142,
+      "role": "Objet Run (config + adw_id + tracer + console + agent_map) et primitive `run.phase(PhaseParams)` : gestionnaire de contexte qui ouvre/ferme une phase dans la trace, passe en echec sur toute exception, et `finish()` qui fixe le code de sortie.",
+      "levier": {
+        "valeur": false,
+        "pourquoi": "Mecanique du cycle de vie des phases ; la regle 'succes = gagne' et la double condition de finish() sont des choix de conception, pas des parametres."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "PhaseHandle.call",
+          "lignes": "36-39",
+          "ce_quelle_fait": "Delegue a agents.execute (phases de type agent seulement)."
+        },
+        {
+          "nom": "Run.__init__",
+          "lignes": "43-58",
+          "ce_quelle_fait": "Cree <data_dir>/sessions/<adw_id>/ et context_handoff/, charge agent_map.json, fixe repo_root."
+        },
+        {
+          "nom": "Run.phase",
+          "lignes": "72-111",
+          "ce_quelle_fait": "Trace phase_start/phase_end ; sur exception: statut fail, session_finish(ok=False), re-leve."
+        },
+        {
+          "nom": "Run.finish",
+          "lignes": "114-142",
+          "ce_quelle_fait": "ok = toutes phases success ET critere d'acceptation de l'ADW ; renvoie 0 ou 1."
+        },
+        {
+          "nom": "Run.save_agent_map",
+          "lignes": "61-63",
+          "ce_quelle_fait": "Ecrit agent_map.json."
+        }
+      ],
+      "lit": [
+        {
+          "quoi": "adws/adw_data/sessions/<adw_id>/agent_map.json",
+          "ligne": 57
+        }
+      ],
+      "ecrit": [
+        {
+          "quoi": "adws/adw_data/sessions/<adw_id>/ et context_handoff/ (dossiers)",
+          "ligne": 54
+        },
+        {
+          "quoi": "adws/adw_data/sessions/<adw_id>/agent_map.json",
+          "ligne": 63
+        }
+      ],
+      "lance": [],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [
+        {
+          "cle": "defaults.data_dir",
+          "ligne": 54
+        },
+        {
+          "cle": "observability.db",
+          "ligne": 102
+        }
+      ],
+      "secrets": null,
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_modules/session.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 50,
+      "role": "Cycle de vie de la session : cree ou rejoint un adw_id, ouvre le Tracer (sssf.db + events.jsonl), construit le Run, enregistre le pid de l'ADW et installe un gestionnaire SIGTERM/SIGINT qui cloture la trace.",
+      "levier": {
+        "valeur": false,
+        "pourquoi": "Mecanique : un seul point d'entree `ensure` appele par les ADW."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "_finalize_when_killed",
+          "lignes": "21-35",
+          "ce_quelle_fait": "SIGTERM/SIGINT -> session_finish(ok=False) puis SystemExit(128+signum)."
+        },
+        {
+          "nom": "ensure",
+          "lignes": "38-50",
+          "ce_quelle_fait": "Mint d'un adw_id (8 hex) ou reprise, Tracer, Run, session_start, process_start, bandeau console."
+        }
+      ],
+      "lit": [],
+      "ecrit": [
+        {
+          "quoi": "adws/adw_data/sssf.db (via Tracer, chemin = observability.db)",
+          "ligne": 40
+        },
+        {
+          "quoi": "adws/adw_data/sessions/<adw_id>/events.jsonl (via Tracer)",
+          "ligne": 41
+        }
+      ],
+      "lance": [],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [
+        {
+          "cle": "observability.db",
+          "ligne": 40
+        },
+        {
+          "cle": "defaults.data_dir",
+          "ligne": 41
+        }
+      ],
+      "secrets": null,
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_modules/tracer.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 271,
+      "role": "Journal d'observabilite : chaque evenement est ajoute en JSONL et inseree dans SQLite (sssf.db, mode WAL) au moment ou il se produit ; tables sessions, phases, events, envelopes, gate_results, processes, agent_sessions, avec migrations additives.",
+      "levier": {
+        "valeur": false,
+        "pourquoi": "Mecanique de trace (schema lu par l'UI visualiseur). Modifier le SCHEMA oblige a adapter le visualiseur."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "SCHEMA / MIGRATIONS",
+          "lignes": "17-99",
+          "ce_quelle_fait": "Definition des 7 tables et ALTER additifs."
+        },
+        {
+          "nom": "Tracer.__init__",
+          "lignes": "103-113",
+          "ce_quelle_fait": "Cree les dossiers, ouvre sqlite, WAL, applique le schema."
+        },
+        {
+          "nom": "Tracer.event",
+          "lignes": "123-136",
+          "ce_quelle_fait": "Ecrit une ligne dans events.jsonl et une ligne dans la table events."
+        },
+        {
+          "nom": "session_start / session_finish / session_add_usage",
+          "lignes": "139-171",
+          "ce_quelle_fait": "Statut et cumul de la session."
+        },
+        {
+          "nom": "process_start / process_end / processes_end_all",
+          "lignes": "174-203",
+          "ce_quelle_fait": "Pid des processus (ADW, agents) pour pouvoir les tuer."
+        },
+        {
+          "nom": "phase_upsert / envelope_row / gate_row / agent_session_row",
+          "lignes": "218-271",
+          "ce_quelle_fait": "Lignes de phases, enveloppes, resultats de portes, sessions d'agent."
+        }
+      ],
+      "lit": [],
+      "ecrit": [
+        {
+          "quoi": "adws/adw_data/sssf.db (chemin = observability.db, parametre db_path)",
+          "ligne": 108
+        },
+        {
+          "quoi": "adws/adw_data/sessions/<adw_id>/events.jsonl (parametre events_jsonl)",
+          "ligne": 127
+        }
+      ],
+      "lance": [],
+      "reseau": [],
+      "variables_env": [],
+      "cles_config": [],
+      "secrets": "Les payloads d'evenements (arguments d'outils, extraits de resultats de commandes bash, jusqu'a 20 000 car., agent_pi.py:26-27) sont stockes en clair dans sssf.db et events.jsonl : une cle affichee par une commande d'agent s'y retrouverait. Les deux sont ignores par git (.gitignore:149, :153).",
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_modules/utils.py",
+      "type": "code",
+      "langage": "python",
+      "lignes": 77,
+      "role": "Petits utilitaires : charge .env (load_dotenv), produit l'environnement transmis aux sous-processus (operator_env, sans le venv uv), ids aleatoires, horodatage ISO, creation de dossier, resolution d'un prompt CLI (fichier ou texte) et nom de l'ingenieur.",
+      "levier": {
+        "valeur": false,
+        "pourquoi": "Mecanique. operator_env determine ce que voient Pi et les commandes qualite (tout l'environnement), choix a connaitre pour la securite."
+      },
+      "fonctions_cles": [
+        {
+          "nom": "operator_env",
+          "lignes": "16-38",
+          "ce_quelle_fait": "Copie os.environ, retire VIRTUAL_ENV et son bin du PATH."
+        },
+        {
+          "nom": "new_id / now_iso / ensure_dir",
+          "lignes": "41-52",
+          "ce_quelle_fait": "Id hex aleatoire, horodatage UTC ms, mkdir -p."
+        },
+        {
+          "nom": "resolve_prompt",
+          "lignes": "55-63",
+          "ce_quelle_fait": "Si l'argument est un fichier existant, renvoie son contenu, sinon le texte tel quel."
+        },
+        {
+          "nom": "engineer_name",
+          "lignes": "66-77",
+          "ce_quelle_fait": "ENGINEER_NAME, sinon git config user.name, sinon USER."
+        }
+      ],
+      "lit": [
+        {
+          "quoi": ".env (racine / cwd, via python-dotenv)",
+          "ligne": 13
+        },
+        {
+          "quoi": "fichier de prompt passe en CLI (motif dynamique)",
+          "ligne": 59
+        }
+      ],
+      "ecrit": [],
+      "lance": [
+        {
+          "commande": "git config user.name",
+          "ligne": 71
+        }
+      ],
+      "reseau": [],
+      "variables_env": [
+        {
+          "nom": "VIRTUAL_ENV",
+          "ligne": 32,
+          "lue_ou_ecrite": "lue"
+        },
+        {
+          "nom": "PATH",
+          "ligne": 36,
+          "lue_ou_ecrite": "lue"
+        },
+        {
+          "nom": "ENGINEER_NAME",
+          "ligne": 67,
+          "lue_ou_ecrite": "lue"
+        },
+        {
+          "nom": "USER",
+          "ligne": 77,
+          "lue_ou_ecrite": "lue"
+        }
+      ],
+      "cles_config": [],
+      "secrets": "load_dotenv() (utils.py:13) charge .env dans os.environ a l'import ; operator_env() (utils.py:31) en renvoie une copie integrale, passee a Pi (agent_pi.py:281) et aux commandes bun (quality.py:54). Les noms des cles du modele sont dans .env.sample (OPENROUTER_API_KEY, OPENROUTER_PROVISIONING_KEY) ; aucune valeur lue ici.",
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "config",
+      "langage": "yaml",
+      "lignes": 143,
+      "role": "Profil par défaut (roster de référence) : deepseek-v4-flash-0731 par défaut, planner gemini-3.6-flash (thinking high), reviewer glm-5.2 (high), documenter gpt-5.6-luna ; builder et scout héritent de deepseek ; thinking par défaut medium.",
+      "levier": {
+        "valeur": true,
+        "pourquoi": "Remplacer les modèles/thinking par agent, les listes tools/writes, protected_files, data_dir et db : c'est le roster que tout run utilise par défaut."
+      },
+      "fonctions_cles": [],
+      "lit": [],
+      "ecrit": [],
+      "lance": [],
+      "reseau": [
+        {
+          "hote": "openrouter.ai (fournisseur Pi `openrouter`, via les préfixes de modèle openrouter/...)",
+          "ligne": 5
+        }
+      ],
+      "variables_env": [],
+      "cles_config": [
+        {
+          "cle": "defaults.coding_agent",
+          "ligne": 4
+        },
+        {
+          "cle": "defaults.model",
+          "ligne": 5
+        },
+        {
+          "cle": "defaults.thinking",
+          "ligne": 6
+        },
+        {
+          "cle": "defaults.harness_engineering",
+          "ligne": 7
+        },
+        {
+          "cle": "defaults.tools",
+          "ligne": 12
+        },
+        {
+          "cle": "defaults.protected_files",
+          "ligne": 29
+        },
+        {
+          "cle": "defaults.data_dir",
+          "ligne": 33
+        },
+        {
+          "cle": "observability.db",
+          "ligne": 36
+        },
+        {
+          "cle": "observability.poll_ms",
+          "ligne": 37
+        },
+        {
+          "cle": "agents.planner.name",
+          "ligne": 40
+        },
+        {
+          "cle": "agents.planner.model",
+          "ligne": 41
+        },
+        {
+          "cle": "agents.planner.thinking",
+          "ligne": 42
+        },
+        {
+          "cle": "agents.planner.color",
+          "ligne": 43
+        },
+        {
+          "cle": "agents.planner.purpose",
+          "ligne": 44
+        },
+        {
+          "cle": "agents.planner.prompt_engineering",
+          "ligne": 45
+        },
+        {
+          "cle": "agents.planner.prompt_engineering.system",
+          "ligne": 46
+        },
+        {
+          "cle": "agents.planner.prompt_engineering.user",
+          "ligne": 47
+        },
+        {
+          "cle": "agents.planner.harness_engineering",
+          "ligne": 48
+        },
+        {
+          "cle": "agents.planner.harness_engineering[]",
+          "ligne": 49
+        },
+        {
+          "cle": "agents.planner.writes",
+          "ligne": 50
+        },
+        {
+          "cle": "agents.planner.tools",
+          "ligne": 52
+        },
+        {
+          "cle": "agents.builder.name",
+          "ligne": 64
+        },
+        {
+          "cle": "agents.builder.color",
+          "ligne": 65
+        },
+        {
+          "cle": "agents.builder.purpose",
+          "ligne": 66
+        },
+        {
+          "cle": "agents.builder.prompt_engineering",
+          "ligne": 67
+        },
+        {
+          "cle": "agents.builder.prompt_engineering.system",
+          "ligne": 68
+        },
+        {
+          "cle": "agents.builder.prompt_engineering.user",
+          "ligne": 69
+        },
+        {
+          "cle": "agents.builder.tools",
+          "ligne": 72
+        },
+        {
+          "cle": "agents.scout.name",
+          "ligne": 81
+        },
+        {
+          "cle": "agents.scout.color",
+          "ligne": 82
+        },
+        {
+          "cle": "agents.scout.purpose",
+          "ligne": 83
+        },
+        {
+          "cle": "agents.scout.prompt_engineering",
+          "ligne": 84
+        },
+        {
+          "cle": "agents.scout.prompt_engineering.system",
+          "ligne": 85
+        },
+        {
+          "cle": "agents.scout.prompt_engineering.user",
+          "ligne": 86
+        },
+        {
+          "cle": "agents.scout.harness_engineering",
+          "ligne": 87
+        },
+        {
+          "cle": "agents.scout.harness_engineering[]",
+          "ligne": 88
+        },
+        {
+          "cle": "agents.scout.writes",
+          "ligne": 89
+        },
+        {
+          "cle": "agents.scout.tools",
+          "ligne": 91
+        },
+        {
+          "cle": "agents.reviewer.name",
+          "ligne": 106
+        },
+        {
+          "cle": "agents.reviewer.model",
+          "ligne": 107
+        },
+        {
+          "cle": "agents.reviewer.thinking",
+          "ligne": 108
+        },
+        {
+          "cle": "agents.reviewer.color",
+          "ligne": 109
+        },
+        {
+          "cle": "agents.reviewer.purpose",
+          "ligne": 110
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering",
+          "ligne": 111
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering.system",
+          "ligne": 112
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering.user",
+          "ligne": 113
+        },
+        {
+          "cle": "agents.reviewer.writes",
+          "ligne": 114
+        },
+        {
+          "cle": "agents.reviewer.tools",
+          "ligne": 116
+        },
+        {
+          "cle": "agents.documenter.name",
+          "ligne": 124
+        },
+        {
+          "cle": "agents.documenter.model",
+          "ligne": 125
+        },
+        {
+          "cle": "agents.documenter.color",
+          "ligne": 126
+        },
+        {
+          "cle": "agents.documenter.purpose",
+          "ligne": 127
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering",
+          "ligne": 128
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering.system",
+          "ligne": 129
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering.user",
+          "ligne": 130
+        },
+        {
+          "cle": "agents.documenter.writes",
+          "ligne": 131
+        },
+        {
+          "cle": "agents.documenter.tools",
+          "ligne": 136
+        }
+      ],
+      "secrets": "Aucune clé ni variable référencée dans ce fichier ; la clé OPENROUTER_API_KEY est requise à l'exécution par le fournisseur Pi (voir sandbox_mount/guest/models.json.tmpl:6).",
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "type": "config",
+      "langage": "yaml",
+      "lignes": 148,
+      "role": "Variante « tout DeepSeek » : un seul modèle (deepseek-v4-flash-0731) pour les cinq voies, thinking high partout ; aucun modèle par agent (tous héritent de defaults.model) ; sert de contrôle pour le best-of-N.",
+      "levier": {
+        "valeur": true,
+        "pourquoi": "Oui : changer defaults.model ici change le modèle des 5 agents d'un coup ; thinking high au lieu de medium."
+      },
+      "fonctions_cles": [],
+      "lit": [],
+      "ecrit": [],
+      "lance": [],
+      "reseau": [
+        {
+          "hote": "openrouter.ai (fournisseur Pi `openrouter`, via les préfixes de modèle openrouter/...)",
+          "ligne": 14
+        }
+      ],
+      "variables_env": [],
+      "cles_config": [
+        {
+          "cle": "defaults.coding_agent",
+          "ligne": 13
+        },
+        {
+          "cle": "defaults.model",
+          "ligne": 14
+        },
+        {
+          "cle": "defaults.thinking",
+          "ligne": 15
+        },
+        {
+          "cle": "defaults.harness_engineering",
+          "ligne": 16
+        },
+        {
+          "cle": "defaults.tools",
+          "ligne": 21
+        },
+        {
+          "cle": "defaults.protected_files",
+          "ligne": 38
+        },
+        {
+          "cle": "defaults.data_dir",
+          "ligne": 42
+        },
+        {
+          "cle": "observability.db",
+          "ligne": 45
+        },
+        {
+          "cle": "observability.poll_ms",
+          "ligne": 46
+        },
+        {
+          "cle": "agents.planner.name",
+          "ligne": 49
+        },
+        {
+          "cle": "agents.planner.color",
+          "ligne": 51
+        },
+        {
+          "cle": "agents.planner.purpose",
+          "ligne": 52
+        },
+        {
+          "cle": "agents.planner.prompt_engineering",
+          "ligne": 53
+        },
+        {
+          "cle": "agents.planner.prompt_engineering.system",
+          "ligne": 54
+        },
+        {
+          "cle": "agents.planner.prompt_engineering.user",
+          "ligne": 55
+        },
+        {
+          "cle": "agents.planner.harness_engineering",
+          "ligne": 56
+        },
+        {
+          "cle": "agents.planner.harness_engineering[]",
+          "ligne": 57
+        },
+        {
+          "cle": "agents.planner.writes",
+          "ligne": 58
+        },
+        {
+          "cle": "agents.planner.tools",
+          "ligne": 60
+        },
+        {
+          "cle": "agents.builder.name",
+          "ligne": 72
+        },
+        {
+          "cle": "agents.builder.color",
+          "ligne": 73
+        },
+        {
+          "cle": "agents.builder.purpose",
+          "ligne": 74
+        },
+        {
+          "cle": "agents.builder.prompt_engineering",
+          "ligne": 75
+        },
+        {
+          "cle": "agents.builder.prompt_engineering.system",
+          "ligne": 76
+        },
+        {
+          "cle": "agents.builder.prompt_engineering.user",
+          "ligne": 77
+        },
+        {
+          "cle": "agents.builder.tools",
+          "ligne": 80
+        },
+        {
+          "cle": "agents.scout.name",
+          "ligne": 89
+        },
+        {
+          "cle": "agents.scout.color",
+          "ligne": 90
+        },
+        {
+          "cle": "agents.scout.purpose",
+          "ligne": 91
+        },
+        {
+          "cle": "agents.scout.prompt_engineering",
+          "ligne": 92
+        },
+        {
+          "cle": "agents.scout.prompt_engineering.system",
+          "ligne": 93
+        },
+        {
+          "cle": "agents.scout.prompt_engineering.user",
+          "ligne": 94
+        },
+        {
+          "cle": "agents.scout.harness_engineering",
+          "ligne": 95
+        },
+        {
+          "cle": "agents.scout.harness_engineering[]",
+          "ligne": 96
+        },
+        {
+          "cle": "agents.scout.writes",
+          "ligne": 97
+        },
+        {
+          "cle": "agents.scout.tools",
+          "ligne": 99
+        },
+        {
+          "cle": "agents.reviewer.name",
+          "ligne": 114
+        },
+        {
+          "cle": "agents.reviewer.color",
+          "ligne": 115
+        },
+        {
+          "cle": "agents.reviewer.purpose",
+          "ligne": 116
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering",
+          "ligne": 117
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering.system",
+          "ligne": 118
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering.user",
+          "ligne": 119
+        },
+        {
+          "cle": "agents.reviewer.writes",
+          "ligne": 120
+        },
+        {
+          "cle": "agents.reviewer.tools",
+          "ligne": 122
+        },
+        {
+          "cle": "agents.documenter.name",
+          "ligne": 130
+        },
+        {
+          "cle": "agents.documenter.color",
+          "ligne": 131
+        },
+        {
+          "cle": "agents.documenter.purpose",
+          "ligne": 132
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering",
+          "ligne": 133
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering.system",
+          "ligne": 134
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering.user",
+          "ligne": 135
+        },
+        {
+          "cle": "agents.documenter.writes",
+          "ligne": 136
+        },
+        {
+          "cle": "agents.documenter.tools",
+          "ligne": 141
+        }
+      ],
+      "secrets": "Aucune clé ni variable référencée dans ce fichier ; la clé OPENROUTER_API_KEY est requise à l'exécution par le fournisseur Pi (voir sandbox_mount/guest/models.json.tmpl:6).",
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "type": "config",
+      "langage": "yaml",
+      "lignes": 132,
+      "role": "Variante frontière : planner et reviewer sur claude-opus-5, builder et documenter sur kimi-k3, scout sur gpt-5.6-sol, thinking high partout. Omet protected_files et tous les `writes` par agent (voir contradictions).",
+      "levier": {
+        "valeur": true,
+        "pourquoi": "Oui, levier fort : casting des modèles de pointe par rôle ; attention, l'absence de writes/protected_files explicites change les permissions effectives."
+      },
+      "fonctions_cles": [],
+      "lit": [],
+      "ecrit": [],
+      "lance": [],
+      "reseau": [
+        {
+          "hote": "openrouter.ai (fournisseur Pi `openrouter`, via les préfixes de modèle openrouter/...)",
+          "ligne": 15
+        }
+      ],
+      "variables_env": [],
+      "cles_config": [
+        {
+          "cle": "defaults.coding_agent",
+          "ligne": 14
+        },
+        {
+          "cle": "defaults.model",
+          "ligne": 15
+        },
+        {
+          "cle": "defaults.thinking",
+          "ligne": 16
+        },
+        {
+          "cle": "defaults.harness_engineering",
+          "ligne": 17
+        },
+        {
+          "cle": "defaults.tools",
+          "ligne": 22
+        },
+        {
+          "cle": "defaults.data_dir",
+          "ligne": 30
+        },
+        {
+          "cle": "observability.db",
+          "ligne": 33
+        },
+        {
+          "cle": "observability.poll_ms",
+          "ligne": 34
+        },
+        {
+          "cle": "agents.planner.name",
+          "ligne": 37
+        },
+        {
+          "cle": "agents.planner.model",
+          "ligne": 38
+        },
+        {
+          "cle": "agents.planner.thinking",
+          "ligne": 39
+        },
+        {
+          "cle": "agents.planner.color",
+          "ligne": 40
+        },
+        {
+          "cle": "agents.planner.purpose",
+          "ligne": 41
+        },
+        {
+          "cle": "agents.planner.prompt_engineering",
+          "ligne": 42
+        },
+        {
+          "cle": "agents.planner.prompt_engineering.system",
+          "ligne": 43
+        },
+        {
+          "cle": "agents.planner.prompt_engineering.user",
+          "ligne": 44
+        },
+        {
+          "cle": "agents.planner.harness_engineering",
+          "ligne": 45
+        },
+        {
+          "cle": "agents.planner.harness_engineering[]",
+          "ligne": 46
+        },
+        {
+          "cle": "agents.planner.tools",
+          "ligne": 47
+        },
+        {
+          "cle": "agents.builder.name",
+          "ligne": 59
+        },
+        {
+          "cle": "agents.builder.model",
+          "ligne": 60
+        },
+        {
+          "cle": "agents.builder.thinking",
+          "ligne": 61
+        },
+        {
+          "cle": "agents.builder.color",
+          "ligne": 62
+        },
+        {
+          "cle": "agents.builder.purpose",
+          "ligne": 63
+        },
+        {
+          "cle": "agents.builder.prompt_engineering",
+          "ligne": 64
+        },
+        {
+          "cle": "agents.builder.prompt_engineering.system",
+          "ligne": 65
+        },
+        {
+          "cle": "agents.builder.prompt_engineering.user",
+          "ligne": 66
+        },
+        {
+          "cle": "agents.builder.tools",
+          "ligne": 67
+        },
+        {
+          "cle": "agents.scout.name",
+          "ligne": 76
+        },
+        {
+          "cle": "agents.scout.model",
+          "ligne": 77
+        },
+        {
+          "cle": "agents.scout.thinking",
+          "ligne": 78
+        },
+        {
+          "cle": "agents.scout.color",
+          "ligne": 79
+        },
+        {
+          "cle": "agents.scout.purpose",
+          "ligne": 80
+        },
+        {
+          "cle": "agents.scout.prompt_engineering",
+          "ligne": 81
+        },
+        {
+          "cle": "agents.scout.prompt_engineering.system",
+          "ligne": 82
+        },
+        {
+          "cle": "agents.scout.prompt_engineering.user",
+          "ligne": 83
+        },
+        {
+          "cle": "agents.scout.harness_engineering",
+          "ligne": 84
+        },
+        {
+          "cle": "agents.scout.harness_engineering[]",
+          "ligne": 85
+        },
+        {
+          "cle": "agents.scout.tools",
+          "ligne": 86
+        },
+        {
+          "cle": "agents.reviewer.name",
+          "ligne": 101
+        },
+        {
+          "cle": "agents.reviewer.model",
+          "ligne": 102
+        },
+        {
+          "cle": "agents.reviewer.thinking",
+          "ligne": 103
+        },
+        {
+          "cle": "agents.reviewer.color",
+          "ligne": 104
+        },
+        {
+          "cle": "agents.reviewer.purpose",
+          "ligne": 105
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering",
+          "ligne": 106
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering.system",
+          "ligne": 107
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering.user",
+          "ligne": 108
+        },
+        {
+          "cle": "agents.reviewer.tools",
+          "ligne": 109
+        },
+        {
+          "cle": "agents.documenter.name",
+          "ligne": 117
+        },
+        {
+          "cle": "agents.documenter.model",
+          "ligne": 118
+        },
+        {
+          "cle": "agents.documenter.thinking",
+          "ligne": 119
+        },
+        {
+          "cle": "agents.documenter.color",
+          "ligne": 120
+        },
+        {
+          "cle": "agents.documenter.purpose",
+          "ligne": 121
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering",
+          "ligne": 122
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering.system",
+          "ligne": 123
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering.user",
+          "ligne": 124
+        },
+        {
+          "cle": "agents.documenter.tools",
+          "ligne": 125
+        }
+      ],
+      "secrets": "Aucune clé ni variable référencée dans ce fichier ; la clé OPENROUTER_API_KEY est requise à l'exécution par le fournisseur Pi (voir sandbox_mount/guest/models.json.tmpl:6).",
+      "copie_de": null,
+      "contradictions": [
+        {
+          "doc": "adws/adw_sssf_config/sssf.frontier.config.yaml:4-5",
+          "code": "adws/adw_modules/data_types.py:335 ; adws/adw_modules/permissions.py:146-150",
+          "resume": "L'en-tête dit « Nothing here but the roster changes » mais ce profil omet defaults.protected_files (repli sur la valeur par défaut de data_types.py:335, donc protégé) ET toutes les clés `writes` : planner, scout, reviewer et documenter deviennent writes=None donc non restreints au dépôt (permissions.py:150), contrairement aux autres profils où scout/reviewer sont en `writes: []` et planner/documenter limités. Les intentions affichées (commentaires `tools:` « no edit » aux lignes 47 et 109, `purpose` « change nothing » aux lignes 80 et 105) ne sont plus appliquées par permissions."
+        }
+      ]
+    },
+    {
+      "chemin": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "type": "config",
+      "langage": "yaml",
+      "lignes": 152,
+      "role": "Variante poids ouverts : planner et reviewer sur glm-5.2, builder sur kimi-k3, scout et documenter héritent de deepseek-v4-flash-0731 ; thinking high par défaut.",
+      "levier": {
+        "valeur": true,
+        "pourquoi": "Oui : choix des modèles open-weight par voie (jugement GLM, build Kimi, voies mécaniques DeepSeek)."
+      },
+      "fonctions_cles": [],
+      "lit": [],
+      "ecrit": [],
+      "lance": [],
+      "reseau": [
+        {
+          "hote": "openrouter.ai (fournisseur Pi `openrouter`, via les préfixes de modèle openrouter/...)",
+          "ligne": 14
+        }
+      ],
+      "variables_env": [],
+      "cles_config": [
+        {
+          "cle": "defaults.coding_agent",
+          "ligne": 13
+        },
+        {
+          "cle": "defaults.model",
+          "ligne": 14
+        },
+        {
+          "cle": "defaults.thinking",
+          "ligne": 15
+        },
+        {
+          "cle": "defaults.harness_engineering",
+          "ligne": 16
+        },
+        {
+          "cle": "defaults.tools",
+          "ligne": 21
+        },
+        {
+          "cle": "defaults.protected_files",
+          "ligne": 38
+        },
+        {
+          "cle": "defaults.data_dir",
+          "ligne": 42
+        },
+        {
+          "cle": "observability.db",
+          "ligne": 45
+        },
+        {
+          "cle": "observability.poll_ms",
+          "ligne": 46
+        },
+        {
+          "cle": "agents.planner.name",
+          "ligne": 49
+        },
+        {
+          "cle": "agents.planner.model",
+          "ligne": 50
+        },
+        {
+          "cle": "agents.planner.color",
+          "ligne": 51
+        },
+        {
+          "cle": "agents.planner.purpose",
+          "ligne": 52
+        },
+        {
+          "cle": "agents.planner.prompt_engineering",
+          "ligne": 53
+        },
+        {
+          "cle": "agents.planner.prompt_engineering.system",
+          "ligne": 54
+        },
+        {
+          "cle": "agents.planner.prompt_engineering.user",
+          "ligne": 55
+        },
+        {
+          "cle": "agents.planner.harness_engineering",
+          "ligne": 56
+        },
+        {
+          "cle": "agents.planner.harness_engineering[]",
+          "ligne": 57
+        },
+        {
+          "cle": "agents.planner.writes",
+          "ligne": 58
+        },
+        {
+          "cle": "agents.planner.tools",
+          "ligne": 60
+        },
+        {
+          "cle": "agents.builder.name",
+          "ligne": 72
+        },
+        {
+          "cle": "agents.builder.model",
+          "ligne": 73
+        },
+        {
+          "cle": "agents.builder.color",
+          "ligne": 74
+        },
+        {
+          "cle": "agents.builder.purpose",
+          "ligne": 75
+        },
+        {
+          "cle": "agents.builder.prompt_engineering",
+          "ligne": 76
+        },
+        {
+          "cle": "agents.builder.prompt_engineering.system",
+          "ligne": 77
+        },
+        {
+          "cle": "agents.builder.prompt_engineering.user",
+          "ligne": 78
+        },
+        {
+          "cle": "agents.builder.tools",
+          "ligne": 81
+        },
+        {
+          "cle": "agents.scout.name",
+          "ligne": 90
+        },
+        {
+          "cle": "agents.scout.color",
+          "ligne": 92
+        },
+        {
+          "cle": "agents.scout.purpose",
+          "ligne": 93
+        },
+        {
+          "cle": "agents.scout.prompt_engineering",
+          "ligne": 94
+        },
+        {
+          "cle": "agents.scout.prompt_engineering.system",
+          "ligne": 95
+        },
+        {
+          "cle": "agents.scout.prompt_engineering.user",
+          "ligne": 96
+        },
+        {
+          "cle": "agents.scout.harness_engineering",
+          "ligne": 97
+        },
+        {
+          "cle": "agents.scout.harness_engineering[]",
+          "ligne": 98
+        },
+        {
+          "cle": "agents.scout.writes",
+          "ligne": 99
+        },
+        {
+          "cle": "agents.scout.tools",
+          "ligne": 101
+        },
+        {
+          "cle": "agents.reviewer.name",
+          "ligne": 116
+        },
+        {
+          "cle": "agents.reviewer.model",
+          "ligne": 117
+        },
+        {
+          "cle": "agents.reviewer.color",
+          "ligne": 118
+        },
+        {
+          "cle": "agents.reviewer.purpose",
+          "ligne": 119
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering",
+          "ligne": 120
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering.system",
+          "ligne": 121
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering.user",
+          "ligne": 122
+        },
+        {
+          "cle": "agents.reviewer.writes",
+          "ligne": 123
+        },
+        {
+          "cle": "agents.reviewer.tools",
+          "ligne": 125
+        },
+        {
+          "cle": "agents.documenter.name",
+          "ligne": 133
+        },
+        {
+          "cle": "agents.documenter.color",
+          "ligne": 135
+        },
+        {
+          "cle": "agents.documenter.purpose",
+          "ligne": 136
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering",
+          "ligne": 137
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering.system",
+          "ligne": 138
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering.user",
+          "ligne": 139
+        },
+        {
+          "cle": "agents.documenter.writes",
+          "ligne": 140
+        },
+        {
+          "cle": "agents.documenter.tools",
+          "ligne": 145
+        }
+      ],
+      "secrets": "Aucune clé ni variable référencée dans ce fichier ; la clé OPENROUTER_API_KEY est requise à l'exécution par le fournisseur Pi (voir sandbox_mount/guest/models.json.tmpl:6).",
+      "copie_de": null,
+      "contradictions": []
+    },
+    {
+      "chemin": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "type": "config",
+      "langage": "yaml",
+      "lignes": 152,
+      "role": "Variante rapide : planner et reviewer sur gemini-3.6-flash, documenter sur gpt-5.6-luna, builder et scout héritent de deepseek-v4-flash-0731 ; thinking high par défaut.",
+      "levier": {
+        "valeur": true,
+        "pourquoi": "Oui : casting de modèles à faible latence par voie."
+      },
+      "fonctions_cles": [],
+      "lit": [],
+      "ecrit": [],
+      "lance": [],
+      "reseau": [
+        {
+          "hote": "openrouter.ai (fournisseur Pi `openrouter`, via les préfixes de modèle openrouter/...)",
+          "ligne": 14
+        }
+      ],
+      "variables_env": [],
+      "cles_config": [
+        {
+          "cle": "defaults.coding_agent",
+          "ligne": 13
+        },
+        {
+          "cle": "defaults.model",
+          "ligne": 14
+        },
+        {
+          "cle": "defaults.thinking",
+          "ligne": 15
+        },
+        {
+          "cle": "defaults.harness_engineering",
+          "ligne": 16
+        },
+        {
+          "cle": "defaults.tools",
+          "ligne": 21
+        },
+        {
+          "cle": "defaults.protected_files",
+          "ligne": 38
+        },
+        {
+          "cle": "defaults.data_dir",
+          "ligne": 42
+        },
+        {
+          "cle": "observability.db",
+          "ligne": 45
+        },
+        {
+          "cle": "observability.poll_ms",
+          "ligne": 46
+        },
+        {
+          "cle": "agents.planner.name",
+          "ligne": 49
+        },
+        {
+          "cle": "agents.planner.model",
+          "ligne": 50
+        },
+        {
+          "cle": "agents.planner.color",
+          "ligne": 51
+        },
+        {
+          "cle": "agents.planner.purpose",
+          "ligne": 52
+        },
+        {
+          "cle": "agents.planner.prompt_engineering",
+          "ligne": 53
+        },
+        {
+          "cle": "agents.planner.prompt_engineering.system",
+          "ligne": 54
+        },
+        {
+          "cle": "agents.planner.prompt_engineering.user",
+          "ligne": 55
+        },
+        {
+          "cle": "agents.planner.harness_engineering",
+          "ligne": 56
+        },
+        {
+          "cle": "agents.planner.harness_engineering[]",
+          "ligne": 57
+        },
+        {
+          "cle": "agents.planner.writes",
+          "ligne": 58
+        },
+        {
+          "cle": "agents.planner.tools",
+          "ligne": 60
+        },
+        {
+          "cle": "agents.builder.name",
+          "ligne": 72
+        },
+        {
+          "cle": "agents.builder.color",
+          "ligne": 74
+        },
+        {
+          "cle": "agents.builder.purpose",
+          "ligne": 75
+        },
+        {
+          "cle": "agents.builder.prompt_engineering",
+          "ligne": 76
+        },
+        {
+          "cle": "agents.builder.prompt_engineering.system",
+          "ligne": 77
+        },
+        {
+          "cle": "agents.builder.prompt_engineering.user",
+          "ligne": 78
+        },
+        {
+          "cle": "agents.builder.tools",
+          "ligne": 81
+        },
+        {
+          "cle": "agents.scout.name",
+          "ligne": 90
+        },
+        {
+          "cle": "agents.scout.color",
+          "ligne": 92
+        },
+        {
+          "cle": "agents.scout.purpose",
+          "ligne": 93
+        },
+        {
+          "cle": "agents.scout.prompt_engineering",
+          "ligne": 94
+        },
+        {
+          "cle": "agents.scout.prompt_engineering.system",
+          "ligne": 95
+        },
+        {
+          "cle": "agents.scout.prompt_engineering.user",
+          "ligne": 96
+        },
+        {
+          "cle": "agents.scout.harness_engineering",
+          "ligne": 97
+        },
+        {
+          "cle": "agents.scout.harness_engineering[]",
+          "ligne": 98
+        },
+        {
+          "cle": "agents.scout.writes",
+          "ligne": 99
+        },
+        {
+          "cle": "agents.scout.tools",
+          "ligne": 101
+        },
+        {
+          "cle": "agents.reviewer.name",
+          "ligne": 116
+        },
+        {
+          "cle": "agents.reviewer.model",
+          "ligne": 117
+        },
+        {
+          "cle": "agents.reviewer.color",
+          "ligne": 118
+        },
+        {
+          "cle": "agents.reviewer.purpose",
+          "ligne": 119
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering",
+          "ligne": 120
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering.system",
+          "ligne": 121
+        },
+        {
+          "cle": "agents.reviewer.prompt_engineering.user",
+          "ligne": 122
+        },
+        {
+          "cle": "agents.reviewer.writes",
+          "ligne": 123
+        },
+        {
+          "cle": "agents.reviewer.tools",
+          "ligne": 125
+        },
+        {
+          "cle": "agents.documenter.name",
+          "ligne": 133
+        },
+        {
+          "cle": "agents.documenter.model",
+          "ligne": 134
+        },
+        {
+          "cle": "agents.documenter.color",
+          "ligne": 135
+        },
+        {
+          "cle": "agents.documenter.purpose",
+          "ligne": 136
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering",
+          "ligne": 137
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering.system",
+          "ligne": 138
+        },
+        {
+          "cle": "agents.documenter.prompt_engineering.user",
+          "ligne": 139
+        },
+        {
+          "cle": "agents.documenter.writes",
+          "ligne": 140
+        },
+        {
+          "cle": "agents.documenter.tools",
+          "ligne": 145
+        }
+      ],
+      "secrets": "Aucune clé ni variable référencée dans ce fichier ; la clé OPENROUTER_API_KEY est requise à l'exécution par le fournisseur Pi (voir sandbox_mount/guest/models.json.tmpl:6).",
+      "copie_de": null,
+      "contradictions": []
+    }
+  ],
+  "liens": [
+    {
+      "de": "adws/adw_build.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_build.py:42",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "adws/adw_build_review.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_build_review.py:73",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "adws/adw_build_test.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_build_test.py:76",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "adws/adw_document.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_document.py:73",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "adws/adw_modules/agent_pi.py",
+      "vers": "adws/adw_modules/utils.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/agent_pi.py:49",
+      "confiance": "haute",
+      "occurrences": 4
+    },
+    {
+      "de": "adws/adw_modules/agent_pi.py",
+      "vers": "adws/adw_data/harness_engineering/subagents.ts",
+      "type": "charge_extension",
+      "preuve": "adws/adw_modules/agent_pi.py:264",
+      "confiance": "haute",
+      "note": "Dynamique : une option `-e <chemin>` par entree de request.extensions = agents[].harness_engineering ; dans sssf.config.yaml le planner (ligne 49) et le scout (ligne 88) listent subagents.ts."
+    },
+    {
+      "de": "adws/adw_modules/agent_pi.py",
+      "vers": "adws/adw_data/sessions/<adw_id>/<agent>/raw_output.jsonl",
+      "type": "ecrit",
+      "preuve": "adws/adw_modules/agent_pi.py:284",
+      "confiance": "haute",
+      "motif": true,
+      "produit_a_l_execution": true
+    },
+    {
+      "de": "adws/adw_modules/agent_pi.py",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/agent_pi.py:19",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/agent_pi.py",
+      "vers": "adws/adw_modules/utils.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/agent_pi.py:20",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/agent_pi.py",
+      "vers": "~/.pi/agent/models.json",
+      "type": "lit",
+      "preuve": "adws/adw_modules/agent_pi.py:110",
+      "confiance": "haute",
+      "hors_depot": true,
+      "note": "Chemin surchargeable par PI_MODELS_PATH (agent_pi.py:23-24)."
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_modules/agent_pi.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/agents.py:69",
+      "confiance": "haute",
+      "occurrences": 3
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_modules/console.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/agents.py:104",
+      "confiance": "faible",
+      "pourquoi_faible": "Appels via run.console (objet Console injecte).",
+      "occurrences": 6
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_modules/permissions.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/agents.py:145",
+      "confiance": "haute",
+      "occurrences": 3
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_modules/prompts.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/agents.py:89",
+      "confiance": "haute",
+      "occurrences": 4
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_modules/runner.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/agents.py:134",
+      "confiance": "faible",
+      "pourquoi_faible": "run.add_usage / run.save_agent_map via l'objet Run, pas d'import (runner importe agents, pas l'inverse).",
+      "occurrences": 2
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_modules/tracer.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/agents.py:95",
+      "confiance": "faible",
+      "pourquoi_faible": "Appels via l'attribut run.tracer (objet Tracer injecte), pas d'import direct.",
+      "occurrences": 12
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_modules/utils.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/agents.py:237",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_data/sessions/<adw_id>/<agent>/envelope.json",
+      "type": "ecrit",
+      "preuve": "adws/adw_modules/agents.py:313",
+      "confiance": "haute",
+      "motif": true,
+      "produit_a_l_execution": true
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_data/sessions/<adw_id>/<agent>/prompts/{system,user}.md",
+      "type": "ecrit",
+      "preuve": "adws/adw_modules/agents.py:91",
+      "confiance": "haute",
+      "motif": true,
+      "produit_a_l_execution": true,
+      "occurrences": 2
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_modules/agent_pi.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/agents.py:18",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/agents.py:19",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_modules/permissions.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/agents.py:18",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_modules/prompts.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/agents.py:18",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_modules/utils.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/agents.py:22",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_modules/agents.py:33",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)",
+      "occurrences": 2
+    },
+    {
+      "de": "adws/adw_modules/agents.py",
+      "vers": "adws/adw_data/prompt_engineering/<agent>/{system,user}.md",
+      "type": "rend_prompt",
+      "preuve": "adws/adw_modules/agents.py:89",
+      "confiance": "haute",
+      "motif": true,
+      "note": "Chemins pris dans agents[].prompt_engineering.system/user de la config ; rendus avec {{prompt}}, {{previous_envelope}}, {{context_handoff_dir}} puis envoyes a Pi (agents.py:148, 176)."
+    },
+    {
+      "de": "adws/adw_modules/changes.py",
+      "vers": "adws/adw_modules/git_helper.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/changes.py:26",
+      "confiance": "haute",
+      "occurrences": 14
+    },
+    {
+      "de": "adws/adw_modules/changes.py",
+      "vers": "adws/adw_data/sessions/<adw_id>/context_handoff/changes.diff",
+      "type": "ecrit",
+      "preuve": "adws/adw_modules/changes.py:74",
+      "confiance": "haute",
+      "motif": true,
+      "produit_a_l_execution": true
+    },
+    {
+      "de": "adws/adw_modules/changes.py",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/changes.py:19",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/changes.py",
+      "vers": "adws/adw_modules/git_helper.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/changes.py:18",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/console.py",
+      "vers": "adws/adw_modules/tracer.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/console.py:43",
+      "confiance": "faible",
+      "pourquoi_faible": "self.tracer.event via un objet Tracer injecte, sans import.",
+      "occurrences": 1
+    },
+    {
+      "de": "adws/adw_modules/console.py",
+      "vers": "just/obs.just",
+      "type": "decrit",
+      "preuve": "adws/adw_modules/console.py:65",
+      "confiance": "faible",
+      "pourquoi_faible": "Le panneau final affiche seulement le texte `just phases <adw_id>` ; la recette existe (just/obs.just:39) mais le code ne la lit ni ne la lance."
+    },
+    {
+      "de": "adws/adw_modules/console.py",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/console.py:16",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/gates.py",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/gates.py:17",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/gates.py",
+      "vers": "<chemins declares dans envelope.artifacts>",
+      "type": "lit",
+      "preuve": "adws/adw_modules/gates.py:30",
+      "confiance": "haute",
+      "motif": true,
+      "note": "Verifie existence/taille (stat) et lit le contenu des .json (gates.py:54) ; chemins relatifs au cwd du processus ADW, pas au depot."
+    },
+    {
+      "de": "adws/adw_modules/permissions.py",
+      "vers": "<tout chemin du depot modifie hors perimetre>",
+      "type": "ecrit",
+      "preuve": "adws/adw_modules/permissions.py:185",
+      "confiance": "haute",
+      "motif": true,
+      "occurrences": 3,
+      "note": "Restauration (185), suppression (211) ou git checkout (215) des chemins hors perimetre ; chemins issus du snapshot git."
+    },
+    {
+      "de": "adws/adw_modules/permissions.py",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/permissions.py:38",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/permissions.py",
+      "vers": "<tout chemin du depot deja modifie avant la phase>",
+      "type": "lit",
+      "preuve": "adws/adw_modules/permissions.py:172",
+      "confiance": "haute",
+      "motif": true,
+      "note": "preserve() lit les octets (<= 1 Mio) des chemins sales."
+    },
+    {
+      "de": "adws/adw_modules/quality.py",
+      "vers": "adws/adw_modules/console.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/quality.py:56",
+      "confiance": "faible",
+      "pourquoi_faible": "run.console.note via l'objet Run, sans import.",
+      "occurrences": 2
+    },
+    {
+      "de": "adws/adw_modules/quality.py",
+      "vers": "adws/adw_modules/tracer.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/quality.py:87",
+      "confiance": "faible",
+      "pourquoi_faible": "run.tracer.event via l'objet Run, sans import."
+    },
+    {
+      "de": "adws/adw_modules/quality.py",
+      "vers": "adws/adw_modules/utils.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/quality.py:54",
+      "confiance": "haute",
+      "occurrences": 3
+    },
+    {
+      "de": "adws/adw_modules/quality.py",
+      "vers": "adws/adw_data/sessions/<adw_id>/context_handoff/quality/NN_<check>/command.log",
+      "type": "ecrit",
+      "preuve": "adws/adw_modules/quality.py:82",
+      "confiance": "haute",
+      "motif": true,
+      "produit_a_l_execution": true
+    },
+    {
+      "de": "adws/adw_modules/quality.py",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/quality.py:18",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/quality.py",
+      "vers": "adws/adw_modules/utils.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/quality.py:20",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/quality.py",
+      "vers": "apps/inkwell/public/app.js",
+      "type": "lit",
+      "preuve": "adws/adw_modules/quality.py:125",
+      "confiance": "haute",
+      "note": "Passe a bun (oxlint puis bun build) ; occurrences aux lignes 125, 144, 166."
+    },
+    {
+      "de": "adws/adw_modules/quality.py",
+      "vers": "apps/inkwell/server.test.ts",
+      "type": "lit",
+      "preuve": "adws/adw_modules/quality.py:193",
+      "confiance": "haute",
+      "note": "bun test."
+    },
+    {
+      "de": "adws/adw_modules/quality.py",
+      "vers": "apps/inkwell/server.ts",
+      "type": "lit",
+      "preuve": "adws/adw_modules/quality.py:134",
+      "confiance": "haute",
+      "note": "Passe a bun (oxlint puis bun build) ; lignes 134, 155, 177."
+    },
+    {
+      "de": "adws/adw_modules/runner.py",
+      "vers": "adws/adw_modules/agents.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/runner.py:39",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/runner.py",
+      "vers": "adws/adw_modules/console.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/runner.py:47",
+      "confiance": "haute",
+      "occurrences": 6
+    },
+    {
+      "de": "adws/adw_modules/runner.py",
+      "vers": "adws/adw_modules/git_helper.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/runner.py:53",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/runner.py",
+      "vers": "adws/adw_modules/tracer.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/runner.py:52",
+      "confiance": "faible",
+      "pourquoi_faible": "self.tracer injecte par session.ensure ; pas d'import de tracer.py dans runner.py.",
+      "occurrences": 12
+    },
+    {
+      "de": "adws/adw_modules/runner.py",
+      "vers": "adws/adw_modules/utils.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/runner.py:54",
+      "confiance": "haute",
+      "occurrences": 3
+    },
+    {
+      "de": "adws/adw_modules/runner.py",
+      "vers": "adws/adw_data/sessions/<adw_id>/agent_map.json",
+      "type": "ecrit",
+      "preuve": "adws/adw_modules/runner.py:63",
+      "confiance": "haute",
+      "motif": true,
+      "produit_a_l_execution": true
+    },
+    {
+      "de": "adws/adw_modules/runner.py",
+      "vers": "adws/adw_modules/agents.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/runner.py:16",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/runner.py",
+      "vers": "adws/adw_modules/console.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/runner.py:17",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/runner.py",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/runner.py:18",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/runner.py",
+      "vers": "adws/adw_modules/git_helper.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/runner.py:16",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/runner.py",
+      "vers": "adws/adw_modules/utils.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/runner.py:19",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/runner.py",
+      "vers": "adws/adw_data/sessions/<adw_id>/agent_map.json",
+      "type": "lit",
+      "preuve": "adws/adw_modules/runner.py:57",
+      "confiance": "haute",
+      "motif": true,
+      "produit_a_l_execution": true
+    },
+    {
+      "de": "adws/adw_modules/session.py",
+      "vers": "adws/adw_modules/runner.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/session.py:42",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/session.py",
+      "vers": "adws/adw_modules/tracer.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/session.py:40",
+      "confiance": "haute",
+      "occurrences": 4
+    },
+    {
+      "de": "adws/adw_modules/session.py",
+      "vers": "adws/adw_modules/utils.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/session.py:39",
+      "confiance": "haute",
+      "occurrences": 2
+    },
+    {
+      "de": "adws/adw_modules/session.py",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/session.py:15",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/session.py",
+      "vers": "adws/adw_modules/runner.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/session.py:16",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/session.py",
+      "vers": "adws/adw_modules/tracer.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/session.py:17",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/session.py",
+      "vers": "adws/adw_modules/utils.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/session.py:18",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/tracer.py",
+      "vers": "adws/adw_modules/utils.py",
+      "type": "appelle",
+      "preuve": "adws/adw_modules/tracer.py:104",
+      "confiance": "haute",
+      "occurrences": 3
+    },
+    {
+      "de": "adws/adw_modules/tracer.py",
+      "vers": "adws/adw_data/sessions/<adw_id>/events.jsonl",
+      "type": "ecrit",
+      "preuve": "adws/adw_modules/tracer.py:127",
+      "confiance": "haute",
+      "motif": true,
+      "produit_a_l_execution": true
+    },
+    {
+      "de": "adws/adw_modules/tracer.py",
+      "vers": "adws/adw_data/sssf.db",
+      "type": "ecrit",
+      "preuve": "adws/adw_modules/tracer.py:108",
+      "confiance": "haute",
+      "produit_a_l_execution": true,
+      "note": "Chemin = observability.db passe par session.py:40 (defaut adws/adw_data/sssf.db, data_types.py:342) ; ignore par git (.gitignore:153)."
+    },
+    {
+      "de": "adws/adw_modules/tracer.py",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/tracer.py:14",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/tracer.py",
+      "vers": "adws/adw_modules/utils.py",
+      "type": "importe",
+      "preuve": "adws/adw_modules/tracer.py:15",
+      "confiance": "haute"
+    },
+    {
+      "de": "adws/adw_modules/utils.py",
+      "vers": ".env",
+      "type": "lit",
+      "preuve": "adws/adw_modules/utils.py:13",
+      "confiance": "haute",
+      "produit_a_l_execution": true,
+      "note": ".env n'est pas suivi (ignore, .gitignore:112) ; modele fourni : .env.sample."
+    },
+    {
+      "de": "adws/adw_plan.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_plan.py:42",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "adws/adw_plan_build.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_plan_build.py:52",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "adws/adw_plan_build_test.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_plan_build_test.py:83",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "adws/adw_plan_build_test_quality.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_plan_build_test_quality.py:95",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "adws/adw_prompt.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_prompt.py:41",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "adws/adw_quality.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_quality.py:46",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "adws/adw_scout.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_scout.py:42",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "adws/adw_simple_sdlc.py",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "adws/adw_simple_sdlc.py:180",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_data/harness_engineering/subagents.ts",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.config.yaml:49",
+      "ligne_cle": 49,
+      "confiance": "haute",
+      "note": "agents.planner.harness_engineering : extension Pi passée en -e (agents.py:124, agent_pi.py:263)",
+      "occurrences": 2
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/builder/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.config.yaml:68",
+      "ligne_cle": 68,
+      "confiance": "haute",
+      "note": "agents.builder.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/builder/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.config.yaml:69",
+      "ligne_cle": 69,
+      "confiance": "haute",
+      "note": "agents.builder.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/documenter/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.config.yaml:129",
+      "ligne_cle": 129,
+      "confiance": "haute",
+      "note": "agents.documenter.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/documenter/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.config.yaml:130",
+      "ligne_cle": 130,
+      "confiance": "haute",
+      "note": "agents.documenter.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.config.yaml:46",
+      "ligne_cle": 46,
+      "confiance": "haute",
+      "note": "agents.planner.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.config.yaml:47",
+      "ligne_cle": 47,
+      "confiance": "haute",
+      "note": "agents.planner.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/reviewer/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.config.yaml:112",
+      "ligne_cle": 112,
+      "confiance": "haute",
+      "note": "agents.reviewer.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/reviewer/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.config.yaml:113",
+      "ligne_cle": 113,
+      "confiance": "haute",
+      "note": "agents.reviewer.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/scout/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.config.yaml:85",
+      "ligne_cle": 85,
+      "confiance": "haute",
+      "note": "agents.scout.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/scout/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.config.yaml:86",
+      "ligne_cle": 86,
+      "confiance": "haute",
+      "note": "agents.scout.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_modules/agent_pi.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/agent_pi.py:262",
+      "ligne_cle": 12,
+      "cles": [
+        "defaults.tools"
+      ],
+      "confiance": "haute",
+      "note": "agent_pi.py:262 transforme la liste tools en --tools ; :264 les extensions en -e (tools = valeur résolue agent/defaults)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_modules/agents.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/agents.py:37",
+      "ligne_cle": 4,
+      "cles": [
+        "defaults.coding_agent",
+        "defaults.model",
+        "defaults.thinking",
+        "defaults.tools",
+        "defaults.harness_engineering"
+      ],
+      "confiance": "haute",
+      "note": "load_config recopie defaults.{coding_agent, model, thinking, color, tools, writes} dans chaque agent qui ne les définit pas (agents.py:37-39) et harness_engineering (agents.py:40) ; agents.py:64-65 vérifie les fichiers de prompt"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/data_types.py:335",
+      "ligne_cle": 29,
+      "cles": [
+        "defaults.protected_files",
+        "defaults.data_dir",
+        "observability.db",
+        "observability.poll_ms"
+      ],
+      "confiance": "moyenne",
+      "note": "schéma pydantic (ConfigDefaults, ObservabilityConfig, AgentConfig) qui valide/typent ces clés ; poll_ms n'est lu que par ce schéma côté Python (aucun autre lecteur trouvé par grep, hors docs)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_modules/permissions.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/permissions.py:148",
+      "ligne_cle": 29,
+      "cles": [
+        "defaults.protected_files",
+        "defaults.data_dir",
+        "agents.planner.writes",
+        "agents.scout.writes",
+        "agents.reviewer.writes",
+        "agents.documenter.writes"
+      ],
+      "confiance": "haute",
+      "note": "permissions.py:148 lit defaults.protected_files, :139 lit defaults.data_dir, :146/:150 lisent agent.writes"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_modules/runner.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/runner.py:54",
+      "ligne_cle": 33,
+      "cles": [
+        "defaults.data_dir",
+        "observability.db"
+      ],
+      "confiance": "haute",
+      "note": "runner.py:54 construit {data_dir}/sessions/{adw_id} ; :102 et :141 utilisent observability.db"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "adws/adw_modules/session.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/session.py:40",
+      "ligne_cle": 36,
+      "cles": [
+        "observability.db",
+        "defaults.data_dir"
+      ],
+      "confiance": "haute",
+      "note": "session.py:40-41 ouvre le Tracer sur observability.db et {data_dir}/sessions/{adw_id}/events.jsonl"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.config.yaml",
+      "vers": "just/sandbox/lifecycle/setup.just",
+      "type": "configure",
+      "preuve": "just/sandbox/lifecycle/setup.just:178",
+      "ligne_cle": 5,
+      "cles": [
+        "defaults.model"
+      ],
+      "confiance": "haute",
+      "note": "l'assertion C de setup.just extrait tous les `model:` du fichier par awk et ping chaque modèle sur openrouter.ai"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_data/harness_engineering/subagents.ts",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:57",
+      "ligne_cle": 57,
+      "confiance": "haute",
+      "note": "agents.planner.harness_engineering : extension Pi passée en -e (agents.py:124, agent_pi.py:263)",
+      "occurrences": 2
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/builder/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:76",
+      "ligne_cle": 76,
+      "confiance": "haute",
+      "note": "agents.builder.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/builder/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:77",
+      "ligne_cle": 77,
+      "confiance": "haute",
+      "note": "agents.builder.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/documenter/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:134",
+      "ligne_cle": 134,
+      "confiance": "haute",
+      "note": "agents.documenter.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/documenter/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:135",
+      "ligne_cle": 135,
+      "confiance": "haute",
+      "note": "agents.documenter.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:54",
+      "ligne_cle": 54,
+      "confiance": "haute",
+      "note": "agents.planner.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:55",
+      "ligne_cle": 55,
+      "confiance": "haute",
+      "note": "agents.planner.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/reviewer/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:118",
+      "ligne_cle": 118,
+      "confiance": "haute",
+      "note": "agents.reviewer.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/reviewer/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:119",
+      "ligne_cle": 119,
+      "confiance": "haute",
+      "note": "agents.reviewer.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/scout/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:93",
+      "ligne_cle": 93,
+      "confiance": "haute",
+      "note": "agents.scout.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/scout/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:94",
+      "ligne_cle": 94,
+      "confiance": "haute",
+      "note": "agents.scout.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_modules/agent_pi.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/agent_pi.py:262",
+      "ligne_cle": 21,
+      "cles": [
+        "defaults.tools"
+      ],
+      "confiance": "haute",
+      "note": "agent_pi.py:262 transforme la liste tools en --tools ; :264 les extensions en -e (tools = valeur résolue agent/defaults)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_modules/agents.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/agents.py:37",
+      "ligne_cle": 13,
+      "cles": [
+        "defaults.coding_agent",
+        "defaults.model",
+        "defaults.thinking",
+        "defaults.tools",
+        "defaults.harness_engineering"
+      ],
+      "confiance": "haute",
+      "note": "load_config recopie defaults.{coding_agent, model, thinking, color, tools, writes} dans chaque agent qui ne les définit pas (agents.py:37-39) et harness_engineering (agents.py:40) ; agents.py:64-65 vérifie les fichiers de prompt"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/data_types.py:335",
+      "ligne_cle": 38,
+      "cles": [
+        "defaults.protected_files",
+        "defaults.data_dir",
+        "observability.db",
+        "observability.poll_ms"
+      ],
+      "confiance": "moyenne",
+      "note": "schéma pydantic (ConfigDefaults, ObservabilityConfig, AgentConfig) qui valide/typent ces clés ; poll_ms n'est lu que par ce schéma côté Python (aucun autre lecteur trouvé par grep, hors docs)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_modules/permissions.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/permissions.py:148",
+      "ligne_cle": 38,
+      "cles": [
+        "defaults.protected_files",
+        "defaults.data_dir",
+        "agents.planner.writes",
+        "agents.scout.writes",
+        "agents.reviewer.writes",
+        "agents.documenter.writes"
+      ],
+      "confiance": "haute",
+      "note": "permissions.py:148 lit defaults.protected_files, :139 lit defaults.data_dir, :146/:150 lisent agent.writes"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_modules/runner.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/runner.py:54",
+      "ligne_cle": 42,
+      "cles": [
+        "defaults.data_dir",
+        "observability.db"
+      ],
+      "confiance": "haute",
+      "note": "runner.py:54 construit {data_dir}/sessions/{adw_id} ; :102 et :141 utilisent observability.db"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "adws/adw_modules/session.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/session.py:40",
+      "ligne_cle": 45,
+      "cles": [
+        "observability.db",
+        "defaults.data_dir"
+      ],
+      "confiance": "haute",
+      "note": "session.py:40-41 ouvre le Tracer sur observability.db et {data_dir}/sessions/{adw_id}/events.jsonl"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "vers": "just/sandbox/lifecycle/setup.just",
+      "type": "configure",
+      "preuve": "just/sandbox/lifecycle/setup.just:178",
+      "ligne_cle": 14,
+      "cles": [
+        "defaults.model"
+      ],
+      "confiance": "haute",
+      "note": "l'assertion C de setup.just extrait tous les `model:` du fichier par awk et ping chaque modèle sur openrouter.ai"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_data/harness_engineering/subagents.ts",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:46",
+      "ligne_cle": 46,
+      "confiance": "haute",
+      "note": "agents.planner.harness_engineering : extension Pi passée en -e (agents.py:124, agent_pi.py:263)",
+      "occurrences": 2
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/builder/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:65",
+      "ligne_cle": 65,
+      "confiance": "haute",
+      "note": "agents.builder.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/builder/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:66",
+      "ligne_cle": 66,
+      "confiance": "haute",
+      "note": "agents.builder.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/documenter/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:123",
+      "ligne_cle": 123,
+      "confiance": "haute",
+      "note": "agents.documenter.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/documenter/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:124",
+      "ligne_cle": 124,
+      "confiance": "haute",
+      "note": "agents.documenter.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:43",
+      "ligne_cle": 43,
+      "confiance": "haute",
+      "note": "agents.planner.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:44",
+      "ligne_cle": 44,
+      "confiance": "haute",
+      "note": "agents.planner.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/reviewer/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:107",
+      "ligne_cle": 107,
+      "confiance": "haute",
+      "note": "agents.reviewer.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/reviewer/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:108",
+      "ligne_cle": 108,
+      "confiance": "haute",
+      "note": "agents.reviewer.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/scout/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:82",
+      "ligne_cle": 82,
+      "confiance": "haute",
+      "note": "agents.scout.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/scout/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:83",
+      "ligne_cle": 83,
+      "confiance": "haute",
+      "note": "agents.scout.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_modules/agent_pi.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/agent_pi.py:262",
+      "ligne_cle": 22,
+      "cles": [
+        "defaults.tools"
+      ],
+      "confiance": "haute",
+      "note": "agent_pi.py:262 transforme la liste tools en --tools ; :264 les extensions en -e (tools = valeur résolue agent/defaults)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_modules/agents.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/agents.py:37",
+      "ligne_cle": 14,
+      "cles": [
+        "defaults.coding_agent",
+        "defaults.model",
+        "defaults.thinking",
+        "defaults.tools",
+        "defaults.harness_engineering"
+      ],
+      "confiance": "haute",
+      "note": "load_config recopie defaults.{coding_agent, model, thinking, color, tools, writes} dans chaque agent qui ne les définit pas (agents.py:37-39) et harness_engineering (agents.py:40) ; agents.py:64-65 vérifie les fichiers de prompt"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/data_types.py:335",
+      "ligne_cle": 30,
+      "cles": [
+        "defaults.protected_files",
+        "defaults.data_dir",
+        "observability.db",
+        "observability.poll_ms"
+      ],
+      "confiance": "moyenne",
+      "note": "schéma pydantic (ConfigDefaults, ObservabilityConfig, AgentConfig) qui valide/typent ces clés ; poll_ms n'est lu que par ce schéma côté Python (aucun autre lecteur trouvé par grep, hors docs)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_modules/permissions.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/permissions.py:148",
+      "ligne_cle": 30,
+      "cles": [
+        "defaults.protected_files",
+        "defaults.data_dir"
+      ],
+      "confiance": "haute",
+      "note": "permissions.py:148 lit defaults.protected_files, :139 lit defaults.data_dir, :146/:150 lisent agent.writes (ce profil ne définit pas protected_files : défaut de data_types.py:335)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_modules/runner.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/runner.py:54",
+      "ligne_cle": 30,
+      "cles": [
+        "defaults.data_dir",
+        "observability.db"
+      ],
+      "confiance": "haute",
+      "note": "runner.py:54 construit {data_dir}/sessions/{adw_id} ; :102 et :141 utilisent observability.db"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "adws/adw_modules/session.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/session.py:40",
+      "ligne_cle": 33,
+      "cles": [
+        "observability.db",
+        "defaults.data_dir"
+      ],
+      "confiance": "haute",
+      "note": "session.py:40-41 ouvre le Tracer sur observability.db et {data_dir}/sessions/{adw_id}/events.jsonl"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "vers": "just/sandbox/lifecycle/setup.just",
+      "type": "configure",
+      "preuve": "just/sandbox/lifecycle/setup.just:178",
+      "ligne_cle": 15,
+      "cles": [
+        "defaults.model"
+      ],
+      "confiance": "haute",
+      "note": "l'assertion C de setup.just extrait tous les `model:` du fichier par awk et ping chaque modèle sur openrouter.ai"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_data/harness_engineering/subagents.ts",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:57",
+      "ligne_cle": 57,
+      "confiance": "haute",
+      "note": "agents.planner.harness_engineering : extension Pi passée en -e (agents.py:124, agent_pi.py:263)",
+      "occurrences": 2
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/builder/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:77",
+      "ligne_cle": 77,
+      "confiance": "haute",
+      "note": "agents.builder.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/builder/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:78",
+      "ligne_cle": 78,
+      "confiance": "haute",
+      "note": "agents.builder.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/documenter/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:138",
+      "ligne_cle": 138,
+      "confiance": "haute",
+      "note": "agents.documenter.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/documenter/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:139",
+      "ligne_cle": 139,
+      "confiance": "haute",
+      "note": "agents.documenter.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:54",
+      "ligne_cle": 54,
+      "confiance": "haute",
+      "note": "agents.planner.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:55",
+      "ligne_cle": 55,
+      "confiance": "haute",
+      "note": "agents.planner.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/reviewer/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:121",
+      "ligne_cle": 121,
+      "confiance": "haute",
+      "note": "agents.reviewer.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/reviewer/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:122",
+      "ligne_cle": 122,
+      "confiance": "haute",
+      "note": "agents.reviewer.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/scout/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:95",
+      "ligne_cle": 95,
+      "confiance": "haute",
+      "note": "agents.scout.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/scout/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:96",
+      "ligne_cle": 96,
+      "confiance": "haute",
+      "note": "agents.scout.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_modules/agent_pi.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/agent_pi.py:262",
+      "ligne_cle": 21,
+      "cles": [
+        "defaults.tools"
+      ],
+      "confiance": "haute",
+      "note": "agent_pi.py:262 transforme la liste tools en --tools ; :264 les extensions en -e (tools = valeur résolue agent/defaults)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_modules/agents.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/agents.py:37",
+      "ligne_cle": 13,
+      "cles": [
+        "defaults.coding_agent",
+        "defaults.model",
+        "defaults.thinking",
+        "defaults.tools",
+        "defaults.harness_engineering"
+      ],
+      "confiance": "haute",
+      "note": "load_config recopie defaults.{coding_agent, model, thinking, color, tools, writes} dans chaque agent qui ne les définit pas (agents.py:37-39) et harness_engineering (agents.py:40) ; agents.py:64-65 vérifie les fichiers de prompt"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/data_types.py:335",
+      "ligne_cle": 38,
+      "cles": [
+        "defaults.protected_files",
+        "defaults.data_dir",
+        "observability.db",
+        "observability.poll_ms"
+      ],
+      "confiance": "moyenne",
+      "note": "schéma pydantic (ConfigDefaults, ObservabilityConfig, AgentConfig) qui valide/typent ces clés ; poll_ms n'est lu que par ce schéma côté Python (aucun autre lecteur trouvé par grep, hors docs)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_modules/permissions.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/permissions.py:148",
+      "ligne_cle": 38,
+      "cles": [
+        "defaults.protected_files",
+        "defaults.data_dir",
+        "agents.planner.writes",
+        "agents.scout.writes",
+        "agents.reviewer.writes",
+        "agents.documenter.writes"
+      ],
+      "confiance": "haute",
+      "note": "permissions.py:148 lit defaults.protected_files, :139 lit defaults.data_dir, :146/:150 lisent agent.writes"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_modules/runner.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/runner.py:54",
+      "ligne_cle": 42,
+      "cles": [
+        "defaults.data_dir",
+        "observability.db"
+      ],
+      "confiance": "haute",
+      "note": "runner.py:54 construit {data_dir}/sessions/{adw_id} ; :102 et :141 utilisent observability.db"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "adws/adw_modules/session.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/session.py:40",
+      "ligne_cle": 45,
+      "cles": [
+        "observability.db",
+        "defaults.data_dir"
+      ],
+      "confiance": "haute",
+      "note": "session.py:40-41 ouvre le Tracer sur observability.db et {data_dir}/sessions/{adw_id}/events.jsonl"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "vers": "just/sandbox/lifecycle/setup.just",
+      "type": "configure",
+      "preuve": "just/sandbox/lifecycle/setup.just:178",
+      "ligne_cle": 14,
+      "cles": [
+        "defaults.model"
+      ],
+      "confiance": "haute",
+      "note": "l'assertion C de setup.just extrait tous les `model:` du fichier par awk et ping chaque modèle sur openrouter.ai"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_data/harness_engineering/subagents.ts",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:57",
+      "ligne_cle": 57,
+      "confiance": "haute",
+      "note": "agents.planner.harness_engineering : extension Pi passée en -e (agents.py:124, agent_pi.py:263)",
+      "occurrences": 2
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/builder/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:77",
+      "ligne_cle": 77,
+      "confiance": "haute",
+      "note": "agents.builder.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/builder/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:78",
+      "ligne_cle": 78,
+      "confiance": "haute",
+      "note": "agents.builder.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/documenter/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:138",
+      "ligne_cle": 138,
+      "confiance": "haute",
+      "note": "agents.documenter.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/documenter/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:139",
+      "ligne_cle": 139,
+      "confiance": "haute",
+      "note": "agents.documenter.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:54",
+      "ligne_cle": 54,
+      "confiance": "haute",
+      "note": "agents.planner.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:55",
+      "ligne_cle": 55,
+      "confiance": "haute",
+      "note": "agents.planner.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/reviewer/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:121",
+      "ligne_cle": 121,
+      "confiance": "haute",
+      "note": "agents.reviewer.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/reviewer/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:122",
+      "ligne_cle": 122,
+      "confiance": "haute",
+      "note": "agents.reviewer.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/scout/system.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:95",
+      "ligne_cle": 95,
+      "confiance": "haute",
+      "note": "agents.scout.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_data/prompt_engineering/scout/user.md",
+      "type": "configure",
+      "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:96",
+      "ligne_cle": 96,
+      "confiance": "haute",
+      "note": "agents.scout.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_modules/agent_pi.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/agent_pi.py:262",
+      "ligne_cle": 21,
+      "cles": [
+        "defaults.tools"
+      ],
+      "confiance": "haute",
+      "note": "agent_pi.py:262 transforme la liste tools en --tools ; :264 les extensions en -e (tools = valeur résolue agent/defaults)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_modules/agents.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/agents.py:37",
+      "ligne_cle": 13,
+      "cles": [
+        "defaults.coding_agent",
+        "defaults.model",
+        "defaults.thinking",
+        "defaults.tools",
+        "defaults.harness_engineering"
+      ],
+      "confiance": "haute",
+      "note": "load_config recopie defaults.{coding_agent, model, thinking, color, tools, writes} dans chaque agent qui ne les définit pas (agents.py:37-39) et harness_engineering (agents.py:40) ; agents.py:64-65 vérifie les fichiers de prompt"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_modules/data_types.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/data_types.py:335",
+      "ligne_cle": 38,
+      "cles": [
+        "defaults.protected_files",
+        "defaults.data_dir",
+        "observability.db",
+        "observability.poll_ms"
+      ],
+      "confiance": "moyenne",
+      "note": "schéma pydantic (ConfigDefaults, ObservabilityConfig, AgentConfig) qui valide/typent ces clés ; poll_ms n'est lu que par ce schéma côté Python (aucun autre lecteur trouvé par grep, hors docs)"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_modules/permissions.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/permissions.py:148",
+      "ligne_cle": 38,
+      "cles": [
+        "defaults.protected_files",
+        "defaults.data_dir",
+        "agents.planner.writes",
+        "agents.scout.writes",
+        "agents.reviewer.writes",
+        "agents.documenter.writes"
+      ],
+      "confiance": "haute",
+      "note": "permissions.py:148 lit defaults.protected_files, :139 lit defaults.data_dir, :146/:150 lisent agent.writes"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_modules/runner.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/runner.py:54",
+      "ligne_cle": 42,
+      "cles": [
+        "defaults.data_dir",
+        "observability.db"
+      ],
+      "confiance": "haute",
+      "note": "runner.py:54 construit {data_dir}/sessions/{adw_id} ; :102 et :141 utilisent observability.db"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "adws/adw_modules/session.py",
+      "type": "configure",
+      "preuve": "adws/adw_modules/session.py:40",
+      "ligne_cle": 45,
+      "cles": [
+        "observability.db",
+        "defaults.data_dir"
+      ],
+      "confiance": "haute",
+      "note": "session.py:40-41 ouvre le Tracer sur observability.db et {data_dir}/sessions/{adw_id}/events.jsonl"
+    },
+    {
+      "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "vers": "just/sandbox/lifecycle/setup.just",
+      "type": "configure",
+      "preuve": "just/sandbox/lifecycle/setup.just:178",
+      "ligne_cle": 14,
+      "cles": [
+        "defaults.model"
+      ],
+      "confiance": "haute",
+      "note": "l'assertion C de setup.just extrait tous les `model:` du fichier par awk et ping chaque modèle sur openrouter.ai"
+    },
+    {
+      "de": "just/adws.just",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "just/adws.just:11",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    },
+    {
+      "de": "just/sandbox/lifecycle/setup.just",
+      "vers": "adws/adw_sssf_config/sssf.config.yaml",
+      "type": "lit",
+      "preuve": "just/sandbox/lifecycle/setup.just:176",
+      "confiance": "haute",
+      "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+    }
+  ]
+}

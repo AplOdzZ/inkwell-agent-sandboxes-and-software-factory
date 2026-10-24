@@ -1,0 +1,1010 @@
+{
+  "top10_relies": [
+    {
+      "chemin": "adws/adw_sssf_config/sssf.config.yaml",
+      "entrants": 15,
+      "sortants": 18,
+      "total": 33
+    },
+    {
+      "chemin": "adws/adw_modules/agents.py",
+      "entrants": 7,
+      "sortants": 16,
+      "total": 23
+    },
+    {
+      "chemin": "adws/adw_modules/runner.py",
+      "entrants": 8,
+      "sortants": 12,
+      "total": 20
+    },
+    {
+      "chemin": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+      "entrants": 0,
+      "sortants": 18,
+      "total": 18
+    },
+    {
+      "chemin": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+      "entrants": 0,
+      "sortants": 18,
+      "total": 18
+    },
+    {
+      "chemin": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+      "entrants": 0,
+      "sortants": 18,
+      "total": 18
+    },
+    {
+      "chemin": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+      "entrants": 0,
+      "sortants": 18,
+      "total": 18
+    },
+    {
+      "chemin": "adws/adw_modules/data_types.py",
+      "entrants": 15,
+      "sortants": 0,
+      "total": 15
+    },
+    {
+      "chemin": "adws/adw_modules/agent_pi.py",
+      "entrants": 7,
+      "sortants": 6,
+      "total": 13
+    },
+    {
+      "chemin": "adws/adw_modules/utils.py",
+      "entrants": 12,
+      "sortants": 1,
+      "total": 13
+    }
+  ],
+  "liens_inverses": {
+    ".env": [
+      {
+        "de": "adws/adw_modules/utils.py",
+        "type": "lit",
+        "preuve": "adws/adw_modules/utils.py:13"
+      }
+    ],
+    "<chemins declares dans envelope.artifacts>": [
+      {
+        "de": "adws/adw_modules/gates.py",
+        "type": "lit",
+        "preuve": "adws/adw_modules/gates.py:30"
+      }
+    ],
+    "<tout chemin du depot deja modifie avant la phase>": [
+      {
+        "de": "adws/adw_modules/permissions.py",
+        "type": "lit",
+        "preuve": "adws/adw_modules/permissions.py:172"
+      }
+    ],
+    "<tout chemin du depot modifie hors perimetre>": [
+      {
+        "de": "adws/adw_modules/permissions.py",
+        "type": "ecrit",
+        "preuve": "adws/adw_modules/permissions.py:185"
+      }
+    ],
+    "adws/adw_data/harness_engineering/subagents.ts": [
+      {
+        "de": "adws/adw_modules/agent_pi.py",
+        "type": "charge_extension",
+        "preuve": "adws/adw_modules/agent_pi.py:264"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.config.yaml:49"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:57"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:46"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:57"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:57"
+      }
+    ],
+    "adws/adw_data/prompt_engineering/<agent>/{system,user}.md": [
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "rend_prompt",
+        "preuve": "adws/adw_modules/agents.py:89"
+      }
+    ],
+    "adws/adw_data/prompt_engineering/builder/system.md": [
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.config.yaml:68"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:76"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:65"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:77"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:77"
+      }
+    ],
+    "adws/adw_data/prompt_engineering/builder/user.md": [
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.config.yaml:69"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:77"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:66"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:78"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:78"
+      }
+    ],
+    "adws/adw_data/prompt_engineering/documenter/system.md": [
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.config.yaml:129"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:134"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:123"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:138"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:138"
+      }
+    ],
+    "adws/adw_data/prompt_engineering/documenter/user.md": [
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.config.yaml:130"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:135"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:124"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:139"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:139"
+      }
+    ],
+    "adws/adw_data/prompt_engineering/planner/system.md": [
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.config.yaml:46"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:54"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:43"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:54"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:54"
+      }
+    ],
+    "adws/adw_data/prompt_engineering/planner/user.md": [
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.config.yaml:47"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:55"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:44"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:55"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:55"
+      }
+    ],
+    "adws/adw_data/prompt_engineering/reviewer/system.md": [
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.config.yaml:112"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:118"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:107"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:121"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:121"
+      }
+    ],
+    "adws/adw_data/prompt_engineering/reviewer/user.md": [
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.config.yaml:113"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:119"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:108"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:122"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:122"
+      }
+    ],
+    "adws/adw_data/prompt_engineering/scout/system.md": [
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.config.yaml:85"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:93"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:82"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:95"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:95"
+      }
+    ],
+    "adws/adw_data/prompt_engineering/scout/user.md": [
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.config.yaml:86"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:94"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:83"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:96"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:96"
+      }
+    ],
+    "adws/adw_data/sessions/<adw_id>/<agent>/envelope.json": [
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "ecrit",
+        "preuve": "adws/adw_modules/agents.py:313"
+      }
+    ],
+    "adws/adw_data/sessions/<adw_id>/<agent>/prompts/{system,user}.md": [
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "ecrit",
+        "preuve": "adws/adw_modules/agents.py:91"
+      }
+    ],
+    "adws/adw_data/sessions/<adw_id>/<agent>/raw_output.jsonl": [
+      {
+        "de": "adws/adw_modules/agent_pi.py",
+        "type": "ecrit",
+        "preuve": "adws/adw_modules/agent_pi.py:284"
+      }
+    ],
+    "adws/adw_data/sessions/<adw_id>/agent_map.json": [
+      {
+        "de": "adws/adw_modules/runner.py",
+        "type": "ecrit",
+        "preuve": "adws/adw_modules/runner.py:63"
+      },
+      {
+        "de": "adws/adw_modules/runner.py",
+        "type": "lit",
+        "preuve": "adws/adw_modules/runner.py:57"
+      }
+    ],
+    "adws/adw_data/sessions/<adw_id>/context_handoff/changes.diff": [
+      {
+        "de": "adws/adw_modules/changes.py",
+        "type": "ecrit",
+        "preuve": "adws/adw_modules/changes.py:74"
+      }
+    ],
+    "adws/adw_data/sessions/<adw_id>/context_handoff/quality/NN_<check>/command.log": [
+      {
+        "de": "adws/adw_modules/quality.py",
+        "type": "ecrit",
+        "preuve": "adws/adw_modules/quality.py:82"
+      }
+    ],
+    "adws/adw_data/sessions/<adw_id>/events.jsonl": [
+      {
+        "de": "adws/adw_modules/tracer.py",
+        "type": "ecrit",
+        "preuve": "adws/adw_modules/tracer.py:127"
+      }
+    ],
+    "adws/adw_data/sssf.db": [
+      {
+        "de": "adws/adw_modules/tracer.py",
+        "type": "ecrit",
+        "preuve": "adws/adw_modules/tracer.py:108"
+      }
+    ],
+    "adws/adw_modules/agent_pi.py": [
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/agents.py:69"
+      },
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/agents.py:18"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/agent_pi.py:262"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/agent_pi.py:262"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/agent_pi.py:262"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/agent_pi.py:262"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/agent_pi.py:262"
+      }
+    ],
+    "adws/adw_modules/agents.py": [
+      {
+        "de": "adws/adw_modules/runner.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/runner.py:39"
+      },
+      {
+        "de": "adws/adw_modules/runner.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/runner.py:16"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/agents.py:37"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/agents.py:37"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/agents.py:37"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/agents.py:37"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/agents.py:37"
+      }
+    ],
+    "adws/adw_modules/console.py": [
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/agents.py:104"
+      },
+      {
+        "de": "adws/adw_modules/quality.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/quality.py:56"
+      },
+      {
+        "de": "adws/adw_modules/runner.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/runner.py:47"
+      },
+      {
+        "de": "adws/adw_modules/runner.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/runner.py:17"
+      }
+    ],
+    "adws/adw_modules/data_types.py": [
+      {
+        "de": "adws/adw_modules/agent_pi.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/agent_pi.py:19"
+      },
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/agents.py:19"
+      },
+      {
+        "de": "adws/adw_modules/changes.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/changes.py:19"
+      },
+      {
+        "de": "adws/adw_modules/console.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/console.py:16"
+      },
+      {
+        "de": "adws/adw_modules/gates.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/gates.py:17"
+      },
+      {
+        "de": "adws/adw_modules/permissions.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/permissions.py:38"
+      },
+      {
+        "de": "adws/adw_modules/quality.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/quality.py:18"
+      },
+      {
+        "de": "adws/adw_modules/runner.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/runner.py:18"
+      },
+      {
+        "de": "adws/adw_modules/session.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/session.py:15"
+      },
+      {
+        "de": "adws/adw_modules/tracer.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/tracer.py:14"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/data_types.py:335"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/data_types.py:335"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/data_types.py:335"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/data_types.py:335"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/data_types.py:335"
+      }
+    ],
+    "adws/adw_modules/git_helper.py": [
+      {
+        "de": "adws/adw_modules/changes.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/changes.py:26"
+      },
+      {
+        "de": "adws/adw_modules/changes.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/changes.py:18"
+      },
+      {
+        "de": "adws/adw_modules/runner.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/runner.py:53"
+      },
+      {
+        "de": "adws/adw_modules/runner.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/runner.py:16"
+      }
+    ],
+    "adws/adw_modules/permissions.py": [
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/agents.py:145"
+      },
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/agents.py:18"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/permissions.py:148"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/permissions.py:148"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/permissions.py:148"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/permissions.py:148"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/permissions.py:148"
+      }
+    ],
+    "adws/adw_modules/prompts.py": [
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/agents.py:89"
+      },
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/agents.py:18"
+      }
+    ],
+    "adws/adw_modules/runner.py": [
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/agents.py:134"
+      },
+      {
+        "de": "adws/adw_modules/session.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/session.py:42"
+      },
+      {
+        "de": "adws/adw_modules/session.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/session.py:16"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/runner.py:54"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/runner.py:54"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/runner.py:54"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/runner.py:54"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/runner.py:54"
+      }
+    ],
+    "adws/adw_modules/session.py": [
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/session.py:40"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/session.py:40"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/session.py:40"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/session.py:40"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "adws/adw_modules/session.py:40"
+      }
+    ],
+    "adws/adw_modules/tracer.py": [
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/agents.py:95"
+      },
+      {
+        "de": "adws/adw_modules/console.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/console.py:43"
+      },
+      {
+        "de": "adws/adw_modules/quality.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/quality.py:87"
+      },
+      {
+        "de": "adws/adw_modules/runner.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/runner.py:52"
+      },
+      {
+        "de": "adws/adw_modules/session.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/session.py:40"
+      },
+      {
+        "de": "adws/adw_modules/session.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/session.py:17"
+      }
+    ],
+    "adws/adw_modules/utils.py": [
+      {
+        "de": "adws/adw_modules/agent_pi.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/agent_pi.py:49"
+      },
+      {
+        "de": "adws/adw_modules/agent_pi.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/agent_pi.py:20"
+      },
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/agents.py:237"
+      },
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/agents.py:22"
+      },
+      {
+        "de": "adws/adw_modules/quality.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/quality.py:54"
+      },
+      {
+        "de": "adws/adw_modules/quality.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/quality.py:20"
+      },
+      {
+        "de": "adws/adw_modules/runner.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/runner.py:54"
+      },
+      {
+        "de": "adws/adw_modules/runner.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/runner.py:19"
+      },
+      {
+        "de": "adws/adw_modules/session.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/session.py:39"
+      },
+      {
+        "de": "adws/adw_modules/session.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/session.py:18"
+      },
+      {
+        "de": "adws/adw_modules/tracer.py",
+        "type": "appelle",
+        "preuve": "adws/adw_modules/tracer.py:104"
+      },
+      {
+        "de": "adws/adw_modules/tracer.py",
+        "type": "importe",
+        "preuve": "adws/adw_modules/tracer.py:15"
+      }
+    ],
+    "adws/adw_sssf_config/sssf.config.yaml": [
+      {
+        "de": "adws/adw_build.py",
+        "type": "lit",
+        "preuve": "adws/adw_build.py:42"
+      },
+      {
+        "de": "adws/adw_build_review.py",
+        "type": "lit",
+        "preuve": "adws/adw_build_review.py:73"
+      },
+      {
+        "de": "adws/adw_build_test.py",
+        "type": "lit",
+        "preuve": "adws/adw_build_test.py:76"
+      },
+      {
+        "de": "adws/adw_document.py",
+        "type": "lit",
+        "preuve": "adws/adw_document.py:73"
+      },
+      {
+        "de": "adws/adw_modules/agents.py",
+        "type": "lit",
+        "preuve": "adws/adw_modules/agents.py:33"
+      },
+      {
+        "de": "adws/adw_plan.py",
+        "type": "lit",
+        "preuve": "adws/adw_plan.py:42"
+      },
+      {
+        "de": "adws/adw_plan_build.py",
+        "type": "lit",
+        "preuve": "adws/adw_plan_build.py:52"
+      },
+      {
+        "de": "adws/adw_plan_build_test.py",
+        "type": "lit",
+        "preuve": "adws/adw_plan_build_test.py:83"
+      },
+      {
+        "de": "adws/adw_plan_build_test_quality.py",
+        "type": "lit",
+        "preuve": "adws/adw_plan_build_test_quality.py:95"
+      },
+      {
+        "de": "adws/adw_prompt.py",
+        "type": "lit",
+        "preuve": "adws/adw_prompt.py:41"
+      },
+      {
+        "de": "adws/adw_quality.py",
+        "type": "lit",
+        "preuve": "adws/adw_quality.py:46"
+      },
+      {
+        "de": "adws/adw_scout.py",
+        "type": "lit",
+        "preuve": "adws/adw_scout.py:42"
+      },
+      {
+        "de": "adws/adw_simple_sdlc.py",
+        "type": "lit",
+        "preuve": "adws/adw_simple_sdlc.py:180"
+      },
+      {
+        "de": "just/adws.just",
+        "type": "lit",
+        "preuve": "just/adws.just:11"
+      },
+      {
+        "de": "just/sandbox/lifecycle/setup.just",
+        "type": "lit",
+        "preuve": "just/sandbox/lifecycle/setup.just:176"
+      }
+    ],
+    "apps/inkwell/public/app.js": [
+      {
+        "de": "adws/adw_modules/quality.py",
+        "type": "lit",
+        "preuve": "adws/adw_modules/quality.py:125"
+      }
+    ],
+    "apps/inkwell/server.test.ts": [
+      {
+        "de": "adws/adw_modules/quality.py",
+        "type": "lit",
+        "preuve": "adws/adw_modules/quality.py:193"
+      }
+    ],
+    "apps/inkwell/server.ts": [
+      {
+        "de": "adws/adw_modules/quality.py",
+        "type": "lit",
+        "preuve": "adws/adw_modules/quality.py:134"
+      }
+    ],
+    "just/obs.just": [
+      {
+        "de": "adws/adw_modules/console.py",
+        "type": "decrit",
+        "preuve": "adws/adw_modules/console.py:65"
+      }
+    ],
+    "just/sandbox/lifecycle/setup.just": [
+      {
+        "de": "adws/adw_sssf_config/sssf.config.yaml",
+        "type": "configure",
+        "preuve": "just/sandbox/lifecycle/setup.just:178"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+        "type": "configure",
+        "preuve": "just/sandbox/lifecycle/setup.just:178"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+        "type": "configure",
+        "preuve": "just/sandbox/lifecycle/setup.just:178"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+        "type": "configure",
+        "preuve": "just/sandbox/lifecycle/setup.just:178"
+      },
+      {
+        "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+        "type": "configure",
+        "preuve": "just/sandbox/lifecycle/setup.just:178"
+      }
+    ],
+    "~/.pi/agent/models.json": [
+      {
+        "de": "adws/adw_modules/agent_pi.py",
+        "type": "lit",
+        "preuve": "adws/adw_modules/agent_pi.py:110"
+      }
+    ]
+  }
+}
