@@ -1,0 +1,250 @@
+{
+  "adws/adw_modules/data_types.py": {
+    "status": "fait",
+    "niveau": 3,
+    "role": "Catalogue des modèles pydantic de la factory : paramètres de phase, enveloppes JSON que chaque agent doit rendre, résultats qualité, capture du diff, rapports de portes, et surtout le schéma de sssf.config.yaml (agents, défauts, observabilité) avec ses valeurs par défaut. Le fichier ne lit, n'écrit et ne lance rien : il décrit des formes.",
+    "points": [
+      "En-tête (l.1-8) : règle « plus de 4 paramètres = un objet » et « chaque appel d'agent a un type de sortie ». La seconde est tenue (agents.py:286 valide contre call.output_type). La première ne l'est pas partout (voir registre).",
+      "Pydantic v2 obligatoire : field_validator et ValidationInfo (l.14). Aucune version n'est épinglée dans les en-têtes uv (adws/adw_build.py:3, sandbox_mount/guest/provision.sh:136).",
+      "PhaseKind = engineer | agent | code (l.16). Les trois valeurs sont bien utilisées par les ADW (24 agent, 14 code, 12 engineer par git grep).",
+      "PhaseStatus = queued | running | success | fail (l.17). « queued » n'est jamais posé par le code Python : runner.py:75-77 crée la phase en « running », puis runner.py:89 ou :105 la passent en fail ou success. Seul le visualiseur le mentionne (.claude/skills/sssf/apps/visualizer/shared/types.ts:12-13).",
+      "PhaseParams (l.22-53) : name, kind, owner, description obligatoires ; retries = 0 par défaut. Le validateur (l.31-53) écrase les espaces multiples, refuse une description vide ou qui répète le nom. retries est lu par agents.py:152 et :167 (nombre de relances après échec de porte) ; les ADW mettent retries=1 pour builder et documenter (ex. adws/adw_build.py:31, adws/adw_document.py:60).",
+      "PhaseParams.owner (l.27) n'est pas vérifié par le schéma : un nom d'agent inconnu n'échoue qu'à l'exécution, via resolve() (agents.py:80 puis agents.py:48).",
+      "Phase (l.56-67) : status vaut « fail » par défaut (l.63, « success must be earned »), mais runner.py:75-77 le force à « running » dès la création ; le défaut ne sert donc jamais dans le code actuel.",
+      "EnvelopeBase (l.72-78) : seul status (success | fail) est obligatoire ; summary, artifacts, notes_for_next_agent ont des défauts vides. Une réponse {\"status\": \"success\"} passe la validation ; seules les portes vérifient le reste. Un status « fail » fait échouer la phase (agents.py:219-220).",
+      "Les enveloppes ne refusent pas les champs inconnus (aucun model_config extra dans le fichier ; seul l.289 en a un, pour AgentCall). Un agent qui écrit « approve » au lieu de « approved » obtient approved=False (l.118) : l'erreur va dans le sens prudent pour le relecteur.",
+      "PlanOutput (l.85-90) : commit_message = \"\". Lu par adws/adw_simple_sdlc.py:69, avec repli « sssf(<id>): <summary> » s'il est vide.",
+      "BuildOutput (l.93-95) : changed_files et commit_message. changed_files n'est contrôlé que par l'existence sur disque (gates.py:61-68), pas comparé au vrai diff. commit_message est lu avec repli (adws/adw_plan_build.py:43, adws/adw_plan_build_test.py:73).",
+      "ScoutOutput / ScoutFinding (l.98-104) : findings n'est lu par aucun code Python (git grep -w findings : seul gates.py:82 lit les findings du relecteur). Il est seulement stocké (agents.py:306-313).",
+      "ReviewOutput / ReviewFinding (l.107-120) : approved=False par défaut (prudent). Lu par adws/adw_build_review.py:56 et vérifié en cohérence par la porte verdict_consistent (gates.py:71-95).",
+      "DocumentOutput (l.123-128) : document_path et documented_files ne sont lus par aucun code ; les portes du documenter ne regardent que artifacts (adws/adw_document.py:64, gates.py:27-44).",
+      "Le contrat « triade » type / JSON du prompt / output_type= est respecté pour les 5 agents : les champs des blocs ## Report de adws/adw_data/prompt_engineering/{planner,builder,scout,reviewer,documenter}/user.md correspondent aux classes l.85-128.",
+      "Qualité (l.133-172) : QualityArea = frontend | backend, QualityOperation = lint | typecheck | build. Pas de valeur « test » : le test bun est rangé en « build » (quality.py:189-194, commentaire quality.py:192). timeout_seconds = 120 par défaut (l.144), porté à 600 pour les tests (quality.py:194), appliqué par quality.py:68.",
+      "QualityCheckResult.output_tail (l.158-163) : la fin brute de stdout+stderr est renvoyée au builder (quality.py:116), donc la sortie d'un outil revient dans le prompt de l'agent.",
+      "ChangeCapture (l.177-182) : base = \"main\", max_diff_lines = 2000, include_untracked = True. Seul base est passé par les ADW (adws/adw_document.py:48, adws/adw_simple_sdlc.py:152) ; les deux autres gardent toujours leur défaut. Appliqués par changes.py:56 et changes.py:62-66.",
+      "BaseRef.label (l.197-202) : raccourcit seulement un sha de 40 caractères en minuscules hexadécimales ; tout autre texte est affiché tel quel.",
+      "ChangeSet (l.205-219) : truncated est rempli (changes.py:84) mais lu par personne ; la coupure est signalée dans le texte du fichier diff (changes.py:65-66). ChangeSet.empty est lu par adws/adw_document.py:54 et adws/adw_simple_sdlc.py:158.",
+      "ChangesOutput et VerifyOutput (l.222-247) : adaptateurs pour donner un résultat calculé par le code à un agent, construits par changes.py:87-98 et quality.py:208-219.",
+      "GateCheck / GateReport (l.252-283) : violations et passed sont dérivés des checks. passed est lu par console.py:113 et tracer.py:246. Une porte qui rend encore une liste est convertie par agents.py:226-230.",
+      "AgentCall (l.286-294) : output_type, prompt, previous, gates. previous est sérialisé en JSON et injecté tel quel dans le prompt de l'agent suivant (agents.py:86). Le commentaire l.294 parle de list[str] (contradiction déjà relevée par la carte, confirmée : gates.py:3 dit GateReport).",
+      "PromptEngineering (l.299-301) : system et user obligatoires, ce sont des chemins ; leur existence est vérifiée par validate() (agents.py:64-67) pour les agents requis seulement.",
+      "AgentConfig (l.304-322) : défauts coding_agent=pi, model=google/gemini-3.6-flash, thinking=medium, color=\"\", purpose=\"\", harness_engineering=[], tools=None, writes=None. thinking est un texte libre : la liste des niveaux n'est qu'un commentaire (l.308) et la valeur part telle quelle vers « pi --thinking » (agent_pi.py:256).",
+      "AgentConfig.coding_agent accepte « claude_code » (l.306) mais validate() le refuse pour les agents requis (agents.py:61-63).",
+      "AgentConfig.writes (l.314-322) : None = libre sauf protected_files, [] = aucune écriture dans le dépôt, liste = seulement ces chemins. Appliqué par permissions.py:142-150 (le dossier data_dir passe toujours en premier, permissions.py:144).",
+      "ConfigDefaults (l.325-338) : mêmes défauts que AgentConfig pour coding_agent, model, thinking, color, harness_engineering, tools ; plus protected_files (l.335-337 : adws/adw_modules/, adws/adw_sssf_config/, adws/adw_*.py) et data_dir = adws/adw_data (l.338). Pas de champ writes (registre n°29, confirmé). La recopie des défauts dans chaque agent se fait hors schéma, dans load_config (agents.py:35-40).",
+      "Les défauts de modèle du schéma (l.307, l.327) ne servent dans aucune config du dépôt : les 6 YAML posent tous defaults.model (vérifié par lecture YAML). Le profil frontier n'a pas protected_files et retombe sur l.335-337 (registre n°18, confirmé).",
+      "ObservabilityConfig (l.341-343) : db = adws/adw_data/sssf.db, lu par session.py:40, runner.py:102, runner.py:141, provision.sh:149. poll_ms = 500 n'est lu par aucun code (voir registre).",
+      "SSSFConfig (l.346-349) : defaults, observability, agents, tous avec défaut. Un YAML vide donne une config valide sans agent ; c'est validate() qui échouera ensuite (agents.py:44-49).",
+      "Aucun modèle de config ne refuse les clés inconnues : pas de model_config extra='forbid' dans le fichier (le seul model_config est l.289). Pydantic ignore alors ces clés en silence (test sur un modèle analogue, pydantic 2.13.5 local : {'name':'s','write':[]} donne writes=None). Voir registre.",
+      "Confrontation YAML / schéma (script de lecture sur les 6 fichiers *.yaml) : aujourd'hui aucune clé inconnue, à aucun niveau (racine, defaults, observability, agents, prompt_engineering). Aucune config ne pose defaults.color.",
+      "EventRecord (l.354-368) : type est un texte libre (l.359). parent_id (l.362) n'est jamais rempli par le code (git grep parent_id= : aucun résultat) ; il vaut toujours \"\". tokens n'est posé que sur agent_end (agents.py:213). started_at est complété par le traceur s'il manque (tracer.py:134). La liste du commentaire l.359 oublie thinking et agent_message (registre n°37, confirmé : agents.py:250).",
+      "PiRequest (l.373-385) : tous les champs sont transformés en arguments de pi par agent_pi.py:252-265. tools=None ou [] => pas d'option --tools (agent_pi.py:261-262, registre n°39, confirmé). cwd vaut « . » par défaut mais est toujours posé à repo_root (agents.py:125).",
+      "UsageBreakdown (l.388-433) : add_turn lit les clés de pi input, output, cacheRead, cacheWrite, reasoning et cost.{input,output,cacheRead,cacheWrite,total} (l.417-428). merge (l.430-433) additionne tous les champs ; il est appelé à chaque envoi (agents.py:135). Il lit self.model_fields sur l'instance, accès déprécié depuis pydantic 2.11 (avertissement constaté avec pydantic 2.13.5) ; le code donne aujourd'hui le bon résultat.",
+      "PiResult (l.436-447) : tokens et cost cumulent tous les tours (agent_pi.py:304, :311) ; context_tokens est la valeur du dernier tour valide (agent_pi.py:309-310) ; context_window vaut 0 si le catalogue ne connaît pas le modèle (agent_pi.py:108-117).",
+      "La copie modèle .claude/skills/sssf/templates/adws/adw_modules/data_types.py est identique (git diff --no-index --stat : aucune différence, code retour 0)."
+    ],
+    "deps": [
+      "Dépend seulement de typing et pydantic (l.12-14). Aucun import interne.",
+      "Importé par 10 modules : agent_pi.py:19, agents.py:19, changes.py:19, console.py:16, gates.py:17, permissions.py:38, quality.py:18, runner.py:18, session.py:15, tracer.py:14 (tous sous adws/adw_modules/).",
+      "Importé par les 12 ADW : adws/adw_build.py:17, adw_build_review.py:26, adw_build_test.py:26, adw_document.py:26, adw_plan.py:17, adw_plan_build.py:17, adw_plan_build_test.py:21, adw_plan_build_test_quality.py:23, adw_prompt.py:17, adw_quality.py:17, adw_scout.py:17, adw_simple_sdlc.py:48 (liens de la carte confirmés).",
+      "Le schéma de config est rempli par agents.load_config (agents.py:33-41), appelé par chaque ADW et par sandbox_mount/guest/provision.sh:145-152 dans la VM.",
+      "Utilisé aussi dans un modèle de code généré : .claude/skills/sssf/scripts/make_adw.py:39 (import data_types dans l'ADW produit).",
+      "Miroir côté visualiseur : .claude/skills/sssf/apps/visualizer/shared/types.ts:13 recopie PhaseStatus ; le visualiseur ne lit pas la config.",
+      "Documenté (sans valeur de preuve) par .claude/skills/sssf/references/config.md, references/handoff.md:28, cookbooks/update_modules.md:13, cookbooks/update_config.md:93, SKILL.md:63-64.",
+      "Carte à corriger : liens manquants sandbox_mount/guest/provision.sh:145-152 (charge la config dans la VM), .claude/skills/sssf/scripts/make_adw.py:39 (le code généré importe data_types) et .claude/skills/sssf/apps/visualizer/shared/types.ts:13 (copie de PhaseStatus) ; la fiche ne dit pas que le schéma ignore les clés inconnues."
+    ],
+    "vigilance": [
+      "Une faute de frappe sur une clé de sécurité est ignorée sans bruit : « write: [] » au lieu de « writes: [] » laisse writes=None, donc l'agent devient libre (permissions.py:150). Pareil pour « protected_file: » qui laisse les 3 chemins par défaut (l.335-337) au lieu de la liste voulue.",
+      "Piège YAML : « writes: » suivi seulement d'un commentaire ou de lignes commentées vaut null, donc None, donc libre (vérifié : yaml.safe_load('writes:   # read-only') donne None). Il faut écrire « writes: [] » explicitement.",
+      "data_dir (l.338) est inscriptible par tous les agents (permissions.py:139, :144) et contient les prompts et extensions de la factory, ainsi que la base de trace par défaut (l.342). Déjà détaillé dans analysis/audit_data_dir.md (section 2) ; à garder en tête pour le choix de nos défauts.",
+      "Les textes rendus par un agent (summary, notes_for_next_agent, etc.) sont réinjectés dans le prompt de l'agent suivant via previous (agents.py:86). Chaîne d'injection de prompt possible entre agents.",
+      "thinking (l.308, l.328, l.379) n'est pas une énumération : une valeur fausse n'est pas arrêtée par le schéma.",
+      "pydantic non épinglé (adws/adw_build.py:3, sandbox_mount/guest/provision.sh:136) ; aucun fichier de verrouillage pour adws/. uv le résout au provisionnement de la VM (provision.sh:157 et :164), a priori à la dernière version (comportement de uv, à vérifier).",
+      "Le défaut model=google/gemini-3.6-flash (l.307, l.327) est résolu par recherche de sous-chaîne dans le catalogue de pi (agent_pi.py:75-86) : selon les fournisseurs présents, il peut tomber sur un fournisseur ou un autre."
+    ],
+    "chez_nous": [
+      "Garder l'idée : un schéma typé pour la config et pour chaque sortie d'agent, avec défauts prudents (approved=False, status obligatoire).",
+      "Adapter : ajouter model_config = {'extra': 'forbid'} au minimum sur AgentConfig, ConfigDefaults, ObservabilityConfig, SSSFConfig et PromptEngineering, pour qu'une clé mal orthographiée arrête le lancement.",
+      "Adapter : rendre writes obligatoire (pas de défaut None) ou mettre [] par défaut ; « libre » doit être écrit en clair, jamais obtenu par oubli.",
+      "Adapter : ajouter writes à ConfigDefaults (ou supprimer sa recopie dans agents.py:37) pour que le schéma dise la vérité.",
+      "Adapter : protected_files par défaut doit couvrir aussi les prompts et extensions (adws/adw_data/prompt_engineering/, adws/adw_data/harness_engineering/) et le data_dir ne doit contenir que du jetable.",
+      "Adapter : thinking en Literal (off, minimal, low, medium, high, xhigh, max), après vérification des valeurs acceptées par Pi 1.3.0 ; coding_agent réduit à « pi ».",
+      "Adapter : modèle par défaut au format OpenRouter explicite (openrouter/<fournisseur>/<modèle>) et épinglé, ou pas de défaut du tout.",
+      "Épingler pydantic (ex. pydantic==2.x précis) dans les en-têtes uv et dans le script de provision de la VM, et remplacer self.model_fields par type(self).model_fields dans UsageBreakdown.merge.",
+      "Supprimer ou brancher poll_ms ; supprimer parent_id et la valeur « queued » si on ne les utilise pas, pour que le schéma reste lisible par Theo."
+    ],
+    "a_verifier": [
+      "Comportement de Pi 1.3.0 avec une valeur --thinking inconnue (refus, ignorée, ou valeur par défaut).",
+      "Forme exacte de l'objet usage émis par Pi 1.3.0 dans message_end (clés input, output, cacheRead, cacheWrite, reasoning, cost.*), et si OpenRouter renvoie bien les coûts par composant.",
+      "Version de pydantic réellement résolue par uv dans une VM exe.dev neuve. Si une future version retire l'accès model_fields sur l'instance (annoncé pour pydantic 3), UsageBreakdown.merge (l.432), appelé à chaque envoi (agents.py:135), casserait : non prouvable ici, cette version n'existe pas dans l'atelier.",
+      "Que le catalogue de Pi (pi --list-models) contient bien les identifiants openrouter/... des YAML, faute de quoi validate() échoue."
+    ]
+  },
+  "adws/adw_modules/utils.py": {
+    "status": "fait",
+    "niveau": 2,
+    "role": "Petites fonctions partagées par toute la factory. Surtout : il charge le fichier .env dans l'environnement dès l'import (l.11-13), et operator_env() fabrique l'environnement donné à Pi et aux commandes qualité (l.16-38).",
+    "points": [
+      "Lecture : niveau 2 pour le fichier, mais operator_env (l.16-38) lu au NIVEAU 3, ligne par ligne, avec ses appelants (git grep operator_env).",
+      "Chargement de .env : load_dotenv() est appelé sans argument, au moment de l'import du module (l.11-13). Tout ADW qui importe adw_modules (ex. adws/adw_plan.py:16) charge donc .env avant de lire la moindre variable.",
+      "Ordre d'import utile : agent_pi.py importe utils (adws/adw_modules/agent_pi.py:20) AVANT de lire PI_PATH et PI_MODELS_PATH (adws/adw_modules/agent_pi.py:22-24) ; quality.py importe utils (adws/adw_modules/quality.py:20) avant de lire BUN_PATH (adws/adw_modules/quality.py:39). Ces réglages peuvent donc venir de .env.",
+      "Où .env est cherché (python-dotenv 1.2.3 installé localement, à confirmer pour la version que uv téléchargera) : sans chemin, load_dotenv appelle find_dotenv (/usr/local/lib/python3.13/dist-packages/dotenv/main.py:424-425). La recherche part du DOSSIER DU FICHIER appelant, pas du dossier courant (main.py:364-375), donc de adws/adw_modules/, puis remonte vers la racine du disque (main.py:377) : adws/adw_modules/.env, adws/.env, <dépôt>/.env, puis les dossiers parents. Le premier trouvé gagne.",
+      "Priorité : load_dotenv a override=False par défaut (main.py:392). Une variable déjà présente dans l'environnement (shell, ou just avec `set dotenv-load`) n'est PAS remplacée par .env. Échappatoire : PYTHON_DOTENV_DISABLED coupe le chargement (main.py:415).",
+      "Deuxième lecteur de .env : just. `set dotenv-load` est déclaré dans justfile:1, just/adws.just:13, just/inkwell.just:12 et les mod.just du sandbox (just/sandbox/mod.just:25, etc.). Lancé par `just adw ...`, l'ADW reçoit sans doute déjà les clés de .env via just (comportement de just, à vérifier : quel .env est chargé pour un module avec working-directory '..', just/adws.just:7) ; load_dotenv (l.13) complète alors ce qui manque.",
+      "operator_env l.31 : `os.environ.copy()` copie TOUT l'environnement du processus ADW, y compris ce que load_dotenv y a ajouté (l.13). Pas de liste blanche, pas de liste noire.",
+      "operator_env l.32 : seule VIRTUAL_ENV est retirée (pop sur la copie, défaut \"\"). os.environ du processus ADW n'est pas modifié (on travaille sur la copie).",
+      "operator_env l.33-34 : si VIRTUAL_ENV est absente ou vide, la copie est rendue telle quelle, PATH compris.",
+      "operator_env l.35-37 : sinon, on calcule <VIRTUAL_ENV>/bin et on retire de PATH toutes les entrées strictement égales à cette chaîne. Les entrées vides sont aussi supprimées (`if p`, l.36). Si PATH n'existait pas, il devient une chaîne vide (l.36-37).",
+      "operator_env, cas limites : la comparaison est textuelle exacte (l.36) : un chemin avec / final, un lien symbolique ou un autre chemin vers le même venv ne sera pas retiré. Aucune autre variable liée au venv ou à uv n'est touchée.",
+      "operator_env, variable inattendue : elle passe telle quelle à l'enfant. Seul VIRTUAL_ENV est filtré (l.32). Toute clé API, tout token GitHub, SSH_AUTH_SOCK ou autre secret présent dans le shell de l'opérateur ou dans .env arrive donc chez l'enfant.",
+      "operator_env : la fonction est recalculée à chaque appel (pas de cache, l.16-38) : elle reflète os.environ au moment de l'appel.",
+      "Appelants réels de operator_env (git grep) : (1) `pi --list-models` (adws/adw_modules/agent_pi.py:47-50) ; (2) chaque tour d'agent Pi via Popen (adws/adw_modules/agent_pi.py:278-281) ; (3) chaque commande qualité (adws/adw_modules/quality.py:54 puis :62-65). Aucun autre appel.",
+      "Le commentaire l.19 (« Agents and quality blocks ») correspond aux appelants : agent_pi.py et quality.py. Le commentaire l.29 (« only ever handed to child processes ») est vrai : les trois appels passent `env=` à subprocess.",
+      "Sous-processus qui n'utilisent PAS operator_env : la porte tests_pass (adws/adw_modules/gates.py:101, shell=True, sans env=), git (adws/adw_modules/git_helper.py:10, adws/adw_modules/permissions.py:61 et :215), et engineer_name lui-même (l.71-72). Ils héritent de os.environ brut : .env inclus ET venv uv inclus.",
+      "Conséquence secrets, sur la VM : app/.env ne contient que OPENROUTER_API_KEY (clé runtime) (just/sandbox/lifecycle/fill.just:150-151). Pi reçoit donc cette clé runtime, plus tout l'environnement de la VM.",
+      "Conséquence secrets, sur la machine hôte : .env.sample place OPENROUTER_PROVISIONING_KEY et OPENROUTER_API_KEY dans le même .env (.env.sample:15 et :24). Si on lance un ADW sur l'hôte, load_dotenv (l.13) charge la clé de provisioning, et operator_env (l.31) la donne à Pi (agent_pi.py:281) et aux commandes qualité (quality.py:54).",
+      "new_id (l.41-42) : reçoit une longueur, rend secrets.token_hex(length // 2). Une longueur impaire donne un caractère de moins. Utilisé pour adw_id (adws/adw_modules/session.py:39, 8 caractères), les ids d'événements (adws/adw_modules/tracer.py:124 et :237, 12 caractères) et les ids de session Pi (adws/adw_modules/agents.py:237, 4 caractères).",
+      "now_iso (l.45-46) : rend l'heure UTC en ISO à la milliseconde, avec le suffixe +00:00 (pas Z).",
+      "ensure_dir (l.49-52) : crée le dossier et ses parents s'il le faut (mkdir -p), rend un Path. Utilisé pour les dossiers de session (adws/adw_modules/runner.py:54-55) et pour la base et le journal du tracer (adws/adw_modules/tracer.py:104 et :107).",
+      "resolve_prompt (l.55-63) : si l'argument désigne un fichier existant, rend son contenu, sinon rend le texte tel quel. Les erreurs OSError sont ignorées. Appelé par les 12 scripts ADW (ex. adws/adw_plan.py:45, adws/adw_simple_sdlc.py:183).",
+      "engineer_name (l.66-77) : ENGINEER_NAME (sans espaces autour), sinon `git config user.name` (délai 5 s), sinon USER, sinon \"engineer\". Appelé une fois au démarrage de la session (adws/adw_modules/session.py:42).",
+      "engineer_name l.75 n'attrape que OSError. Or subprocess.TimeoutExpired n'est pas un OSError (issubclass rend False). Si ENGINEER_NAME n'est pas posé (l.67-69) et que git met plus de 5 s, l'exception remonte et la session ne démarre pas (session.py:42).",
+      "Copie template : .claude/skills/sssf/templates/adws/adw_modules/utils.py est IDENTIQUE (git diff --no-index, code retour 0). Le dossier adws/ n'a pas changé entre 92f1701 (cité dans les consignes) et HEAD 3a82a8e (git diff --stat vide)."
+    ],
+    "deps": [
+      "Dépend de python-dotenv (l.11), déclaré sans version dans l'en-tête uv de chaque ADW (ex. adws/adw_plan.py:3).",
+      "Dépend des modules standard os, secrets, subprocess, datetime, pathlib (l.5-9). Lance le binaire git (l.71).",
+      "Importé par adw_modules/agent_pi.py (adws/adw_modules/agent_pi.py:20 : now_iso, operator_env), quality.py (adws/adw_modules/quality.py:20 : now_iso, operator_env), runner.py (adws/adw_modules/runner.py:19 : ensure_dir, now_iso), session.py (adws/adw_modules/session.py:18 : engineer_name, new_id), tracer.py (adws/adw_modules/tracer.py:15 : ensure_dir, new_id, now_iso), agents.py (adws/adw_modules/agents.py:22 : new_id).",
+      "Importé comme `utils` par les 12 scripts ADW pour resolve_prompt (ex. adws/adw_plan.py:16 et :45).",
+      "Lit .env via load_dotenv (l.13). .env est ignoré par git (.gitignore:112). Sur VM, il est écrit par FILL (just/sandbox/lifecycle/fill.just:150-151).",
+      "Cité par le commentaire du justfile racine comme principe (justfile:8).",
+      "Carte à corriger : .env n'est pas cherché depuis le dossier courant mais depuis le dossier de utils.py, en remontant les dossiers parents (python-dotenv 1.2.3 présent sur la machine, dotenv/main.py:364-377) ; il manque le 3e appel de operator_env (adws/adw_modules/agent_pi.py:49, pi --list-models) et le second chargeur de .env, just (justfile:1, just/adws.just:13)."
+    ],
+    "vigilance": [
+      "SECRETS : operator_env est une copie COMPLÈTE de l'environnement (l.31). Seule VIRTUAL_ENV est retirée (l.32). Toute clé (OPENROUTER_API_KEY, OPENROUTER_PROVISIONING_KEY, ANTHROPIC_API_KEY, GH_TOKEN, socket ssh-agent...) présente dans le shell ou dans .env arrive chez Pi (agent_pi.py:281) et chez les commandes qualité (quality.py:54).",
+      "Le commentaire l.17 (« The engineer's own environment, as their shell would hand it over ») est trompeur : la copie l.31 est faite APRÈS load_dotenv (l.13), donc tout ce que .env ajoute part aussi chez Pi (agent_pi.py:281) et chez les commandes qualité (quality.py:54). Lancé par just, le .env est en général déjà dans l'environnement (just/adws.just:13).",
+      "Sur l'hôte, la clé de provisioning (« must never reach a VM », .env.sample:11-12) est dans le même .env que la clé d'inférence (.env.sample:15, :24). Un ADW lancé sur l'hôte la passe à l'agent.",
+      "Pi écrit chaque ligne JSON qu'il produit sur disque (adws/adw_modules/agent_pi.py:284-287). Si l'agent affiche une variable d'environnement, la valeur peut finir dans raw_output.jsonl (dépend de Pi, voir a_verifier).",
+      "La recherche de .env remonte jusqu'à la racine du disque (dotenv/main.py:377). Sans .env dans le dépôt, un .env d'un dossier parent (ex. le home) peut être chargé sans prévenir.",
+      "resolve_prompt (l.57-60) lit n'importe quel fichier lisible dont le chemin est passé comme prompt. Un prompt « .env » enverrait le contenu de .env au modèle.",
+      "Écriture disque : seulement ensure_dir (l.49-52), mkdir -p, sans contrôle du chemin.",
+      "Versions : python-dotenv n'est pas épinglé (adws/adw_plan.py:3). Le comportement de recherche et de priorité dépend de la version téléchargée par uv.",
+      "La porte gates.tests_pass (adws/adw_modules/gates.py:98-108) lance sa commande (shell=True, l.101) sans env=operator_env() ni cwd=repo_root, contrairement à Pi (agent_pi.py:281) et à la qualité (quality.py:54). Le commentaire utils.py l.25 annonce que python3 « silently becomes the wrong one » dans ce cas. Cette porte n'est utilisée par aucun ADW du dépôt (git grep tests_pass)."
+    ],
+    "chez_nous": [
+      "REMPLACER operator_env par une LISTE BLANCHE : PATH (nettoyé du venv), HOME, LANG, TERM, et la seule clé OpenRouter de la VM. Tout le reste refusé par défaut. C'est le contraire de disler (copie complète, l.31).",
+      "Ne jamais avoir la clé de provisioning dans un .env que lit un processus qui lance des agents. Chez nous : provisioning seulement sur l'hôte, dans un fichier séparé, jamais chargé par la factory.",
+      "Remplacer load_dotenv() sans chemin (l.13) par un chemin explicite (ex. <dépôt>/.env) pour ne jamais remonter vers un .env parent.",
+      "Faire passer AUSSI la porte tests_pass (gates.py:101) et les appels git par le même environnement filtré, pour que la règle soit la même partout.",
+      "Épingler python-dotenv (ou s'en passer : quelques lignes suffisent pour lire KEY=VALUE).",
+      "Garder new_id, now_iso, ensure_dir : simples et sans risque.",
+      "resolve_prompt : garder, mais limiter aux fichiers du dépôt (refuser .env et les chemins hors du dépôt).",
+      "engineer_name : attraper aussi subprocess.TimeoutExpired."
+    ],
+    "a_verifier": [
+      "Pi 1.3.0 : son outil bash hérite-t-il de tout l'environnement du processus pi ? Pi a-t-il besoin de OPENROUTER_API_KEY dans l'environnement, ou la lit-il seulement dans ~/.pi/agent/models.json ? (non prouvable dans ce dépôt).",
+      "Pi : une sortie de commande contenant une clé est-elle écrite telle quelle dans les événements JSON (donc dans raw_output.jsonl et la base du tracer) ?",
+      "uv run sur un script PEP 723 : quelles variables pose-t-il exactement (VIRTUAL_ENV, PATH, autres UV_*) ? Le commentaire l.21-22 l'affirme, le dépôt ne le prouve pas.",
+      "just `set dotenv-load` : une variable déjà exportée gagne-t-elle sur .env ? Le commentaire de justfile:11 dit « .env still wins over the profile » ; à vérifier sur la version de just utilisée.",
+      "Version exacte de python-dotenv que uv téléchargera (le comportement décrit vient de la 1.2.3 installée localement).",
+      "La porte tests_pass, si on la réutilise, échouerait-elle à cause du venv uv dans PATH ? Dépend de ce que uv run pose réellement (voir plus haut) ; non prouvé."
+    ]
+  },
+  "adws/adw_modules/prompts.py": {
+    "status": "fait",
+    "niveau": 2,
+    "role": "Petit outil de gabarit. Il lit un fichier de prompt (system.md ou user.md d'un agent), remplace les marqueurs {{nom}} par du texte, puis enregistre une copie du prompt obtenu dans le dossier de session.",
+    "points": [
+      "render(template_path, variables) (l.8-12) : reçoit un chemin de fichier et un dictionnaire nom -> texte. Elle relit le fichier à chaque appel (l.9), remplace chaque {{nom}} par sa valeur (l.10-11), rend le texte final (l.12). Aucun cache, aucune vérification.",
+      "La substitution est un simple str.replace sur la chaîne exacte '{{' + nom + '}}' (l.11). Pas de str.format : les accolades simples comme {x} ou un bloc JSON dans le texte injecté ne cassent rien.",
+      "Marqueur sans valeur : il reste tel quel dans le texte envoyé, sans erreur (l.10-11 ne parcourent que les clés fournies). Valeur sans marqueur : ignorée en silence. Démontré par une réécriture à l'identique de la boucle l.10-11 : '{{oubli}}' reste dans la sortie.",
+      "Remplacements en chaîne : les clés sont traitées l'une après l'autre sur le texte DÉJÀ modifié (l.10-11). Un texte injecté qui contient lui-même '{{previous_envelope}}' ou '{{context_handoff_dir}}' est donc remplacé à son tour. L'ordre vient de l'appelant : prompt, puis previous_envelope, puis context_handoff_dir (adws/adw_modules/agents.py:84-88). Démontré par simulation de la boucle.",
+      "Aucune limite de taille, aucun échappement, aucun nettoyage du texte injecté (l.8-12). Si une valeur n'était pas une chaîne, replace lèverait une erreur ; ici les trois valeurs sont bien des chaînes (adws/adw_modules/agents.py:85-87, adws/adw_modules/data_types.py:292).",
+      "Lecture et écriture sans encodage précisé : read_text() (l.9) et write_text() (l.20) prennent l'encodage par défaut de la machine.",
+      "save(directory, name, content) (l.15-21) : reçoit un dossier, un nom de fichier et un texte. Elle crée le dossier si besoin (l.18), écrit le fichier en écrasant l'ancien (l.19-20), rend le chemin (l.21).",
+      "Chemins : render et save utilisent les chemins tels quels (l.9, l.17-19), sans les rendre absolus. Un chemin relatif est donc lu par rapport au dossier courant du processus Python.",
+      "Le fichier ne lit ni config, ni variable d'environnement, ni réseau, ni secret (l.1-21 : seul import, pathlib l.5)."
+    ],
+    "deps": [
+      "Dépend seulement de pathlib (l.5).",
+      "Seul appelant de code : adws/adw_modules/agents.py:18 (import) et agents.py:89-92 (2 appels render, 2 appels save) dans execute(). git grep sur 'prompts.render', 'prompts.save', 'from . import ... prompts', 'import prompts' ne trouve rien d'autre hors de la copie template.",
+      "Gabarits utilisés : le chemin vient de la config, champ agent.prompt_engineering.system / .user (agents.py:89-90). Motif : adws/adw_data/prompt_engineering/<agent>/{system,user}.md, pour planner, builder, scout, reviewer, documenter (adws/adw_sssf_config/sssf.config.yaml:46-47, 68-69, 85-86, 112-113, 129-130 ; mêmes chemins dans les 4 autres configs du dossier et dans .claude/skills/sssf/templates/sssf.config.yaml).",
+      "Les 10 gabarits existent bien dans le dépôt (git ls-files adws/adw_data/prompt_engineering). Leur existence est contrôlée avant tout lancement par agents.validate (adws/adw_modules/agents.py:64-67), lui aussi en chemin relatif.",
+      "Marqueurs réellement présents : seulement dans les user.md, 3 chacun ({{prompt}}, {{previous_envelope}}, {{context_handoff_dir}}, ex. adws/adw_data/prompt_engineering/builder/user.md:7,11,15). Les system.md n'en ont aucun : render ne fait que les relire.",
+      "Valeurs injectées (agents.py:84-88) : prompt = demande de l'humain, texte brut ou contenu d'un fichier (adws/adw_modules/utils.py:55-63) ; previous_envelope = JSON du rapport de l'agent précédent ou d'un résultat de tests (adws/adw_build_test.py:65-66) ; context_handoff_dir = chemin du dossier de passage (adws/adw_modules/runner.py:55).",
+      "Où save écrit : agent_dir / 'prompts' / system.md et user.md (agents.py:81, 91-92), avec session_dir = Path(data_dir)/'sessions'/adw_id (adws/adw_modules/runner.py:54) et data_dir par défaut 'adws/adw_data' (adws/adw_modules/data_types.py:338 ; adws/adw_sssf_config/sssf.config.yaml:33). Chemin relatif lui aussi.",
+      "Lecteur des copies : le visualiseur lit <sessionsDir>/<adw_id>/<agent>/prompts/{system,user}.md (.claude/skills/sssf/apps/visualizer/server/index.ts:167-190), avec contrôle anti-traversée (index.ts:170-179).",
+      "Copie template : .claude/skills/sssf/templates/adws/adw_modules/prompts.py identique (git diff --no-index : aucune différence). Les user.md des templates (.claude/skills/sssf/templates/prompt_engineering/*/user.md) sont identiques à ceux de adws/ ; les 5 system.md, eux, DIFFÈRENT (hors de ce fichier, à signaler au lecteur des gabarits).",
+      "Code inchangé entre le commit de base 92f1701 et HEAD 3a82a8e de la branche analyse/lecture pour adws/ et .claude/skills/sssf/ (git diff --stat vide).",
+      "Carte à corriger : lien manquant vers le visualiseur, qui relit les copies écrites par save (.claude/skills/sssf/apps/visualizer/server/index.ts:167-190) ; la fiche ne dit pas que la copie est écrasée à chaque passage du même agent."
+    ],
+    "vigilance": [
+      "Injection de prompt : la demande, le rapport JSON de l'agent précédent et la sortie verbatim des tests (adws/adw_build_test.py:65-66) sont collés tels quels dans le prompt (l.11). Ce texte peut venir d'un tiers (issue, fichier du dépôt cité par un agent, message d'erreur). Rien ne le délimite ni ne le neutralise. C'est le canal attendu, mais il faut le savoir : la sécurité ne peut pas reposer sur le prompt.",
+      "Remplacement en chaîne (l.10-11) : un texte injecté peut contenir '{{context_handoff_dir}}' ou '{{previous_envelope}}' et le voir remplacé. Effet limité ici (on ne peut injecter que des valeurs déjà présentes dans le prompt), mais c'est un comportement surprenant si on ajoute un jour une variable sensible.",
+      "Marqueur oublié = silence (l.10-11) : une faute de frappe dans un gabarit envoie '{{promt}}' littéral au modèle sans aucune alerte.",
+      "Écriture disque : save crée des dossiers et écrase des fichiers (l.18-20) dans data_dir. Le nom et le dossier viennent du code (agents.py:91-92), pas d'un agent ; pas de risque de traversée par ce chemin.",
+      "Copie d'audit écrasée : le dossier est par agent, pas par phase (agents.py:81, nom fixe user.md agents.py:92). Quand le même agent tourne plusieurs fois dans une session (builder en 'build' puis 'fix_1'..., adws/adw_build_test.py:46-48 et 62-67 ; ou 'revise_i', adws/adw_build_review.py:61-63), user.md est réécrit et seule la dernière version reste (voir registre).",
+      "La copie d'audit contient tout le prompt, donc tout ce que l'humain ou les tests y ont mis. Si un secret traîne dans une demande ou une sortie de test, il est écrit en clair sur disque dans la session.",
+      "Dépend du dossier courant : gabarits (agents.py:66, l.9) et dossier de session (runner.py:54) sont relatifs. Il faut lancer les ADW depuis la racine du dépôt, sinon validate échoue."
+    ],
+    "chez_nous": [
+      "Garder l'idée : gabarits en fichiers Markdown, substitution par replace (pas de format, donc pas de casse sur les accolades), copie du prompt envoyé avant exécution. C'est simple et relisible.",
+      "Adapter : faire échouer render si un marqueur {{...}} reste après remplacement, ou si une clé fournie n'a pas de marqueur. Coût : quelques lignes.",
+      "Adapter : remplacer en une seule passe (par ex. re.sub avec un dictionnaire) pour que le texte injecté ne soit jamais re-scanné.",
+      "Adapter : nommer la copie d'audit par phase et par envoi (ex. prompts/<phase_id>/user.md), et enregistrer aussi les messages de correction (agents.py:173-176 et 297-300), sinon l'audit est incomplet.",
+      "Adapter : préciser encoding='utf-8' en lecture et en écriture, pour ne pas dépendre de la locale de la VM exe.dev.",
+      "Adapter : résoudre les chemins depuis la racine du dépôt (comme git_helper.repo_root) plutôt que depuis le dossier courant, pour que le lancement depuis un script de VM ne dépende pas d'un 'cd'.",
+      "Pour nos VM jetables : la copie d'audit sur disque d'une VM jetable disparaît avec la VM ; prévoir de la rapatrier si on veut garder la trace.",
+      "Pi 1.3.0 reçoit le texte rendu tel quel (system_prompt et prompt, agents.py:115-116) : rien dans ce fichier ne dépend de Pi ou du fournisseur de modèle."
+    ],
+    "a_verifier": [
+      "Encodage par défaut de Python sur les VM exe.dev (locale, mode UTF-8) : pas prouvable dans ce dépôt.",
+      "Si Pi garde lui-même une trace complète de chaque envoi (session pi_sessions, raw_output.jsonl, agents.py:121-122), la perte de la copie écrasée est peut-être compensée : à vérifier dans le comportement de Pi 1.3.0.",
+      "Comment Pi interprète un chemin relatif de context_handoff_dir dans le prompt : il tourne avec cwd = repo_root (agents.py:125), donc c'est juste si l'ADW est lancé depuis la racine ; non testé ici."
+    ]
+  },
+  "adws/adw_modules/console.py": {
+    "status": "fait",
+    "niveau": 1,
+    "role": "Affiche le déroulé d'un run à l'écran (bibliothèque rich) et écrit chaque ligne affichée dans la trace comme événement `log`. Ainsi le terminal et l'interface visuelle racontent la même histoire.",
+    "points": [
+      "Une seule porte de sortie : `_emit` imprime puis appelle `tracer.event` avec un EventRecord de type `log` et un payload {message, level} (l.40-46). Toutes les méthodes publiques passent par elle.",
+      "Le texte écrit dans la trace est la version sans mise en forme (`text.plain`, l.46), pas le balisage rich. Pour le panneau final, la trace reçoit une phrase courte distincte du panneau (l.69-71).",
+      "Texte dynamique raccourci par `_clip` : espaces/retours à la ligne écrasés, coupé à 160 caractères avec « … » (l.19, l.22-24). Utilisé pour : description de phase (l.81), erreur de phase (l.90), note (l.96), raison de retry (l.108), note et item de contrôle de porte (l.121-122), résumé d'enveloppe (l.128), artefacts (l.131).",
+      "Pas raccourcis ni filtrés : adw_id, engineer (l.50-51), nom/modèle/session_id d'agent (l.100-101), nom de phase et owner (l.78-79, 88), nom de porte (l.117), chemin de la base (l.64). Seul `escape` (échappement du balisage) est appliqué.",
+      "Aucun filtrage de secret dans ce fichier : aucune recherche de clé, de jeton ou de variable d'environnement. Seule protection : la coupe à 160 caractères sur les textes dynamiques.",
+      "Pas de spinner ni d'affichage vivant : lignes séquentielles seulement (docstring l.5-6, `RichConsole(highlight=False, soft_wrap=True)` l.37).",
+      "Le panneau final ne s'affiche qu'une fois (`_finished`, l.36, l.54-56). Il compte les phases réussies à partir de `self.results` (l.57, alimenté l.86).",
+      "L'état « phase courante » (`phase_id`, `phase_name`) est posé à `phase_started` (l.75) et vidé à `phase_ended` (l.92). Entre deux phases les événements log ont phase_id vide et name « console » (l.45).",
+      "Niveaux utilisés : info, error (échec), warn (retry seulement, l.108). `level` est juste écrit dans le payload ; ce fichier ne s'en sert pas.",
+      "Méthodes oubliées par la fiche : `_clip` l.22-24, `__init__` l.30-37, `session_started` l.49-51, `phase_started` l.74-82, `phase_ended` l.84-92, `agent_started` l.99-101, `agent_finished` l.103-104, `retry` l.106-108, `envelope_summary` l.125-131.",
+      "Aucun test du dépôt ne couvre console.py : git grep ne trouve que runner.py (adws/adw_modules/runner.py:17 import, :47 construction) et sa copie template comme utilisateurs directs."
+    ],
+    "deps": [
+      "Importe rich (Console, escape, Panel, Text, l.11-14) et `.data_types` : EnvelopeBase, EventRecord, Phase (l.16). Le `tracer` est injecté sans import (l.30-31) et seul `tracer.event` est appelé (l.43).",
+      "`report` de `gate_result` n'est pas typé : le code lit `.passed`, `.checks`, `.violations`, `check.ok/.note/.item` (l.113-121), ce qui correspond à GateReport/GateCheck (adws/adw_modules/data_types.py:252-285).",
+      "Créé une fois par run : adws/adw_modules/runner.py:47 (`Console(tracer, adw_id)`), importé runner.py:17.",
+      "Appelants (via `run.console`) : adws/adw_modules/runner.py:32 (note), :84 (phase_started), :100 et :111 (phase_ended), :101 et :141 (session_finished), :139 (note) ; adws/adw_modules/session.py:49 (session_started) ; adws/adw_modules/agents.py:104 (agent_started), :163 (gate_result), :171 et :294 (retry), :198 (envelope_summary), :218 (agent_finished) ; adws/adw_modules/quality.py:56 et :103 (note) ; adws/adw_modules/permissions.py:250 (note).",
+      "Écriture réelle faite par `tracer.event` : fichier events jsonl (adws/adw_modules/tracer.py:127-128) et table `events` en base (tracer.py:129-135). Rien n'est tronqué ni filtré là non plus.",
+      "Copie identique dans .claude/skills/sssf/templates/adws/adw_modules/console.py (git diff --no-index : aucune différence).",
+      "Carte à corriger : liens manquants permissions.py:250 (note), session.py:49 (session_started), quality.py:56 et :103 (note), et la bibliothèque rich (console.py l.11-14). La fiche oubliait 9 méthodes (voir points) et son champ « ecrit » vide est faux : la console écrit, via tracer.event (l.43), dans events.jsonl et sssf.db (tracer.py:127-135)."
+    ],
+    "vigilance": [
+      "Tout ce qui s'affiche est aussi écrit en clair, sans filtre de secret, dans la base sssf.db et dans le fichier events.jsonl (console.py:40-46, tracer.py:127-135). Seule une coupe à 160 caractères s'applique, et seulement sur certains champs (_clip, l.22-24). Si un secret se retrouve dans un texte passé à la console, il finit dans la trace.",
+      "Contre-mesure partielle : les textes dynamiques sont coupés à 160 caractères. Un secret court (clé d'API) tient largement dans 160 caractères et passerait donc entier.",
+      "Cas concret : `quality.py:56` affiche la ligne de commande complète (`shlex.join(spec.argv)`). Un secret passé en argument irait dans la trace (coupé à 160). Les ADW du dépôt n'en passent pas à ce stade, mais rien ne l'empêche.",
+      "Les noms non coupés (agent, modèle, session_id, owner, chemin de base) viennent de la config ou de Pi, pas d'un texte libre ; faible risque, mais pas de garde-fou.",
+      "Contraste utile : `ph.log(**payload)` écrit le payload COMPLET (ex. `input=prompt`, le prompt entier) dans la trace par un chemin séparé (adws/adw_modules/runner.py:27-31), puis n'affiche qu'une version coupée par `note` (runner.py:32). La coupe de console.py ne protège donc pas la trace pour ce chemin.",
+      "Le panneau final conseille `just phases <adw_id>` (l.65) alors que la recette s'appelle `just obs phases <adw_id>` (justfile:50 `mod obs`, just/obs.just:39). Aucune recette `phases` à la racine : la commande affichée échoue (voir registre)."
+    ],
+    "chez_nous": [
+      "Garder tel quel pour l'essentiel : petit, sans accès réseau, sans variable d'environnement, sans lecture de fichier. Il ne dépend ni de Pi, ni d'OpenRouter, ni d'exe.dev.",
+      "Adapter : ajouter un filtre de secrets dans `_emit` (ou dans le tracer) avant écriture : masquer les motifs de clés (OpenRouter `sk-or-...`) et la valeur de la clé de la VM. Notre règle « jamais de vrai secret dans l'atelier » rend cela peu probable, mais un filtre central coûte peu.",
+      "Corriger la commande affichée en `just obs phases <adw_id>` (l.65) si on garde les recettes just.",
+      "Les couleurs (KIND_COLOR) et MAX_LINE sont cosmétiques et réglables sans risque."
+    ],
+    "a_verifier": [
+      "Le rendu réel de `[/dim red]` (fermeture d'un style à deux mots, l.120-123) dans rich n'a pas été exécuté (lecture seule, pas d'exécution). Le code est cohérent avec la syntaxe rich habituelle, mais non prouvé ici."
+    ]
+  }
+}

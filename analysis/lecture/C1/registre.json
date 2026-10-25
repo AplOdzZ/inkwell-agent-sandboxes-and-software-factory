@@ -1,0 +1,79 @@
+[
+  {
+    "ou": "adws/adw_modules/data_types.py l.304-349",
+    "ecrit": "Le commentaire l.314-317 présente writes comme une limite « enforced in code » ; .claude/skills/sssf/references/config.md:78 promet qu'aucun agent n'est lancé « against a half-valid config ».",
+    "realite": "Aucun modèle de config n'a model_config extra='forbid' (le seul model_config du fichier est l.289, sur AgentCall). SSSFConfig(**raw) (adws/adw_modules/agents.py:41) ignore donc toute clé inconnue (comportement par défaut de pydantic, extra='ignore'), et validate() ne regarde que le nom, coding_agent, les fichiers de prompt et le modèle (adws/adw_modules/agents.py:52-73). Une faute sur writes (ex. « write: [] ») passe sans erreur : writes reste None et l'agent peut modifier tout ce qui n'est pas dans protected_files (adws/adw_modules/permissions.py:150). Une faute sur protected_files (ex. « protected_file: ») passe aussi : la liste écrite est ignorée et seul le défaut l.335-337 protège (adws/adw_modules/permissions.py:148). Même cause que le registre n°29. Constaté sur un modèle analogue avec le pydantic 2.13.5 déjà présent sur la machine.",
+    "impact": "Une lettre oubliée dans un YAML rend libre d'écrire un agent censé être en lecture seule, ou retire les protections ajoutées par l'utilisateur, sans aucun message. Chez nous : extra='forbid' sur tous les modèles de config.",
+    "type": "faille"
+  },
+  {
+    "ou": "adws/adw_modules/data_types.py l.343",
+    "ecrit": "poll_ms = 500, décrit comme la cadence de rafraîchissement du visualiseur (.claude/skills/sssf/references/config.md:59, .claude/skills/sssf/references/observability.md:152, commentaire adws/adw_sssf_config/sssf.config.yaml:37).",
+    "realite": "Aucun code ne lit poll_ms (git grep : seulement data_types, YAML et docs). Le visualiseur a 500 ms écrit en dur (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:84, SessionsList.vue:33, SessionCard.vue:65).",
+    "impact": "Changer poll_ms ne fait rien. Faible, mais c'est un réglage mort qu'il ne faut pas reprendre.",
+    "type": "doc_en_retard"
+  },
+  {
+    "ou": ".claude/skills/sssf/references/config.md:66",
+    "ecrit": "purpose est obligatoire (« Required: yes »).",
+    "realite": "AgentConfig.purpose vaut \"\" par défaut (data_types.py l.310) et validate() ne le vérifie pas (agents.py:52-73).",
+    "impact": "Un agent sans purpose est accepté. Faible.",
+    "type": "doc_en_retard"
+  },
+  {
+    "ou": ".claude/skills/sssf/references/config.md:46-47",
+    "ecrit": "thinking est une « enum » ; le modèle par défaut est « gemini-3.6-flash ».",
+    "realite": "thinking est un str libre (data_types.py l.308, l.328, l.379) transmis tel quel à pi (agent_pi.py:256). Le modèle par défaut du schéma est « google/gemini-3.6-flash » (l.307, l.327).",
+    "impact": "Une valeur de thinking fausse n'est pas arrêtée par la factory. À énumérer chez nous.",
+    "type": "doc_en_retard"
+  },
+  {
+    "ou": "adws/adw_modules/data_types.py l.3-4",
+    "ecrit": "Toute fonction de plus de 4 paramètres prend un objet de ce fichier.",
+    "realite": "agents._persist_envelope prend 8 paramètres (agents.py:303-305) et Tracer.process_start en prend 5 hors self (tracer.py:174).",
+    "impact": "Aucun sur le comportement. Règle de style non tenue ; ne pas s'y fier en lisant le code.",
+    "type": "doc_en_retard"
+  },
+  {
+    "ou": "adws/adw_modules/data_types.py l.178",
+    "ecrit": "ChangeCapture est « everything documentation.capture() needs ».",
+    "realite": "Aucun module documentation n'existe dans adws/adw_modules/ ; la fonction est changes.capture (changes.py:52). Le même nom périmé apparaît dans adws/adw_modules/git_helper.py:61.",
+    "impact": "Nul ; mauvais nom de module dans une docstring.",
+    "type": "doc_en_retard"
+  },
+  {
+    "ou": "adws/adw_data/prompt_engineering/documenter/user.md:48",
+    "ecrit": "« document_path et l'entrée app_docs/ de artifacts … Gates open these files ».",
+    "realite": "Les portes du documenter ne lisent que artifacts (adws/adw_document.py:64 et adws/adw_simple_sdlc.py:167, gates.py:29 et :38). DocumentOutput.document_path (data_types.py l.126) n'est lu par aucun code.",
+    "impact": "Un document_path faux n'est jamais détecté. Faible, mais le prompt promet un contrôle qui n'existe pas.",
+    "type": "doc_en_retard"
+  },
+  {
+    "ou": "adws/adw_modules/utils.py l.70-76",
+    "ecrit": "engineer_name retombe sur USER si git échoue (l.73-77).",
+    "realite": "Quand ENGINEER_NAME n'est pas posé (l.67-69), le timeout de 5 s (l.72) lève subprocess.TimeoutExpired, qui n'est pas un OSError (issubclass rend False). Le except OSError de la l.75 ne l'attrape pas : l'exception remonte dans session.ensure (adws/adw_modules/session.py:42) et l'ADW s'arrête au démarrage.",
+    "impact": "Faible (git doit bloquer plus de 5 s), mais à corriger si on garde la fonction : attraper aussi TimeoutExpired.",
+    "type": "bug"
+  },
+  {
+    "ou": "adws/adw_modules/agents.py l.81 et l.92 (avec adws/adw_modules/prompts.py l.16-20)",
+    "ecrit": "prompts.py l.16 : « Save the exact prompt sent, before execution — the audit copy. »",
+    "realite": "La copie va dans <session>/<agent>/prompts/user.md (adws/adw_modules/agents.py:81, 92), donc par agent et non par phase : quand le builder repasse en phase fix_i ou revise_i (adws/adw_build_test.py:62-67, adws/adw_build_review.py:61-63, adws/adw_plan_build_test.py:62-65, adws/adw_plan_build_test_quality.py:74-76), l'appel save réécrit le fichier (prompts.py l.19-20). De plus les messages de correction JSON et de porte (agents.py:173-176, 297-300) sont envoyés par send() sans passer par save. La copie n'est donc ni complète ni celle de chaque envoi.",
+    "impact": "L'audit des prompts ne montre que le dernier passage de chaque agent ; le visualiseur aussi (.claude/skills/sssf/apps/visualizer/server/index.ts:167-190). Chez nous, nommer la copie par phase et tracer les corrections.",
+    "type": "bug"
+  },
+  {
+    "ou": ".claude/skills/sssf/references/handoff.md l.88",
+    "ecrit": "{{context_handoff_dir}} = \"absolute path to this session's context_handoff/\"",
+    "realite": "La valeur injectée est str(run.context_handoff_dir) (adws/adw_modules/agents.py:87), construite sans resolve() à partir de data_dir (adws/adw_modules/runner.py:54-55, adws/adw_modules/utils.py:49-52), qui vaut par défaut le chemin relatif 'adws/adw_data' (adws/adw_modules/data_types.py:338, adws/adw_sssf_config/sssf.config.yaml:33). Le chemin donné à l'agent est donc relatif.",
+    "impact": "Doc lue par des agents et fausse. Le chemin n'est juste que si Pi tourne dans le même dossier que celui où l'ADW a été lancé. Chez nous : passer un chemin absolu (resolve) comme c'est déjà fait pour session_dir de Pi (agents.py:120-122).",
+    "type": "doc_en_retard"
+  },
+  {
+    "ou": "adws/adw_modules/console.py l.65",
+    "ecrit": "Le panneau final de fin de run indique `next: just phases <adw_id>` comme commande pour voir les phases.",
+    "realite": "La recette est dans le module `obs` : `mod obs 'just/obs.just'` (justfile:50) et `phases ADW_ID:` (just/obs.just:39, commentaire l.38 : « just obs phases <adw_id> »). Aucune recette `phases` à la racine du justfile.",
+    "impact": "Un humain ou un agent qui copie la commande affichée obtient une erreur. À corriger dans notre copie ; la copie template a la même ligne.",
+    "type": "bug"
+  }
+]

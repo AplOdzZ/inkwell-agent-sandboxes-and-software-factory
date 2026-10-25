@@ -1,0 +1,22 @@
+[
+  {
+    "p": "adws/adw_modules/data_types.py",
+    "fate": "adapter",
+    "reason": "Le schéma ignore en silence les clés inconnues et met writes=None (libre) par défaut : chez nous, extra='forbid', writes explicite, thinking énuméré et pydantic épinglé sont nécessaires."
+  },
+  {
+    "p": "adws/adw_modules/utils.py",
+    "fate": "adapter",
+    "reason": "operator_env donne tout l'environnement (clés comprises) aux agents ; chez nous il faut une liste blanche et un chemin .env explicite."
+  },
+  {
+    "p": "adws/adw_modules/prompts.py",
+    "fate": "adapter",
+    "reason": "Mécanique saine et minuscule, à garder dans l'esprit. Mais chez nous il faut : échec sur marqueur manquant, remplacement en une passe, encodage UTF-8 explicite, chemins absolus, et copie d'audit par phase (aujourd'hui écrasée)."
+  },
+  {
+    "p": "adws/adw_modules/console.py",
+    "fate": "adapter",
+    "reason": "Utile et sûr, mais il écrit tout dans la trace sans filtre de secret et affiche une commande inexistante (`just phases`). Deux petites retouches chez nous."
+  }
+]
