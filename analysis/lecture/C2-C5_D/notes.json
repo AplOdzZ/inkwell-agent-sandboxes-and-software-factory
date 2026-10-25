@@ -1,0 +1,529 @@
+{
+ "adws/adw_modules/gates.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Portes de contrôle des déclarations (claims) d'un agent. Une porte reçoit l'enveloppe et le run, rend un GateReport. Les erreurs repartent vers la MÊME session d'agent comme correction. Les portes ne vérifient que ce qu'une machine peut vérifier ; elles ne jugent pas la qualité du code.",
+  "points": [
+   "artifacts_exist(envelope, run) -> GateReport (l.27-33) : chaque chemin de envelope.artifacts doit exister (Path(a).exists(), l.31). Un dossier compte comme existant.",
+   "files_non_empty (l.36-44) : saute ce qui n'est pas un fichier existant (l.40), échoue si la taille est 0 (l.42-43).",
+   "json_parses (l.47-58) : ne regarde que les .json existants (l.51), json.loads (l.54). Seule JSONDecodeError est attrapée (l.56) : un fichier non UTF-8 ferait planter la porte.",
+   "diff_matches_claims (l.61-68) : lit envelope.changed_files (getattr, l.64) et vérifie seulement Path(f).exists() (l.66). Le nom promet un contrôle contre le diff, le code ne regarde pas git (déjà au registre n°28). Conséquence non notée : un fichier supprimé et déclaré changé échoue la porte (l.66-67).",
+   "verdict_consistent (l.71-95) : trois contrôles croisés approved / blocking / findings non remplis (l.84-94). Contrôle interne à l'enveloppe, sans lire le code. Utilisé par adw_build_review.py:54 et adw_simple_sdlc.py:120.",
+   "tests_pass(command) (l.98-108) : fabrique de porte, subprocess.run(command, shell=True) sans cwd, sans timeout, sans env filtré (l.101). Aucun ADW ne l'appelle (git grep : seule définition). Code mort en pratique."
+  ],
+  "deps": [
+   "Importe GateReport, EnvelopeBase de data_types.py:17 ; stdlib json, subprocess, pathlib.",
+   "Utilisé via AgentCall(gates=[...]) dans adw_build.py:34, adw_build_review.py:45/53-54/64, adw_build_test.py:49/67, adw_document.py:64, adw_plan.py:34, adw_plan_build.py:34/39, adw_plan_build_test.py:44/49/67, adw_plan_build_test_quality.py:41/46/78, adw_scout.py:34, adw_simple_sdlc.py:85/94/112/120/128/167.",
+   "Exécutées par agents.py:154-159 (boucle `for gate in call.gates`, résultat passé à _as_report l.155, nom lu par gate.__name__ l.157-160)."
+  ],
+  "vigilance": [
+   "Les chemins sont relatifs au dossier courant du processus ADW (gates.py:30, 40, 51, 65), alors que les agents tournent dans run.repo_root (agents.py:125). Si l'ADW est lancé hors de la racine du dépôt, les portes jugeraient au mauvais endroit (à vérifier, voir a_verifier).",
+   "Aucune porte ne compare ce que l'agent déclare à ce que git voit réellement ; seul permissions.py (niveau 3, hors lot) regarde le vrai diff (permissions.py:74).",
+   "tests_pass lance une commande shell libre : si un jour un ADW l'utilise avec du texte venant d'un agent, c'est une injection de commande."
+  ],
+  "chez_nous": [
+   "Les portes sont de bons contrôles de forme (fichier présent, non vide, JSON lisible), pas des preuves de bon travail. Ne pas s'y fier seules pour la sécurité.",
+   "Si nous voulons une vraie porte « le diff correspond aux déclarations », il faut l'écrire à partir de git_helper.diff_files / untracked_files.",
+   "Fichier identique à son modèle .claude/skills/sssf/templates/adws/adw_modules/gates.py (carte) : une correction doit être faite aux deux endroits."
+  ],
+  "a_verifier": [
+   "Le prompt du builder demande-t-il de lister les fichiers supprimés dans changed_files ? Si oui, diff_matches_claims les rejette (gates.py:66) et force des corrections inutiles.",
+   "Les ADW sont-ils toujours lancés depuis la racine du dépôt (justfile / sandbox_mount) ? Sinon les chemins relatifs des portes sont faux."
+  ]
+ },
+ "adws/adw_modules/git_helper.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Petite enveloppe autour de la commande git (sous-processus, sans dossier imposé, sans délai maximal). Fournit la racine du dépôt, le commit global et les briques du diff utilisées par changes.py.",
+  "points": [
+   "_git(*args) -> str (l.9-13) : lance git, lève RuntimeError si le code de retour n'est pas 0, rend stdout.strip(). Le strip() abîme la sortie de `status --porcelain` (déjà n°25) et supprime la fin de ligne finale de `git diff`.",
+   "repo_root() -> Path (l.31-40) : toplevel git si dépôt, sinon dossier courant. Appelé par runner.py:53 pour fixer run.repo_root.",
+   "commit_all(message) -> sha court (l.43-53) : refuse hors dépôt (l.45-48), `git add -A` (l.49, n°32), refuse s'il n'y a rien (l.50-51), `git commit -m` (l.52), rend `rev-parse --short HEAD` (l.53). Appelé par adw_plan_build.py:44, adw_plan_build_test.py:74, adw_plan_build_test_quality.py:86, adw_simple_sdlc.py:70.",
+   "ref_exists / rev / short_sha / merge_base / is_dirty (l.63-88) : questions simples sur les refs, utilisées par changes.py (l.25-47) et adw_simple_sdlc.py:65,80 (rev, short_sha).",
+   "untracked_files / diff_files / diff_stat / diff_counts / diff_text (l.92-120) : fichiers non suivis, noms, stat, (insertions, suppressions), diff complet contre une base. Utilisés seulement par changes.capture (changes.py:55-60).",
+   "current_branch (l.16), create_branch (l.20), changed_files (l.56) : aucun appelant dans adws/ (git grep). create_branch n'apparaît que dans specs/scaffold.md:226 (texte)."
+  ],
+  "deps": [
+   "N'importe que subprocess et pathlib (l.3-4).",
+   "Utilisé par changes.py:18 (14 appels), runner.py:16/53, adw_plan_build.py, adw_plan_build_test.py, adw_plan_build_test_quality.py, adw_simple_sdlc.py (commit_all, rev, short_sha)."
+  ],
+  "vigilance": [
+   "commit_all n'a ni --no-verify ni identité : le commit dépend de user.name / user.email de la VM et des hooks du dépôt.",
+   "`git add -A` committe tout fichier non ignoré. .gitignore protège .env (l.112-113) et adws/adw_data/sessions/ (l.149), mais pas une clé posée sous un autre nom.",
+   "untracked_files (git ls-files --others) rend des chemins relatifs au dossier courant, alors que diff_files (git diff --name-only) rend des chemins relatifs à la racine : mélangés dans ChangesOutput.changed_files (changes.py:98) si le dossier courant n'est pas la racine."
+  ],
+  "chez_nous": [
+   "Sur chaque VM jetable, configurer user.name et user.email avant tout ADW qui commite, sinon commit_all plante.",
+   "Un seul `git add -A` = tout ce que l'agent a écrit est commité : cela renforce la règle « jamais de vrai secret dans l'atelier ».",
+   "Fichier identique à son modèle des templates (carte)."
+  ],
+  "a_verifier": [
+   "Présence d'une identité git (user.email) sur les VM exe.dev : je n'ai rien trouvé la posant dans sandbox_mount / justfile / skill orchestrateur (git grep vide).",
+   "Si le dossier courant ≠ racine du dépôt, le mélange de chemins relatifs décrit ci-dessus se produit-il vraiment ?"
+  ]
+ },
+ "adws/adw_modules/quality.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Blocs de contrôle déterministes pour l'app Inkwell : lint (oxlint 1.36.0 via bun x), « typecheck » et build (bun build), et les tests (bun test). Chaque commande est enregistrée dans context_handoff/quality/NN_<nom>/command.log et tracée.",
+  "points": [
+   "_run(spec, run) -> QualityCheckResult (l.49-117) : exécute spec.argv avec cwd=run.repo_root, env = operator_env() (l.54, environnement complet de l'opérateur), délai spec.timeout_seconds (défaut 120, data_types.py:144). Code 124 si délai dépassé (l.73-76), 127 si binaire absent (l.77-79). Écrit command.log (l.82-85), trace un événement tool_call (l.87-102), garde les 4000 derniers caractères (l.27, 116).",
+   "frontend_lint / backend_lint (l.120-135) : `bun x oxlint@1.36.0` sur apps/inkwell/public/app.js et apps/inkwell/server.ts uniquement. server.test.ts n'est jamais lu par le lint.",
+   "frontend_typecheck / backend_typecheck (l.138-157) : ce n'est pas un vrai typecheck, c'est `bun build` (cibles browser / bun) vers le dossier de session ; le docstring l'avoue (l.3-6).",
+   "frontend_build / backend_build (l.160-179) : même chose avec --minify.",
+   "tests(run) (l.182-195) : `bun test apps/inkwell/server.test.ts`, délai 600 s, operation='build' faute de valeur 'test' dans l'énumération (l.192, aveu dans le commentaire). run_inkwell_tests (l.198-205) rend un QualityResult. Utilisé par adw_build_test.py:56, adw_plan_build_test.py:56, adw_simple_sdlc.py:101/137.",
+   "as_envelope(result, what) -> VerifyOutput (l.208-220) ; run_inkwell_quality (l.223-246) : enchaîne les 6 blocs lint/typecheck/build, SANS les tests (la carte disait seulement « 6 blocs », exact), collecte tous les échecs. Aucun appelant : les ADW appellent run_quality, qui n'existe pas (n°23)."
+  ],
+  "deps": [
+   "Importe data_types (l.18) et utils.now_iso, utils.operator_env (l.20) ; run.console.note, run.tracer.event, run.repo_root, run.phases viennent de l'objet Run, sans import.",
+   "Utilisé par adw_build_test.py:56/66, adw_plan_build_test.py:56/66, adw_simple_sdlc.py:101/111/137 (run_inkwell_tests, as_envelope), adw_quality.py:33 et adw_plan_build_test_quality.py:58 (run_quality, absent).",
+   "Diffère de son modèle .claude/skills/sssf/templates/adws/adw_modules/quality.py : le modèle contient des commandes `echo PLACEHOLDER` et une fonction run_quality, la version de adws/ est écrite pour Inkwell (diff constaté)."
+  ],
+  "vigilance": [
+   "Délai dépassé : le traitement du code 124 plante en Python 3.13 (voir candidats).",
+   "Réseau à l'exécution : `bun x oxlint@1.36.0` (l.125, 134) télécharge le paquet depuis npm s'il n'est pas en cache. Version épinglée, mais aucune empreinte (hash) ni relecture.",
+   "L'env complet de l'opérateur passe aux enfants (l.54) : toute clé présente dans le shell est visible de bun, de oxlint et de server.test.ts.",
+   "_check_dir gère run.phases vide (l.43) mais _run fait run.phases[-1] sans garde (l.50) : IndexError si appelé hors phase."
+  ],
+  "chez_nous": [
+   "Chez nous le fichier doit être gardé ou réécrit pour nos vraies commandes ; les blocs sont écrits pour Inkwell.",
+   "Sur VM jetable : pré-installer ou vendre oxlint@1.36.0 au lieu de le télécharger à chaque run (règle « rien d'installé sans relecture »).",
+   "Lancer les ADW avec un environnement filtré (seules les variables nécessaires) pour que les commandes qualité ne voient pas de clé."
+  ],
+  "a_verifier": [
+   "Les commandes bun x / bun test fonctionnent-elles sans réseau sur la VM (cache oxlint) ?",
+   "La suite server.test.ts démarre-t-elle un serveur qui reste en vie après le délai (processus orphelin) ?"
+  ]
+ },
+ "adws/adw_modules/changes.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Capture déterministe de « ce qui a changé » à partir de git : choisit la base de comparaison, écrit le diff dans context_handoff/changes.diff, rend un ChangeSet, puis une enveloppe ChangesOutput pour l'agent documenteur.",
+  "points": [
+   "resolve_base(ref) -> BaseRef (l.24-49) : lève si pas de dépôt (l.26-30) ou si la ref n'existe pas (l.31-35). Calcule le merge-base avec HEAD (l.37). Trois cas : HEAD en avance (l.38-40), arbre sale (l.41-42), arbre propre avec parent : retombe sur HEAD~1, c'est-à-dire le dernier commit (l.43-46), sinon sans parent (l.47-48). La raison est écrite dans BaseRef.reason.",
+   "capture(run, params) -> ChangeSet (l.52-84) : fichiers suivis, non suivis si include_untracked (l.56), compteurs, stat, diff (l.55-60) ; coupe le diff à params.max_diff_lines (défaut 2000, data_types.py:181) avec un message de coupure (l.62-66) ; écrit l'en-tête + stat + liste des non suivis + diff dans run.context_handoff_dir/changes.diff (l.73-80).",
+   "Les fichiers non suivis ne sont que NOMMÉS dans le fichier (l.68-72), jamais leur contenu ; ils ne comptent pas dans insertions/suppressions.",
+   "as_envelope(changes, notes) -> ChangesOutput (l.87-103) : status='success' toujours (l.91), artifacts=[diff_path], changed_files = suivis + non suivis (l.98).",
+   "Branche appelée par adw_document.py:48/63 (base par défaut 'main', l.36) et adw_simple_sdlc.py:152/166 (base = HEAD épinglé avant le run, adw_simple_sdlc.py:65)."
+  ],
+  "deps": [
+   "Importe git_helper (l.18) et BaseRef, ChangeCapture, ChangeSet, ChangesOutput de data_types.py (l.19).",
+   "Utilisé par adw_document.py:25/48/63 et adw_simple_sdlc.py:47/152/166.",
+   "Écrit adws/adw_data/sessions/<adw_id>/context_handoff/changes.diff (changes.py:73-74) ; dossier créé par runner.py:55. Ce dossier est ignoré par git (.gitignore:149).",
+   "Identique à son modèle des templates (carte)."
+  ],
+  "vigilance": [
+   "Le diff écrit est la copie du code touché : tout secret présent dans un fichier suivi modifié se retrouve dans changes.diff et est lu par l'agent documenteur.",
+   "Le repli « dernier commit » (changes.py:43-46) documente le dernier commit même s'il n'a rien à voir avec le run, si adw_document est lancé seul sur arbre propre.",
+   "Défaut base='main' (data_types.py:180, adw_document.py:36) : si la branche de base de notre dépôt est autre (master), --base est obligatoire ; l'erreur est claire (changes.py:31-35)."
+  ],
+  "chez_nous": [
+   "Bon module à garder tel quel : sûr (lecture seule de git), seule écriture dans le dossier de session.",
+   "Définir la branche de base dans notre configuration d'ADW pour éviter l'erreur « base ref 'main' does not exist »."
+  ],
+  "a_verifier": [
+   "Chemins relatifs au dossier courant vs racine du dépôt dans changed_files (mélange diff_files / untracked_files, voir git_helper)."
+  ]
+ },
+ "adws/adw_modules/runner.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Définit l'objet Run (une exécution d'ADW) et la brique unique run.phase(...) qui ouvre une phase, la trace, et la passe en échec dès qu'une exception sort. Définit aussi run.finish(), qui décide du code de sortie (0 ou 1).",
+  "points": [
+   "PhaseHandle.log(**payload) (l.27-34) : reçoit des paires clé/valeur ; écrit un événement 'log' dans la trace, affiche une note à la console, et, pour une phase 'engineer' avec la clé 'input', enregistre cette valeur comme 'request' de la session (tracer.session_request). Absent de la fiche de la carte.",
+   "PhaseHandle.call(call) (l.36-39) : refuse toute phase qui n'est pas de type 'agent' (RuntimeError) ; sinon délègue à agents.execute(run, phase, call) et rend l'enveloppe. Les règles 'enveloppe valide + portes vertes' sont dans agents.py (GateFailure l.168, statut != success l.220, JSON invalide l.291) et non ici.",
+   "Run.__init__(cfg, adw_id, tracer, engineer) (l.43-58) : crée la console, reprend la numérotation des phases si l'adw_id existe déjà (l.52), fixe repo_root via git_helper (l.53), crée <data_dir>/sessions/<adw_id>/ et context_handoff/ (l.54-55), relit agent_map.json s'il existe (l.56-58). Les chemins data_dir sont relatifs au dossier courant (defaults.data_dir = 'adws/adw_data', data_types.py:337) alors que repo_root est absolu.",
+   "Run.save_agent_map(agent, entry) (l.61-63) et Run.add_usage(tokens, cost) (l.66-69) : le premier réécrit tout agent_map.json à chaque appel ; le second cumule tokens/coût en mémoire ET dans la table sessions (tracer.session_add_usage). add_usage est absent de la fiche. Appelant : agents.py:134 (run.add_usage).",
+   "Run.phase(params) (l.72-111) : crée un Phase 'running' avec un identifiant <adw_id>_<seq>_<nom> (l.74-77), trace phase_start (l.80-83). Sortie propre = statut 'success' + phase_end (l.104-111). Toute exception, y compris SystemExit et KeyboardInterrupt (BaseException, l.88) = statut 'fail', erreur coupée à 1000 caractères (l.90), événements error + phase_end, session marquée 'fail' (l.99), puis l'exception est relancée (l.103). Conséquence : le premier échec de phase met la session en échec, et aucun adw_*.py n'attrape d'exception (aucun try/except dans adws/adw_*.py).",
+   "Run.finish(accepted=True, reason='') (l.114-142) : phases_ok = au moins une phase ET toutes en 'success' (l.131) ; ok = phases_ok ET accepted (l.132). Si les phases sont bonnes mais pas l'acceptation, écrit un événement 'not_accepted' (l.133-139). Enregistre le statut (l.140), affiche la bannière (l.141), rend 0 ou 1. Appelé une fois par chaque ADW : adw_build.py:36, adw_build_review.py:66, adw_build_test.py:69, adw_document.py:66, adw_plan.py:36, adw_plan_build.py:46, adw_plan_build_test.py:76, adw_plan_build_test_quality.py:88, adw_prompt.py:34, adw_quality.py:40, adw_scout.py:36, adw_simple_sdlc.py:173."
+  ],
+  "deps": [
+   "Importe agents, git_helper (runner.py:16), console (l.17), data_types (l.18), utils (l.19). Ne crée jamais le Tracer : il lui est donné par session.ensure (session.py:42-44).",
+   "Utilisé par session.py (import l.16, création Run l.42) ; ses méthodes sont appelées par les 12 adw_*.py (run.phase / run.finish) et par agents.py via l'objet run (agents.py:134 add_usage, run.tracer.* l.95-209).",
+   "Fichier identique à sa copie .claude/skills/sssf/templates/adws/adw_modules/runner.py (carte : liens 'copie', vérifiés par git diff)."
+  ],
+  "vigilance": [
+   "Le statut 'success' d'une phase est donné à toute sortie propre du bloc (l.104-105), qu'un agent ait été appelé ou non. La règle 'agent = enveloppe valide + portes vertes' ne tient que parce que ph.call() lève une exception en cas d'échec. Aujourd'hui chaque ADW a autant d'appels .call( que de phases kind=\"agent\" (comptage par grep sur adws/adw_*.py) ; un futur ADW qui oublierait l'appel serait vert sans avoir rien fait.",
+   "finish(accepted=True) : le défaut est 'accepté'. Les ADW sans critère propre (adw_build.py:36, adw_plan.py:36, adw_prompt.py:34, adw_scout.py:36...) sont donc verts dès que les phases passent. Voir aussi adw_quality.py:40, déjà au registre (n°23).",
+   "finish() sans aucune phase rend 1 sans événement ni note (runner.py:131-142) : échec silencieux.",
+   "Dans le bloc except (l.88-103), les appels à la trace et à la console ne sont pas protégés : si sqlite est verrouillé plus de 5 s (busy_timeout, tracer.py:111), cette erreur peut masquer l'erreur d'origine."
+  ],
+  "chez_nous": [
+   "Bon point pour notre règle 'un ADW rouge ne doit pas passer pour vert' : finish() sépare 'phases réussies' et 'résultat accepté' (l.131-142), et la base, la bannière et le code de sortie disent la même chose.",
+   "Tout ce qui est écrit par run.phase/log (erreurs 1000 car., request 500 car.) part en clair dans sssf.db et events.jsonl : ne jamais mettre de vraie clé dans une consigne ou un message d'erreur de l'atelier."
+  ],
+  "a_verifier": [
+   "Si un ADW lancé depuis un autre dossier que la racine du dépôt écrit ses traces ailleurs (chemins relatifs, runner.py:54) : non testé ; just adw semble lancer depuis la racine mais je n'ai pas lu la recette."
+  ]
+ },
+ "adws/adw_modules/session.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Point d'entrée unique des ADW : ensure(cfg, adw_id) crée (ou rejoint) une session, ouvre la trace, construit le Run, note le pid de l'ADW, et fait en sorte qu'un arrêt par signal ferme proprement la trace.",
+  "points": [
+   "ensure(cfg, adw_id=None) (l.38-50) : reçoit la config et un adw_id facultatif ; fabrique un identifiant de 8 caractères si absent (l.39) ; ouvre le Tracer sur cfg.observability.db et <data_dir>/sessions/<adw_id>/events.jsonl (l.40-41) ; construit le Run (l.42) ; enregistre la session avec le nom du script (l.43) ; note le pid et la ligne de commande complète sys.argv (l.46-47) ; installe le gestionnaire de signaux (l.48) ; affiche le bandeau (l.49) ; rend le Run.",
+   "Rejoindre ou créer : il n'y a aucune vérification que l'adw_id donné existe. Un identifiant mal tapé crée silencieusement une nouvelle session (le 'upsert' est dans tracer.py:141-142).",
+   "_finalize_when_killed(run) (l.21-35) : installe un gestionnaire pour SIGTERM et SIGINT (l.34-35). Le gestionnaire marque la session 'fail' (ce qui ferme aussi les lignes de processus, tracer.py:165) puis lève SystemExit(128+signal) (l.30-32), ce qui fait passer la phase en cours en 'fail' via runner.py:88.",
+   "Seuls SIGTERM et SIGINT sont gérés (l.34). SIGHUP (fermeture de la connexion SSH) et SIGKILL ne le sont pas : une session tuée ainsi resterait 'running' avec des phases 'running'. Dans nos VM le lancement passe par nohup (just/sandbox/lifecycle/execute.just:91), ce qui atténue le cas SIGHUP.",
+   "Le gestionnaire ne signale ni ne tue aucun processus enfant : voir candidat sur les processus pi laissés en vie."
+  ],
+  "deps": [
+   "Importe SSSFConfig (data_types, l.15), Run (runner, l.16), Tracer (tracer, l.17), engineer_name/new_id (utils, l.18).",
+   "Appelé par les 12 adw_*.py : adw_build.py:25, adw_build_review.py:36, adw_build_test.py:35, adw_document.py:40, adw_plan.py:25, adw_plan_build.py:25, adw_plan_build_test.py:30, adw_plan_build_test_quality.py:32, adw_prompt.py:24, adw_quality.py:25, adw_scout.py:25, adw_simple_sdlc.py:64.",
+   "Copie identique dans .claude/skills/sssf/templates/adws/adw_modules/session.py."
+  ],
+  "vigilance": [
+   "sys.argv complet est stocké en clair (limite 500 car., tracer.py:186) dans la table processes : un secret passé en argument de ligne de commande s'y retrouverait.",
+   "Les gestionnaires de signaux sont installés après la création du Run et de la session (l.48) : un signal reçu avant cette ligne ne ferme pas la trace.",
+   "Le gestionnaire marque la session 'fail' sans condition, même si l'ADW était déjà en train de finir correctement."
+  ],
+  "chez_nous": [
+   "Pour nos VM : tuer un ADW avec SIGKILL ou en perdant la VM laisse la base en 'running'. La lecture de l'état d'un run doit donc croiser statut et présence réelle du processus.",
+   "La ligne de commande de l'ADW est gardée telle quelle : ne jamais passer de clé API par argument (la clé reste dans l'environnement, une par VM)."
+  ],
+  "a_verifier": [
+   "Si le gestionnaire de signaux est bien appelé quand l'ADW est lancé via 'just adw' (just peut relayer ou non le signal au python) : je n'ai pas lu just/ en entier.",
+   "Si le processus pi enfant survit réellement à un « kill » simple de l'ADW (pipe cassé, SIGPIPE, ou pi qui continue) : à tester dans une VM jetable ; le code seul ne le prouve pas."
+  ]
+ },
+ "adws/adw_modules/tracer.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Journal de bord : chaque événement est ajouté à events.jsonl puis inséré dans la base SQLite sssf.db (mode WAL). Contient le schéma des 7 tables, les migrations additives et toutes les méthodes d'écriture (sessions, phases, événements, processus, enveloppes, portes, sessions d'agent).",
+  "points": [
+   "SCHEMA / MIGRATIONS (l.17-99) : 7 tables (sessions, phases, events, envelopes, gate_results, processes, agent_sessions). phases.status vaut 'fail' par défaut (l.33). MIGRATIONS (l.94-99) ajoute 6 colonnes après coup ; _migrate (l.115-120) ne fait que des ALTER ADD COLUMN, jamais de suppression.",
+   "Tracer.__init__(db_path, events_jsonl) (l.103-113) : crée les dossiers, ouvre sqlite en autocommit (isolation_level=None), active WAL, synchronous=NORMAL, busy_timeout 5000 ms (l.109-111), applique le schéma et les migrations. Chaque ADW ouvre sa propre connexion sur la même base : les écritures concurrentes reposent sur WAL + busy_timeout. Le script de provision l'utilise seul pour créer la base vide (sandbox_mount/guest/provision.sh:146 et :153).",
+   "Tracer.event(record) (l.123-136) : fabrique un event_id, ajoute une ligne JSON à events.jsonl (l.127-128), puis insère la ligne dans la table events (l.129-135). Les deux écritures ne sont pas liées : si la seconde échoue, le fichier a un événement que la base n'a pas. Aucun masquage de secret : le payload est écrit tel quel (l.133).",
+   "session_start / session_request / session_finish / session_add_usage (l.139-171) : session_start fait un 'upsert' qui remet le statut à 'running' sans effacer ended_at (l.141-143) et chaîne les noms d'ADW séparés par ' + ' (l.145-154) ; session_request garde 500 caractères (l.158) ; session_finish écrit success/fail et ferme tous les processus de la session (l.160-165) ; session_add_usage cumule tokens et coût (l.167-171).",
+   "process_start / process_end / processes_end_all (l.174-203) : enregistrent pid, type ('adw' ou 'agent'), commande coupée à 500 caractères (l.186). processes_end_all marque tout 'terminé' sans vérifier que le processus est réellement mort (l.198-203). Appelants : session.py:46 (adw), agents.py:130-133 (agent).",
+   "max_phase_seq / phase_upsert / envelope_row / gate_row / agent_session_row (l.206-271) : reprise de la numérotation (l.206-216), mise à jour d'une phase (l.218-229, le conflit ne met à jour que statut, tentative, erreur, fin), enveloppe (l.232-239), résultat de porte avec les contrôles détaillés (l.241-249), session d'agent (l.251-271)."
+  ],
+  "deps": [
+   "Importe data_types (AgentConfig, EventRecord, GateReport, Phase, l.14) et utils (ensure_dir, new_id, now_iso, l.15).",
+   "Créé par session.ensure (session.py:40) ; ses méthodes sont appelées par runner.py (phase_upsert l.79, event l.80, session_finish l.99/140...), agents.py (12 appels via run.tracer, dont agents.py:95, 130-133), console.py:43, quality.py:87.",
+   "La base est lue par le visualiseur (.claude/skills/sssf/apps/visualizer/server/db.ts:5, qui écrit seulement la colonne archived, db.ts:138-148) et par just/obs.just (procs l.48, kill l.56).",
+   "Copie identique dans .claude/skills/sssf/templates/adws/adw_modules/tracer.py."
+  ],
+  "vigilance": [
+   "Contenus gardés en clair : arguments d'outils et sorties de commandes jusqu'à 20 000 caractères (agent_pi.py:26-27), erreurs de phase 1000 car. (runner.py:90), sortie brute d'une enveloppe invalide 2000 car. (agents.py:305, via envelope_row), requête de l'utilisateur 500 car. (tracer.py:158). Aucune fonction de masquage dans adws/ (grep redact/mask/scrub : rien).",
+   "Fichiers ignorés par git : adws/adw_data/sessions/ (.gitignore:149) et sssf.db* (.gitignore:153). Mais ils restent sur le disque de la VM et dans toute copie de cette VM.",
+   "Les noms de table et de colonne des migrations sont des constantes (l.94-99) : pas d'injection possible par le f-string de l.118 et l.120.",
+   "Modifier le schéma impose d'adapter le visualiseur (db.ts teste l'existence des colonnes, ex. db.ts:139)."
+  ],
+  "chez_nous": [
+   "Point d'attention n°1 pour la règle 'jamais de vrai secret dans l'atelier' : si une commande d'agent affiche une clé (ex. env, cat .env), elle est écrite dans events.jsonl et sssf.db. Tout ce qui est récupéré d'une VM (harvest) doit exclure ces deux chemins ou être relu.",
+   "La base est locale à chaque VM jetable : pas de fichier partagé entre VM, donc pas de conflit d'écriture entre runs de VM différentes."
+  ],
+  "a_verifier": [
+   "Si le harvest/bundle des commits d'une VM copie aussi adws/adw_data (events.jsonl, sssf.db) vers l'hôte : à lire dans sandbox_mount et les recettes du skill orchestrateur (hors de mon lot).",
+   "Quel est le comportement de event() si un payload n'est pas sérialisable en JSON (json.dumps l.128 lèverait TypeError) : aucun cas trouvé, non testé."
+  ]
+ },
+ "adws/adw_simple_sdlc.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Le flux le plus complet : plan, build, tests, revue, documentation, avec trois commits git separes (plan, code, doc). Le code n'est committe que si les tests sont verts ET la revue approuvee.",
+  "points": [
+   "main (adw_simple_sdlc.py:61-174) recoit prompt, chemin de config, adw_id ; charge la config (l.62), valide les 4 agents requis planner/builder/reviewer/documenter (l.52,63), ouvre la session (l.64), epingle le commit de depart `baseline = git_helper.rev('HEAD')` (l.65) ; rend le code de sortie 0/1 de run.finish (l.173).",
+   "commit(ph, envelope) (l.67-70) : message = commit_message de l'agent, sinon `sssf(<id>): <summary>` ; appelle git_helper.commit_all (git add -A, git_helper.py:49) et note le sha. record(ph, result) (l.72-76) : journalise reussite/nombre de controles/artefacts d'un resultat de test.",
+   "Phases dans l'ordre : request (l.78-80) -> plan [planner, portes artifacts_exist + files_non_empty] (l.82-85) -> commit_plan (l.87-89) -> build [builder, porte diff_matches_claims] (l.91-94).",
+   "Boucle test/fix (l.96-112, MAX_FIX_LOOPS=3, l.53) : test_i = quality.run_inkwell_tests (l.101, code, pas un agent) ; si vert, sortie ; sinon fix_i (builder, retries=1, l.107) recoit le resultat du test en enveloppe (l.111).",
+   "Boucle review/revise (l.114-129, MAX_REVISION_LOOPS=2, l.54) : review_i [reviewer, portes artifacts_exist + verdict_consistent] ; sortie si approuve ou i==2 (l.122) ; sinon revise_i (builder, retries=1) et drapeau revised (l.125-129). retest (l.133-138) seulement si une revision a eu lieu ET la revue est approuvee.",
+   "Porte d'acceptation (l.143-144) : verified = tests verts ET revue approuvee. Si verified : commit_build (l.146-148), changes (l.150-161, diff contre le baseline epingle ; RuntimeError si vide), document [documenter, retries=1, portes artifacts_exist + files_non_empty] (l.163-167), commit_docs (l.169-171). Sinon : plan committe, code non committe, rien documente (commentaire l.140-142).",
+   "Seules les phases fix, revise et document ont retries=1 (l.107,125,163) ; plan, build et review ont retries=0 (defaut, data_types.py:29) : un seul ecart de porte y arrete le run (agents.py:167-168, runner.py:88-103).",
+   "Pas de nouvelle fonction : tout le travail reel est dans adw_modules (quality, changes, git_helper, gates). Le script ne fait que sequencer."
+  ],
+  "deps": [
+   "Lance par `just adw simple-sdlc` (just/adws.just:77) ; cite par README.md:142, .claude/skills/sssf/cookbooks/{create_adw.md:114, install.md:42, sssf_overview.md:21, update_adw.md:28}, references/handoff.md:57.",
+   "Utilise adw_modules : agents, changes, gates, git_helper, quality, session, utils (l.47) et data_types (l.48-50).",
+   "Copie dans .claude/skills/sssf/templates/adws/adw_simple_sdlc.py, identique sauf quality.run_tests au lieu de run_inkwell_tests (l.101 et l.137 ; verifie par diff)."
+  ],
+  "vigilance": [
+   "Le script n'est pas lance par defaut dans la VM : le defaut de `just sbx lifecycle execute` est ADW=sdlc, soit adw_plan_build_test (execute.just:48, adws.just:69). Pour l'utiliser il faut passer ADW=simple-sdlc.",
+   "Fix_3 jamais re-teste, revue lancee meme si tests rouges, une seule revision reelle (deja au registre n°31) : confirme, l.97-112 et l.116-129.",
+   "commit_plan/commit_build/commit_docs font tous git add -A (n°32) : tout fichier parasite cree par un agent (hors .gitignore) part dans le commit suivant. .env est ignore (.gitignore:112) mais pas une cle ecrite sous un autre nom.",
+   "Si le builder ne change aucun fichier, commit_all leve 'nothing to commit' (git_helper.py:51-52) : la phase commit_build echoue apres des tests verts et une revue approuvee ; le run est marque en echec.",
+   "Un test rouge apres retest (l.134-138) ne declenche aucune reparation : le run s'arrete (verified faux), le code reste non committe.",
+   "Les agents sont tous 'pi' : agents.validate refuse le reste (agents.py:61-63)."
+  ],
+  "chez_nous": [
+   "C'est le meilleur candidat comme flux principal pour nous (trois commits relisables, porte stricte avant le code) mais seulement une fois adw_quality/run_quality ecartes : il n'en depend pas.",
+   "Un run rouge ne laisse pas de commit de code : a la recolte (teardown, harvest) il faut aussi recuperer l'arbre de travail, sinon le travail inacheve est perdu avec la VM.",
+   "Les 4 phases d'agent plan/build/review sans retry veulent dire : un manquement de porte coute un run entier ; a regler en config de phases (retries) avant un gros lot de VM.",
+   "Le baseline epingle (l.65) protege le documenteur d'un `main` qui a bouge ; utile en best-of-N."
+  ],
+  "a_verifier": [
+   "Que `just sbx manage harvest` recupere bien un arbre de travail non committe apres un run rouge (non lu ; harvest.just hors lot).",
+   "Ce que fait le documenteur quand le diff depasse max_diff_lines (changes.py:62-66 tronque le diff ; non traite ici)."
+  ]
+ },
+ "adws/adw_build.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Le plus court flux d'ecriture : un seul agent builder, sans plan, sans test, sans revue, sans commit. Difference avec simple_sdlc : tout sauf la phase build.",
+  "points": [
+   "main (adw_build.py:22-36) : validate([builder]) (l.19,24) -> phase request (l.27) -> phase build [builder, retries=1 (l.31), porte diff_matches_claims (l.34)] -> run.finish() sans critere d'acceptation (l.36).",
+   "Seul ADW d'ecriture dont la phase build a un retry de porte (ici retries=1 ; absent dans build_review, build_test, plan_build, plan_build_test, ptq)."
+  ],
+  "deps": [
+   "Lance par `just adw build` (just/adws.just:45) ; cite par references/handoff.md:157 (rejoindre une session via --adw-id) et sssf_overview.md:18.",
+   "Copie dans .claude/skills/sssf/templates/adws/adw_build.py, identique octet pour octet (carte)."
+  ],
+  "vigilance": [
+   "Le builder a tous les outils dont edit et bash (sssf.config.yaml:72-79) : rien ne verifie son travail, aucun commit ; le travail reste dans l'arbre.",
+   "diff_matches_claims verifie seulement que les fichiers cites existent (gates.py:61-68, n°28)."
+  ],
+  "chez_nous": [
+   "Utile pour un essai rapide dans une VM ; ne rend rien de relu : a eviter en production."
+  ],
+  "a_verifier": []
+ },
+ "adws/adw_build_review.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Builder puis reviewer, avec boucle de revision bornee a 3 revues. Difference avec simple_sdlc : pas de plan, pas de tests, pas de commit, pas de documentation ; run accepte si la revue approuve.",
+  "points": [
+   "main (adw_build_review.py:33-67) : build [builder, porte diff_matches_claims, sans retry] (l.42-45) -> boucle review_i / revise_i (l.48-64), MAX_REVISION_LOOPS=3 (l.30).",
+   "review_i : portes artifacts_exist + verdict_consistent (l.53-54). Sortie sur approbation (l.56) ou i==3 (l.58) ; revise_i : builder retries=1 (l.61).",
+   "Acceptation : run.finish(accepted=review.approved) (l.66-67) ; sans revue approuvee, le run sort en 1.",
+   "Message l.67 'after 3 revision(s)' alors que seules 2 revisions tournent (n°31, confirme l.48-64)."
+  ],
+  "deps": [
+   "Lance par `just adw build-review` (just/adws.just:57) ; cite par sssf_overview.md:19.",
+   "Copie dans .claude/skills/sssf/templates/adws/adw_build_review.py, identique octet pour octet (carte)."
+  ],
+  "vigilance": [
+   "Sans tests : une revue 'approuvee' ne dit pas que le code tourne.",
+   "Le reviewer a bash et write (sssf.config.yaml:116-122) avec writes: [] : 'ne peut pas corriger' repose sur permissions.py (niveau 3)."
+  ],
+  "chez_nous": [
+   "Interessant comme second avis apres un build, mais sans commit : a combiner avec un flux qui committe."
+  ],
+  "a_verifier": []
+ },
+ "adws/adw_build_test.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Builder puis boucle test (bun test en code) / fix, bornee a 3. Difference avec simple_sdlc : pas de plan, pas de revue, pas de commit, pas de documentation.",
+  "points": [
+   "main (adw_build_test.py:32-70) : build [porte diff_matches_claims, sans retry] (l.46-49) -> boucle test_i (quality.run_inkwell_tests, l.56) / fix_i (builder retries=1, l.62-67), MAX_FIX_LOOPS=3 (l.29).",
+   "Acceptation : tests verts (l.69-70). fix_3 s'execute apres test_3 rouge sans re-test (n°31, l.59-67).",
+   "Le docstring (l.17-19) dit qu'un echec ne fait pas echouer la phase mais le run : exact, via finish(accepted=...)."
+  ],
+  "deps": [
+   "Lance par `just adw build-test` (just/adws.just:53) ; cite par update_adw.md:49.",
+   "Copie dans .claude/skills/sssf/templates/adws/adw_build_test.py, identique octet pour octet (carte).",
+   "Template different : quality.run_tests au lieu de run_inkwell_tests (l.56 ; diff verifie)."
+  ],
+  "vigilance": [
+   "Ne committe rien ; le test lance bun test sur le depot (quality.py:198-206), donc le builder peut modifier les tests (n°16)."
+  ],
+  "chez_nous": [
+   "Bon pour une boucle courte test/fix en VM ; penser a recuperer l'arbre de travail a la fin."
+  ],
+  "a_verifier": []
+ },
+ "adws/adw_document.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Documentation seule : capture du diff contre --base puis agent documenter. Difference avec simple_sdlc : pas d'autre agent, pas de commit, base par defaut `main` au lieu d'un commit epingle.",
+  "points": [
+   "main (adw_document.py:36-66) : request -> changes (code, changes.capture, l.46-58 ; RuntimeError si diff vide l.54) -> document [documenter retries=1, portes artifacts_exist + files_non_empty] (l.60-64) -> finish().",
+   "Option --base (l.72, defaut 'main') passee a ChangeCapture (l.48,76). DOCUMENT_NOTES identique a simple_sdlc (l.31-33 contre simple_sdlc.py:56-59)."
+  ],
+  "deps": [
+   "Lance par `just adw document` (just/adws.just:65) ; cite par install.md:42, sssf_overview.md:20.",
+   "Copie dans .claude/skills/sssf/templates/adws/adw_document.py, identique octet pour octet (carte).",
+   "Utilise adw_modules.changes (changes.py:52 capture)."
+  ],
+  "vigilance": [
+   "Le garde-fou 'rien a documenter' est dans le code (l.54-58), pas dans le prompt : bon.",
+   "L'agent documenter ecrit dans app_docs/ (config writes: lignes 131+), pas ce script."
+  ],
+  "chez_nous": [
+   "Dans une VM clonee, la branche 'main' doit exister ou etre resolue par changes.resolve_base ; sinon passer --base."
+  ],
+  "a_verifier": [
+   "changes.resolve_base (non lu) pour le cas d'une VM dont la branche n'est pas main."
+  ]
+ },
+ "adws/adw_plan.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Planification seule : un agent planner, sans build, sans commit. Difference avec simple_sdlc : seulement la phase plan.",
+  "points": [
+   "main (adw_plan.py:22-36) : validate([planner]) -> request -> plan [PlanOutput, portes artifacts_exist + files_non_empty, sans retry] (l.31-34) -> finish().",
+   "Le planner ecrit plan.md puis le copie dans specs/ (planner/user.md:22-27) ; le script ne le fait pas."
+  ],
+  "deps": [
+   "Lance par `just adw plan` (just/adws.just:41) ; cite par references/handoff.md:157, sssf_overview.md:18.",
+   "Copie dans .claude/skills/sssf/templates/adws/adw_plan.py, identique octet pour octet (carte)."
+  ],
+  "vigilance": [
+   "Aucun commit : specs/<id>_*.md reste non suivi ; teardown le recupere par tar (teardown.just:109)."
+  ],
+  "chez_nous": [
+   "Pratique pour produire un plan a relire avant de payer un build."
+  ],
+  "a_verifier": []
+ },
+ "adws/adw_plan_build.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Planner puis builder puis un seul commit. Difference avec simple_sdlc : pas de test, pas de revue, pas de documentation, un commit au lieu de trois.",
+  "points": [
+   "main (adw_plan_build.py:22-46) : plan (l.31-34) -> build [previous=plan, porte diff_matches_claims, sans retry] (l.36-39) -> commit (code, l.41-44) -> finish().",
+   "Le commit utilise le message du builder ou `sssf(<id>): <resume>` (l.43) et commit_all (git add -A) : plan, specs/ et code partent ensemble."
+  ],
+  "deps": [
+   "Lance par `just adw plan-build` (just/adws.just:49) ; cite par install.md:42, update_adw.md:19 et sssf_overview.md:18.",
+   "Copie dans .claude/skills/sssf/templates/adws/adw_plan_build.py, identique octet pour octet (carte)."
+  ],
+  "vigilance": [
+   "Committe sans aucun controle : code non teste, non relu, directement sur la branche.",
+   "Le commit_message du PlanOutput n'est jamais utilise ici."
+  ],
+  "chez_nous": [
+   "A eviter en l'etat ; trop confiant pour un lot en VM."
+  ],
+  "a_verifier": []
+ },
+ "adws/adw_plan_build_test.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Chaine de depart (celle que nos VM lancent par defaut) : planner, builder, boucle test/fix, un seul commit si vert. Difference avec simple_sdlc : pas de revue, pas de documentation, un seul commit (plan + code ensemble), porte plus faible sur le build.",
+  "points": [
+   "main (adw_plan_build_test.py:27-77) : plan (l.41-44) -> build [previous=plan, porte artifacts_exist, l.46-49] -> boucle test_i (quality.run_inkwell_tests, l.56) / fix_i (builder retries=1, porte artifacts_exist, l.62-67), MAX_FIX_LOOPS=3 (l.24).",
+   "Commit (l.69-74) seulement si test.passed, message du dernier envelope builder ; finish(accepted=test.passed) (l.76-77).",
+   "Les portes du build et du fix sont artifacts_exist (l.49, l.67), alors que build_test et plan_build utilisent diff_matches_claims : porte moins ciblee sur les fichiers modifies."
+  ],
+  "deps": [
+   "Lance par `just adw sdlc` (just/adws.just:69) ; cite par install.md:42, update_adw.md:19 et sssf_overview.md:18.",
+   "Copie dans .claude/skills/sssf/templates/adws/adw_plan_build_test.py, identique octet pour octet (carte).",
+   "C'est le defaut de `just sbx lifecycle execute` (ADW=\"sdlc\", execute.just:48 ; lance `adw sdlc`, l.91). Template : quality.run_tests au lieu de run_inkwell_tests (l.56)."
+  ],
+  "vigilance": [
+   "fix_3 jamais re-teste (n°31). Un run rouge ne committe rien, plan compris : le travail reste dans l'arbre de la VM.",
+   "Le commit ajoute tout (git add -A, n°32)."
+  ],
+  "chez_nous": [
+   "Comme c'est le defaut de la fabrique en VM, c'est lui qu'il faut durcir en premier (porte de build, retries sur plan/build, recolte d'un run rouge)."
+  ],
+  "a_verifier": [
+   "Que harvest recupere le travail d'un run rouge."
+  ]
+ },
+ "adws/adw_plan_build_test_quality.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Comme plan_build_test mais avec un bloc 'verify' (lint, typecheck, build) a la place de la boucle de tests. Difference avec simple_sdlc : pas de revue, pas de documentation, un commit ; PLANTE en l'etat.",
+  "points": [
+   "main (adw_plan_build_test_quality.py:29-89) : plan (l.38-41) -> build [diff_matches_claims] (l.43-46) -> boucle verify_i : `quality.run_quality(run)` (l.58) puis `test_result = quality_result` (l.63) ; fix_i si echec (l.74-78) ; commit si verified (l.82-86).",
+   "quality.run_quality n'existe pas dans le module installe (seul run_inkwell_quality, quality.py:223) : AttributeError des verify_1 (n°23). Cause : le modele a run_quality (templates/.../quality.py:214), mais l'installation l'a renomme sans mettre a jour cet ADW ni adw_quality.",
+   "Seul ADW de boucle qui ne lance pas de fix apres le dernier controle (l.67-68), contrairement a build_test, plan_build_test et simple_sdlc."
+  ],
+  "deps": [
+   "Lance par `just adw plan-build-test-quality` (just/adws.just:73) ; cite par aucune doc de cookbook (omis de sssf_overview.md:17-21).",
+   "Copie dans .claude/skills/sssf/templates/adws/adw_plan_build_test_quality.py, identique octet pour octet (carte)."
+  ],
+  "vigilance": [
+   "Le commentaire l.61-62 et le docstring l.10 ne correspondent pas au code (une seule phase verify, pas de phase test) : deja dans la carte."
+  ],
+  "chez_nous": [
+   "Inutilisable tant que run_quality n'est pas corrige ; ne pas le lancer en VM."
+  ],
+  "a_verifier": [
+   "Ce que run_inkwell_quality contient exactement (quality.py:223-246, hors lot)."
+  ]
+ },
+ "adws/adw_prompt.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Le plus petit ADW : envoie le prompt tel quel a UN agent choisi (--agent, defaut builder) et lit son enveloppe generique. Difference avec simple_sdlc : un seul agent au choix, aucune porte, aucun commit.",
+  "points": [
+   "main (adw_prompt.py:20-34) : validate([agent]) (l.23) -> request -> phase 'prompt' avec owner=agent (l.30-32) : AgentCall(output_type=GenericOutput) sans portes (l.32) -> finish().",
+   "Argument --agent (l.8,44) accepte tout nom du roster, builder compris, donc ecriture libre sans aucune porte."
+  ],
+  "deps": [
+   "Lance par `just adw prompt et `just adw ask AGENT` (aussi adws.just:33)` (just/adws.just:29) ; cite par install.md:47, update_modules.md:100, sssf_overview.md:17.",
+   "Copie dans .claude/skills/sssf/templates/adws/adw_prompt.py, identique octet pour octet (carte)."
+  ],
+  "vigilance": [
+   "Aucune porte ni retry ; la sortie n'est qu'analysee (GenericOutput, data_types.py:81)."
+  ],
+  "chez_nous": [
+   "Utile comme test de fumee d'un modele OpenRouter (c'est la commande 'raw' d'install.md:47) ; rien de plus."
+  ],
+  "a_verifier": []
+ },
+ "adws/adw_quality.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "ADW sans agent : une phase code qui lance les controles qualite puis leve une erreur si echec. Difference avec simple_sdlc : aucun agent (REQUIRED_AGENTS vide), aucun commit ; PLANTE en l'etat.",
+  "points": [
+   "main (adw_quality.py:22-40) : validate([]) (l.19,24) -> request (l.27) -> phase quality [code] : `quality.run_quality(run)` (l.33), journalise (l.34-36), RuntimeError si echec (l.37-38) -> finish().",
+   "quality.run_quality absent du module installe (seul run_inkwell_quality, quality.py:223) : AttributeError (n°23). Meme cause que adw_plan_build_test_quality : renommage a l'installation."
+  ],
+  "deps": [
+   "Lance par `just adw quality` (just/adws.just:61) ; omis de sssf_overview.md:17-21.",
+   "Copie dans .claude/skills/sssf/templates/adws/adw_quality.py, identique octet pour octet (carte)."
+  ],
+  "vigilance": [
+   "Le prompt n'est qu'un 'motif' journalise (l.29) ; il ne pilote rien."
+  ],
+  "chez_nous": [
+   "Inutilisable avant correction ; le quality.py l.54 donne l'environnement complet aux commandes (pilote C1)."
+  ],
+  "a_verifier": [
+   "Rien de plus : n°23 suffit."
+  ]
+ },
+ "adws/adw_scout.py": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Reconnaissance : un agent scout qui cherche et rapporte sans changer le depot. Difference avec simple_sdlc : un seul agent, ScoutOutput, une seule porte, aucun commit.",
+  "points": [
+   "main (adw_scout.py:22-36) : validate([scout]) -> request -> scout [ScoutOutput, porte artifacts_exist, sans retry] (l.31-34) -> finish().",
+   "Config du scout : writes: [] (sssf.config.yaml:89) mais outils bash et write (l.96-97) et sous-agents (l.98+) : 'ne change rien' repose sur permissions.py."
+  ],
+  "deps": [
+   "Lance par `just adw scout` (just/adws.just:37) ; cite par sssf_overview.md:18.",
+   "Copie dans .claude/skills/sssf/templates/adws/adw_scout.py, identique octet pour octet (carte)."
+  ],
+  "vigilance": [
+   "Un agent avec bash peut en principe ecrire ; seule la couche de permissions l'en empeche (niveau 3, non lu ici)."
+  ],
+  "chez_nous": [
+   "Bon premier test d'un nouveau modele : lecture seule et peu risquee."
+  ],
+  "a_verifier": [
+   "Que permissions.py bloque vraiment les ecritures du scout hors context_handoff."
+  ]
+ },
+ "adws/adw_modules/agent_cc.py": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Module vide pour Claude Code : une seule fonction run() qui refuse toujours de travailler. La fiche de la carte est exacte sur l'essentiel.",
+  "points": [
+   "adws/adw_modules/agent_cc.py:11-15 : run(*args, **kwargs) leve toujours NotImplementedError, sans rien lancer ni lire ni ecrire.",
+   "adws/adw_modules/agent_cc.py:4-5 : la docstring promet pour plus tard `claude -p --output-format stream-json --resume <session_id>` ; rien de cela n'est code.",
+   "Correction mineure de la fiche : cles_config 'ligne 13' est seulement du texte dans un message d'erreur (agent_cc.py:13-14), le fichier ne lit aucune cle de config.",
+   "La fiche dit 'le schema accepte claude_code' : confirme, data_types.py:306 et :326 declarent Literal['pi','claude_code']. Le schema accepte donc ce que la validation refuse ensuite."
+  ],
+  "deps": [
+   "Utilise : rien (seul import : __future__ annotations, l.8).",
+   "Utilise par : personne. git grep 'agent_cc' dans adws/ ne trouve que le fichier lui-meme ; agents.py:18 importe seulement agent_pi, et agents.py:127 appelle agent_pi.run.",
+   "Cite seulement par des textes : sssf_overview.md:26, update_modules.md:17, config.md:45, TREE.md:85 (docs), plus specs/scaffold.md:74,179,183.",
+   "Copie identique dans .claude/skills/sssf/templates/adws/adw_modules/agent_cc.py (git diff --no-index : identique)."
+  ],
+  "vigilance": [
+   "Le message d'erreur (l.13-14) ne serait jamais vu : agents.validate refuse avant, agents.py:61-63, et validate est appele au debut de chaque ADW (ex. adw_build.py:24, adw_plan.py:24).",
+   "specs/scaffold.md:183 exige que les deux interfaces aient continue_agent ; agent_cc.py n'a que run(), pas de continue_agent."
+  ],
+  "chez_nous": [
+   "Rien a faire : Pi seul, ce fichier ne sert a rien et ne presente aucun risque (aucune execution, aucun secret).",
+   "Si un jour on voulait Claude Code, il faudrait ecrire ce module ET changer agents.py:61 et agents.py:127 ; ce n'est pas un simple 'branchement'."
+  ],
+  "a_verifier": []
+ }
+}

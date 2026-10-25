@@ -1,0 +1,102 @@
+[
+ {
+  "p": "adws/adw_modules/gates.py",
+  "fate": "adapter",
+  "reason": "Les portes de forme sont utiles, mais diff_matches_claims ne compare pas au vrai diff et tests_pass n'est utilisé nulle part ; à compléter pour nos besoins."
+ },
+ {
+  "p": "adws/adw_modules/git_helper.py",
+  "fate": "garder",
+  "reason": "Mécanique git simple et utilisée ; prévoir seulement l'identité git sur les VM et surveiller git add -A. current_branch, create_branch, changed_files sont sans appelant (changed_files est en plus fautif)."
+ },
+ {
+  "p": "adws/adw_modules/quality.py",
+  "fate": "adapter",
+  "reason": "Écrit pour Inkwell (oxlint via réseau, env complet, bug de délai dépassé, run_quality absent) ; à réécrire pour nos commandes et notre env filtré."
+ },
+ {
+  "p": "adws/adw_modules/changes.py",
+  "fate": "garder",
+  "reason": "Capture de diff propre, sans effet de bord hors dossier de session ; seule la base par défaut 'main' est à régler."
+ },
+ {
+  "p": "adws/adw_modules/runner.py",
+  "fate": "garder",
+  "reason": "Cœur du cycle de vie des phases et du code de sortie ; utilisé par les 12 ADW via session.ensure. Règle succès/échec saine, rien à changer pour nous."
+ },
+ {
+  "p": "adws/adw_modules/session.py",
+  "fate": "adapter",
+  "reason": "Utile tel quel, mais à compléter chez nous : fermeture des processus enfants à l'arrêt par signal (voir candidat) et éventuellement SIGHUP."
+ },
+ {
+  "p": "adws/adw_modules/tracer.py",
+  "fate": "adapter",
+  "reason": "Indispensable (la trace est la base de l'observation des VM), mais écrit tout en clair : prévoir masquage ou exclusion à la récolte avant de laisser des agents afficher de l'environnement."
+ },
+ {
+  "p": "adws/adw_simple_sdlc.py",
+  "fate": "adapter",
+  "reason": "Meilleur flux (trois commits, porte stricte) mais a regler : retries sur plan/build/review, re-test apres fix_3, revue seulement si tests verts."
+ },
+ {
+  "p": "adws/adw_plan_build_test.py",
+  "fate": "adapter",
+  "reason": "Defaut de nos VM ; durcir la porte du build (diff_matches_claims) et traiter fix_3."
+ },
+ {
+  "p": "adws/adw_build.py",
+  "fate": "garder",
+  "reason": "Court et sans surprise."
+ },
+ {
+  "p": "adws/adw_build_review.py",
+  "fate": "garder",
+  "reason": "Utile ; corriger seulement le message 'after 3 revision(s)'."
+ },
+ {
+  "p": "adws/adw_build_test.py",
+  "fate": "garder",
+  "reason": "Boucle test/fix simple ; meme reserve sur fix_3."
+ },
+ {
+  "p": "adws/adw_document.py",
+  "fate": "garder",
+  "reason": "Garde-fou diff vide present ; verifier la base main en VM."
+ },
+ {
+  "p": "adws/adw_plan.py",
+  "fate": "garder",
+  "reason": "Planification seule."
+ },
+ {
+  "p": "adws/adw_plan_build.py",
+  "fate": "verifier",
+  "reason": "Committe sans test ni revue ; probablement a ne pas utiliser chez nous."
+ },
+ {
+  "p": "adws/adw_plan_build_test_quality.py",
+  "fate": "verifier",
+  "reason": "Plante (run_quality inexistant) ; a corriger ou laisser de cote."
+ },
+ {
+  "p": "adws/adw_prompt.py",
+  "fate": "garder",
+  "reason": "Test de fumee d'un modele ; ecriture libre si on vise builder."
+ },
+ {
+  "p": "adws/adw_quality.py",
+  "fate": "verifier",
+  "reason": "Plante (run_quality inexistant)."
+ },
+ {
+  "p": "adws/adw_scout.py",
+  "fate": "garder",
+  "reason": "Lecture seule, bon test de modele."
+ },
+ {
+  "p": "adws/adw_modules/agent_cc.py",
+  "fate": "verifier",
+  "reason": "Jamais importe, jamais atteignable (agents.validate refuse claude_code) ; garde-fou documentaire sans effet. A laisser tel quel pour rester identique au modele amont."
+ }
+]

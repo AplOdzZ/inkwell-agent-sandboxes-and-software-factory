@@ -1,0 +1,44 @@
+[
+ {
+  "ou": "adws/adw_modules/quality.py:73-76 (gestion du délai dépassé)",
+  "ecrit": "Un délai dépassé est enregistré comme échec propre : code 124 et texte « Timed out after Ns » (quality.py:73-76, après subprocess.run(..., text=True, timeout=...) l.62-69).",
+  "realite": "Avec Python 3.13.17 (essayé dans cet environnement), l'exception TimeoutExpired porte stdout et stderr en bytes même avec text=True. Si la commande a écrit sur stderr avant le délai, la ligne 76 `(error.stderr or \"\") + \"\\nTimed out…\"` ajoute un str à des bytes et lève TypeError (« can't concat str to bytes »). Si seul stdout a écrit, le plantage a lieu plus loin, l.116 `(stdout + stderr)[-TAIL_CHARS:]`, après l'écriture de command.log (qui contient alors `b'…'`). Cette erreur n'est pas attrapée (seul OSError l'est, l.77) : l'ADW plante au lieu d'enregistrer le code 124. Même sans cela, stdout en bytes serait écrit sous forme `b'...'` dans command.log (l.82-85). Cas typique : `bun test` bloqué après avoir écrit sur stderr.",
+  "impact": "Un test qui se bloque après avoir écrit quelque chose fait planter le workflow sur une TypeError au lieu d'enregistrer le code 124. Cas stderr : ni command.log ni événement tool_call ; la phase est tout de même marquée en échec (runner.py:88-103). La boucle test/fix ne reçoit jamais l'échec.",
+  "type": "bug"
+ },
+ {
+  "ou": "adws/adw_modules/data_types.py:294 vs adws/adw_modules/gates.py:27",
+  "ecrit": "Commentaire du champ AgentCall.gates : `gate(envelope, run) -> list[str]` (data_types.py:294).",
+  "realite": "Les portes du dépôt rendent un GateReport (gates.py:27, 36, 47, 61, 71, 100) ; agents.py:155 passe le résultat à _as_report (défini l.226) pour l'adapter. Le commentaire est resté à l'ancien contrat.",
+  "impact": "Un lecteur qui écrit une nouvelle porte d'après ce commentaire rend une liste ; cela ne marche que grâce à l'adaptateur et perd le détail par contrôle (note de chaque check).",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "just/obs.just:56 et :63 (kill), avec adws/adw_modules/tracer.py:77 et :186",
+  "ecrit": "« just kill verifies each pid still matches the command that was recorded before signalling » (.claude/skills/sssf/cookbooks/run_adw.md:114) ; « both verify the recorded `command` still matches the pid before signalling it » (.claude/skills/sssf/references/observability.md:130) ; tracer.py:186 stocke la commande (raison écrite en tracer.py:77) pour cette raison.",
+  "realite": "La requête ne lit pas la commande enregistrée : elle ne sélectionne que « kind||' '||pid » (just/obs.just:56). Le test compare la commande actuelle du pid à trois motifs fixes « *pi*|*adw_*|*python* » (just/obs.just:63). Le test laisse donc passer tout processus dont la ligne de commande contient « pi », « adw_ » ou « python » (par ex. ping, pipewire) ; il en refuse d'autres (bash, sleep, node, git). Un pid réutilisé par un tel processus passerait le contrôle.",
+  "impact": "Le garde-fou annoncé contre le recyclage des pid est plus faible que décrit : kill peut viser un autre processus de la VM. Risque faible sur une VM jetable, mais la doc promet plus que le code.",
+  "type": "faille"
+ },
+ {
+  "ou": "adws/adw_modules/session.py (gestionnaire de signaux) avec tracer.py:165 et agent_pi.py",
+  "ecrit": "session.py:24-29 : sans le gestionnaire, un kill « would leave the session reading `running` forever and its process rows open — the trace would claim work in flight that is already dead ». Le gestionnaire est présenté comme faisant clore proprement la trace d'un run tué.",
+  "realite": "Le gestionnaire (session.py:30-32) appelle session_finish, qui marque TOUTES les lignes de processus comme terminées (tracer.py:165, 198-203) sans envoyer de signal à aucun pid. agent_pi.py lance pi avec Popen (agent_pi.py:278) sans try/finally ni appel à kill()/terminate(). Après un « kill <pid de l'ADW> » simple, la trace dit donc « plus rien de vivant » même si le processus pi enfant peut tourner encore, et just kill répondrait « no live processes recorded » (just/obs.just:57) car il ne lit que les lignes sans ended_at (just/obs.just:56). just kill tue les enfants d'abord ; seul un kill simple du pid de l'ADW pose problème.",
+  "impact": "Possible agent pi orphelin qui continue à consommer des crédits OpenRouter et à écrire dans le dépôt, sans que la trace le montre. Non observé : seule la structure du code est établie (voir a_verifier).",
+  "type": "bug"
+ },
+ {
+  "ou": "README.md:142 et adws/adw_modules/agents.py:6",
+  "ecrit": "README.md:142 : 'gates validate every claim, and a failure re-enters the same session as a correction, never a restart' ; agents.py:6 : 'bounded retries'.",
+  "realite": "Une phase d'agent sans retries (defaut 0, data_types.py:29) leve GateFailure au premier ecart de porte (agents.py:167-168) et le run s'arrete (runner.py:88-103). Dans adw_simple_sdlc.py, plan (l.82), build (l.91) et review (l.117) n'ont pas retries ; seuls fix, revise et document l'ont (l.107,125,163). Meme chose pour plan/build dans plan_build.py:36, plan_build_test.py:46, build_review.py:42, build_test.py:46 ; seul adw_build.py:31 met retries=1 sur son build. Le scout (adw_scout.py:31) est le même cas.",
+  "impact": "Un seul manquement de porte (par ex. fichier cite absent) sur le plan, le build ou la revue coute un run complet en VM, sans la correction promise.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/sssf_overview.md:17-21",
+  "ecrit": "sssf_overview.md:17-21 liste les scripts adws/ sans adw_quality.py ni adw_plan_build_test_quality.py (le mot « quality » n'y figure pas).",
+  "realite": "Les deux fichiers existent (adws/adw_quality.py:1, adws/adw_plan_build_test_quality.py:1) et ont leur recette just (just/adws.just:61,73) ; README.md:142 annonce douze ADW.",
+  "impact": "Faible : la doc ne signale pas ces deux ADW, pourtant présents et lançables par just.",
+  "type": "doc_en_retard"
+ }
+]
