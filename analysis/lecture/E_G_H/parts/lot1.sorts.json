@@ -1,0 +1,52 @@
+[
+ {
+  "p": "adws/adw_data/prompt_engineering/builder/system.md",
+  "fate": "adapter",
+  "reason": "Promet qu'une redirection dans le dépôt « sera annulée » (faux pour le builder, n°60), annonce « credentials live » et cite pytest, qui n'est utilisé nulle part."
+ },
+ {
+  "p": "adws/adw_data/prompt_engineering/builder/user.md",
+  "fate": "adapter",
+  "reason": "Contrat BuildOutput exact champ par champ, mais promet que `commit_message` fera le commit (faux dans 3 ADW), n'explique pas `fail` et donne un exemple de chemin qui n'existe pas."
+ },
+ {
+  "p": "adws/adw_data/prompt_engineering/planner/system.md",
+  "fate": "adapter",
+  "reason": "« Do not implement » et « never overwrite a spec » ne tiennent que par le prompt (frontier sans writes ; specs/ réinscriptible) ; chevrons non remplacés ; attente des sous-agents non contrôlée."
+ },
+ {
+  "p": "adws/adw_data/prompt_engineering/planner/user.md",
+  "fate": "adapter",
+  "reason": "Contrat PlanOutput exact, mais le commit_message du plan n'est utilisé que dans adw_simple_sdlc, le nom unique n'est tenu par aucun code, et une faute de chemin arrête le run (phase sans nouvelle tentative)."
+ },
+ {
+  "p": "adws/adw_data/prompt_engineering/reviewer/system.md",
+  "fate": "adapter",
+  "reason": "« Change nothing » dépend de writes (absent en frontier) et d'un contrôle tardif ; « approved only when… » n'est vérifié que pour la cohérence, pas pour la présence d'exigences."
+ },
+ {
+  "p": "adws/adw_data/prompt_engineering/reviewer/user.md",
+  "fate": "adapter",
+  "reason": "Contrat ReviewOutput exact, mais la ligne 23 (une exigence = une entrée) n'est vérifiée par aucune porte (faille au registre, à corriger dans gates.py) ; le nom fixe de review.md et l'exemple de chemin sont aussi à changer."
+ },
+ {
+  "p": "adws/adw_data/prompt_engineering/scout/system.md",
+  "fate": "adapter",
+  "reason": "« Read-only » et « sous-agents en lecture seule » ne sont pas tenus (bash, environnement complet, fire-and-forget) ; « agents that follow » n'a aucun lecteur."
+ },
+ {
+  "p": "adws/adw_data/prompt_engineering/scout/user.md",
+  "fate": "garder",
+  "reason": "Gabarit court et exact (ScoutOutput identique au type, seul `notes_for_next_agent` n'est pas montré) ; juste changer l'exemple de chemin."
+ },
+ {
+  "p": "adws/adw_data/prompt_engineering/documenter/system.md",
+  "fate": "adapter",
+  "reason": "« Full diff » est coupé à 2 000 lignes, « documentation only » laisse écrire tout markdown (y compris les fichiers d'instructions), « pick a name nothing else holds » n'est pas gardé."
+ },
+ {
+  "p": "adws/adw_data/prompt_engineering/documenter/user.md",
+  "fate": "adapter",
+  "reason": "Promet que les portes ouvrent `document_path` (faux, n°44) et que `commit_message` commite le write-up (faux hors adw_simple_sdlc)."
+ }
+]

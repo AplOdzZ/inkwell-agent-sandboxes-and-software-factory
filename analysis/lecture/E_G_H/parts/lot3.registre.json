@@ -1,0 +1,128 @@
+[
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/server/index.ts l.113-115 et l.201",
+  "ecrit": "Le journal de démarrage annonce « visualizer api  http://localhost:${server.port} » (.claude/skills/sssf/apps/visualizer/server/index.ts:201). C'est la seule promesse écrite sur l'adresse ; le commentaire de tête (index.ts:1-12) ne dit rien d'autre.",
+  "realite": "`Bun.serve({ port: PORT, routes })` est appelé sans `hostname` (.claude/skills/sssf/apps/visualizer/server/index.ts:113-115). Expérience (serveur de test avec la même forme d'appel, Bun 1.4.4, lecture de /proc/net/tcp) : le port écoute sur 00000000, c'est-à-dire toutes les interfaces IPv4, alors que Bun affiche `hostname: localhost`. Le dépôt le suppose aussi (just/sandbox/lifecycle/observe.just:54-56 « bun binds 0.0.0.0 by default »). Aucun mot de passe, aucun contrôle de Host ni d'Origin, aucun en-tête CORS (grep) ; les routes à fonction répondent à toutes les méthodes. Le dépôt EXIGE cette écoute large pour le proxy exe.dev (gotchas.md:66 « Servers must bind 0.0.0.0 »), donc corriger = filtrer l'accès (jeton, Host, Origin), pas seulement passer à 127.0.0.1. IPv6 non testé (pas de /proc/net/tcp6 sur la machine d'essai).",
+  "impact": "Tout ce qui atteint le port 4600 (autre processus de la VM, l'agent par curl, tout réseau qui joint la VM, tout navigateur local par « DNS rebinding ») lit la trace complète en clair. Le seul rempart prouvé est une affirmation sur le proxy d'exe.dev.",
+  "type": "faille"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/server/db.ts l.11-12 (route .claude/skills/sssf/apps/visualizer/server/index.ts l.135-146)",
+  "ecrit": "« it never runs unless a human clicks the button » (.claude/skills/sssf/apps/visualizer/server/db.ts:11-12) ; « Archiving is review triage — it belongs to the reader » (.claude/skills/sssf/apps/visualizer/server/index.ts:133-134).",
+  "realite": "La route `POST /api/sessions/:adw_id/archive` (.claude/skills/sssf/apps/visualizer/server/index.ts:135-146) n'a ni authentification, ni contrôle d'origine, ni contrôle du type de contenu ; le corps est lu par `req.json().catch(() => ({}))` et `archived` absent vaut vrai (l.141-142). Expérience sur un serveur de test à la même logique : un POST sans corps, un POST `text/plain` avec `Origin: http://evil.example` et un corps JSON invalide ont tous rendu `archived: true`. `Boolean(body.archived)` (l.142) fait aussi archiver `{\"archived\":\"false\"}`.",
+  "impact": "Réversible, mais c'est la seule route qui écrit et elle n'est pas protégée. Une page web tierce ne peut archiver que si elle connaît l'adw_id (8 caractères hexadécimaux, adws/adw_modules/utils.py:41-42) et elle ne peut pas lire la liste (même origine). Les cas réalistes sont un script ou l'agent sur la VM (qui lit /api/sessions) ou un « DNS rebinding » (Host non contrôlé).",
+  "type": "faille"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/server/db.ts l.335-360 (usage)",
+  "ecrit": "« Raw tokens read and written » ; .claude/skills/sssf/apps/visualizer/shared/types.ts:235-245 : « What actually moved through a session, summed across every agent » ; .claude/skills/sssf/apps/visualizer/shared/types.ts:249 « Derived from agent_end payloads, so historical runs have it too ».",
+  "realite": "`usage()` additionne seulement les charges `agent_end` (.claude/skills/sssf/apps/visualizer/server/db.ts:338). Or `agent_end` n'est écrit qu'après portes passées, JSON valide, droits respectés et enveloppe valide enregistrée (il l'est même si l'enveloppe annonce status≠success : l.209 vient avant la levée des l.219-220) (adws/adw_modules/agents.py:209-210), après les portes (adws/adw_modules/agents.py:168), la lecture du JSON (adws/adw_modules/agents.py:291), le contrôle des droits (adws/adw_modules/agents.py:183) et l'enregistrement de l'enveloppe. Aucun autre code n'écrit ce type (git grep). Pour une phase qui échoue, les jetons sont pourtant comptés dans `sessions.total_tokens` (adws/adw_modules/agents.py:134 → adws/adw_modules/runner.py:66-69).",
+  "impact": "Le chiffre « lu / écrit » du visualiseur est trop bas, ou nul, pour les runs qui ratent, c'est-à-dire ceux où l'on veut savoir ce que l'agent a dépensé. Il ne concorde plus avec le total facturé.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.24",
+  "ecrit": "« `agent_end` | the agent's run completes; envelope parsed or not — payload carries cost, usage... ».",
+  "realite": "`agent_end` n'est écrit qu'à adws/adw_modules/agents.py:209-210, après le contrôle des droits (adws/adw_modules/agents.py:183) et l'enregistrement d'une enveloppe VALIDE (adws/adw_modules/agents.py:197, `_persist_envelope(..., valid=True)`). Une enveloppe jamais valide (adws/adw_modules/agents.py:291), un échec de porte (adws/adw_modules/agents.py:168), une violation de droits (adws/adw_modules/agents.py:186-191) ou une erreur de Pi (agent_pi.py:320) lèvent avant : pas d'événement. Aucun try/finally.",
+  "impact": "Un lecteur qui s'appuie sur ce document cherchera en vain l'`agent_end` d'une phase en échec : pas de coût ni de contexte pour ces phases.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.28",
+  "ecrit": "« `parent_id` nests spans, so an agent phase expands into its tool-call spans in the UI. »",
+  "realite": "`parent_id` n'est jamais renseigné : le seul endroit est le défaut `\"\"` de adws/adw_modules/data_types.py:362 (git grep : aucun appel ne passe `parent_id`) et l'interface ne le lit pas (grep dans .claude/skills/sssf/apps/visualizer/src : aucune occurrence). Les colonnes `events.parent_id` sont donc toutes vides ; le regroupement se fait par `phase_id`.",
+  "impact": "Un outil qui voudrait reconstruire l'arbre des appels d'outils avec `parent_id` ne trouverait rien.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.134",
+  "ecrit": "« Phase status invariants: `queued` only for manifest-declared phases not yet entered (dashed in the UI) ».",
+  "realite": "Aucun code n'écrit `queued` : la phase naît « running » (adws/adw_modules/runner.py:77), le défaut du modèle est « fail » (data_types.py:63), et il n'y a aucun « manifest » dans adws/ (git grep vide). Le mot existe seulement dans des types et dans l'interface : adws/adw_modules/data_types.py:17 (Literal), .claude/skills/sssf/apps/visualizer/shared/types.ts:13, et quatre composants (SessionTrace.vue:374, 407-413 et 531-545 ; PhaseDots.vue:12 ; StatusChip.vue:10 ; PhaseDetail.vue:355). Rien ne produit la valeur.",
+  "impact": "Les phases « à venir » ne sont jamais visibles à l'avance dans le visualiseur ; la promesse est celle d'une fonction qui n'existe pas.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.51-58",
+  "ecrit": "Le tableau `sessions` liste adw_id, request, status, engineer, started_at, ended_at, total_tokens, total_cost.",
+  "realite": "Le schéma réel (adws/adw_modules/tracer.py:18-27) ajoute `adw_name` (l.20) et `archived` (l.26). Le document cite `sessions.archived` plus bas (l.146) : il se contredit. `request` est limité à 500 caractères (adws/adw_modules/tracer.py:158), non dit.",
+  "impact": "Une requête SQL écrite d'après le document ignore deux colonnes que le visualiseur utilise.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.23",
+  "ecrit": "« `log` | an explicit `ph.log(...)` from the ADW script ».",
+  "realite": "`log` est aussi écrit pour chaque ligne que la console affiche (adws/adw_modules/console.py:43-46, via `_emit`, avec `phase_id` vide avant la première phase, console.py:33) et pour `paths_touched` (adws/adw_modules/agents.py:193-195). `ph.log` n'est qu'une source (adws/adw_modules/runner.py:27-31).",
+  "impact": "Les `log` sont l'essentiel du flux ; ils contiennent des messages d'erreur et des résumés, pas seulement ce que l'ADW a voulu noter.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.130",
+  "ecrit": "« `just procs <adw_id>` lists what is live, `just kill <adw_id>` stops children before the parent, and both verify the recorded `command` still matches the pid before signalling it ».",
+  "realite": "Le justfile racine ne définit que des modules (justfile:38-50) : les recettes sont `just obs procs` et `just obs kill` (just/obs.just:47-48, 53-66). `procs` ne vérifie rien (c'est un SELECT, obs.just:48). Même cause que n°34 (autre fichier) ; le défaut de `kill` est le n°72.",
+  "impact": "Un humain ou un agent qui tape la commande du document obtient « no recipe » ; le document laisse croire à une vérification que `procs` n'a pas.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.36",
+  "ecrit": "« `context_window` is the same `contextWindow` pi reads from `~/.pi/agent/models.json` ».",
+  "realite": "adws/adw_modules/agent_pi.py:108-117 lit `models.json`, puis retombe sur le catalogue de Pi (`_pi_catalog()`, l.114-116) et rend 0 si le modèle n'est dans aucun des deux. app_docs/27ef9462_model-routing-context.md:14 le décrit déjà ainsi.",
+  "impact": "Un modèle absent de `models.json` n'est plus « sans fenêtre » : sa fenêtre vient du catalogue de la machine (qui varie), pas du fichier de la VM.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.138-144",
+  "ecrit": "« Open **every** connection — writer and reader — with PRAGMA journal_mode=WAL; synchronous=NORMAL; busy_timeout=5000 ».",
+  "realite": "Le traceur le fait (adws/adw_modules/tracer.py:109-111). Le lecteur du visualiseur ne peut pas poser `journal_mode` et pose les deux autres (.claude/skills/sssf/apps/visualizer/server/db.ts:79-83) ; sa connexion d'archivage n'ouvre qu'avec `busy_timeout` (.claude/skills/sssf/apps/visualizer/server/db.ts:143-144).",
+  "impact": "Faible : le mode WAL est inscrit dans le fichier et reste, mais la règle écrite n'est pas suivie par le propre code du visualiseur.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.9",
+  "ecrit": "« Location comes from `observability.db` in `sssf.config.yaml` ».",
+  "realite": "Vrai pour le traceur (adws/adw_modules/session.py:40) ; le visualiseur ne lit pas la config : chemin = `--db`, sinon `SSSF_DB`, sinon `adws/adw_data/sssf.db` du dossier courant (.claude/skills/sssf/apps/visualizer/server/db.ts:39-49). Il faut donc le lui dire (observe.just:113 et obs.just:73 le font avec la valeur par défaut codée en dur).",
+  "impact": "Si un roster change `observability.db`, le visualiseur lancé par les recettes ouvre l'ancienne base sans erreur.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "just/sandbox/lifecycle/teardown.just l.109",
+  "ecrit": "La récolte copie `adws/adw_data/sssf.db` dans les artefacts ; .claude/skills/sssf/references/observability.md:7 « Losing the db loses nothing that can't be rebuilt from files » ; .claude/skills/sssf/references/observability.md:146 « WAL allows readers during writes ».",
+  "realite": "La commande est `tar cf - ... adws/adw_data/sssf.db ...` : le fichier -wal n'est pas copié. Tant qu'une connexion de lecture reste ouverte (le visualiseur garde la sienne, db.ts:77, fermée seulement sur SIGINT, index.ts:209-212, et observe.just le lance sur chaque VM), SQLite ne checkpointe pas à la fermeture de l'écrivain. Expérience (Python sqlite3 puis bun:sqlite, base fabriquée avec le SCHEMA de tracer.py, 50 sessions) : sans lecteur ouvert, la copie du seul .db contient les 50 lignes ; avec un lecteur ouvert, le -wal et le -shm subsistent et la copie du seul .db donne « no such table: sessions ».",
+  "impact": "La trace rapatriée avant la destruction de la VM peut être vide ou incomplète (au moins pour une petite base), sans message d'erreur. À confirmer sur une vraie VM avec une vraie taille de base.",
+  "type": "bug"
+ },
+ {
+  "ou": "just/sandbox/lifecycle/observe.just l.159-167",
+  "ecrit": "Commentaire l.159-160 : « 307/401 anonymously is CORRECT for the obs port: alternate ports stay auth-gated » ; message l.167 : « obs  $OBS_CODE anonymous — expected, it is owner-gated ». README.md:232 « the agent view stays auth-gated to you ».",
+  "realite": "Le test (l.163) n'échoue que pour 000 ou un code ≥ 500 ; un 200 anonyme sur le port 4600, c'est-à-dire un visualiseur public, passe et affiche quand même « expected, it is owner-gated » (l.167, texte fixe). Le code ne peut donc pas détecter que le port est devenu public.",
+  "impact": "Si exe.dev change de comportement ou si quelqu'un lance `share set-public` sur ce port, la trace complète est exposée à tous sans qu'aucun contrôle du dépôt ne le dise.",
+  "type": "faille"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/run_adw.md l.122",
+  "ecrit": "« the visualizer app in the skill (`just obs`, or tmux sessions viz-api :4600 + viz-ui :4601) ».",
+  "realite": "Aucune session tmux `viz-api` ou `viz-ui` n'est créée nulle part (git grep « viz-api » hors analysis : cette seule ligne). Les lancements réels sont just/obs.just:73, templates/justfile:89, observe.just:113 (nohup, sans tmux).",
+  "impact": "Un lecteur cherche des sessions tmux qui n'existent pas.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/package.json l.6",
+  "ecrit": "« Read-only observability UI for the Super Simple Software Factory — polls sssf.db in a target repo. »",
+  "realite": "Le serveur a une écriture : `POST /api/sessions/:adw_id/archive` → `UPDATE sessions SET archived` (.claude/skills/sssf/apps/visualizer/server/index.ts:135-146, .claude/skills/sssf/apps/visualizer/server/db.ts:146-148), sur une seconde connexion en lecture-écriture (.claude/skills/sssf/apps/visualizer/server/db.ts:143). .claude/skills/sssf/apps/visualizer/server/db.ts:8-12 et .claude/skills/sssf/references/observability.md:146 le disent ; la description du paquet, non.",
+  "impact": "Faible, mais « lecture seule » pousse à ne pas protéger la seule route qui écrit.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/server/index.ts l.18",
+  "ecrit": "Commentaire d'usage l.11 : `PORT=4600 bun run server/index.ts` ; défaut 4600 (`Number(process.env.PORT ?? 4600)`).",
+  "realite": "`??` ne remplace pas une chaîne vide : `PORT=` donne `Number(\"\") = 0`, donc un port ALÉATOIRE (essai Bun 1.4.4 : 38903) ; `PORT=abc` donne NaN et le démarrage plante avec une exception non attrapée (`Bun.serve` n'est pas dans un try). Le journal affiche le vrai port, mais observe.just:33-34 et vite.config.ts:5 attendent 4600.",
+  "impact": "Rare : il faut que `PORT` soit vide ou invalide dans l'environnement du processus bun lui-même (ni obs.just, module sans `dotenv-load`, ni le lancement par ssh d'observe.just:113 ne transmettent le .env de l'hôte). Le montage échoue alors à « never bound :4600 ».",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/server/db.ts l.174-176, 221-223, 276-281, 338, 389-391, 400-402 (schéma adws/adw_modules/tracer.py l.17-90)",
+  "ecrit": "Le visualiseur interroge la base toutes les 500 ms (SessionsList.vue:33, SessionTrace.vue:84, SessionCard.vue:65) ; observability.md:146-158 présente la lecture par curseur comme le mécanisme léger.",
+  "realite": "Le schéma ne crée aucun index (aucun CREATE INDEX dans tracer.py, grep). EXPLAIN QUERY PLAN sur le SCHEMA recopié (Python sqlite3) : la requête agent_start de `agentsFor` fait `SCAN e` sur toute la table events, `usage()` fait `SCAN events`, les phases d'un lot de sessions font `SCAN phases` + tri temporaire, enveloppes et portes `SCAN`. Seule la requête d'événements profite de la clé rowid (`SEARCH events USING INTEGER PRIMARY KEY (rowid>?)`).",
+  "impact": "Sur une grosse trace (beaucoup d'événements : sorties d'outils jusqu'à 20 000 caractères chacune), chaque rafraîchissement relit toute la table events pour les agents en cours et l'usage ; lenteur probable, pas une faille. À mesurer sur une vraie trace.",
+  "type": "bug"
+ }
+]

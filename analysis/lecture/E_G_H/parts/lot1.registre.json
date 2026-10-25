@@ -1,0 +1,86 @@
+[
+ {
+  "ou": "adws/adw_data/prompt_engineering/planner/user.md:25 (avec planner/system.md:11, sssf.config.yaml:50-51, permissions.py:146)",
+  "ecrit": "« Never overwrite an existing spec — the earlier plan is the record of what was asked for then » (planner/user.md:25). app_docs/306a0046_prevent-overwriting-specs-docs.md:21 : « Existing documentation and specifications remain preserved in the repository ».",
+  "realite": "Rien dans le code n'empêche l'écrasement. Le planner a `writes: [specs/]` (sssf.config.yaml:50-51), donc tout fichier de `specs/` est permis (permissions.py:146) et la commande conseillée `cp` (planner/user.md:27) écrase sans `-n`. Expérience 3 (exp_perm.py, copie de snapshot/permitted dans un dépôt jetable) : un spec non commité réécrit garde l'empreinte « untracked » (permissions.py:81-82), il n'apparaît même pas dans les chemins touchés ; un spec commité réécrit apparaît mais n'est pas refusé pour le planner (seul `out.txt`, créé pour l'essai, l'est).",
+  "impact": "La règle « jamais d'écrasement » ne vaut que si le modèle la suit ; une session réutilisée (`--adw-id`) peut perdre un plan non commité sans aucune alerte. Chez nous : calculer le nom unique par le code.",
+  "type": "faille"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/documenter/user.md:26 (avec documenter/system.md:15, sssf.config.yaml:131-132)",
+  "ecrit": "« Never overwrite an existing write-up — it describes a change that already shipped » (documenter/user.md:26) ; « an overwritten write-up describes a change that already shipped » (documenter/system.md:15).",
+  "realite": "Le documenter a `writes: [app_docs/, docs/, \"**/*.md\", \"*.md\"]` (sssf.config.yaml:131-135) : `app_docs/` est permis en entier (permissions.py:146) et `cp` écrase sans `-n` (documenter/user.md:28). Même expérience 3 : un fichier non suivi réécrit est invisible ; un fichier suivi réécrit apparaît mais est permis. Aucune porte ne compare le nouveau document à l'ancien (gates.py:27-44).",
+  "impact": "Un write-up déjà livré peut être remplacé sans trace dans les contrôles de la factory. Même remède que pour les specs : nom unique calculé par le code.",
+  "type": "faille"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/planner/user.md:40",
+  "ecrit": "`commit_message` : « imperative one-line git subject for committing THIS PLAN DOCUMENT, not the work it describes » (planner/user.md:40).",
+  "realite": "Le message du planner n'est lu que par adw_simple_sdlc.py:87-89 (commit_plan, via `commit`, l.69-70). adw_plan_build.py:41-44, adw_plan_build_test.py:71-74 et adw_plan_build_test_quality.py:83-86 font UN seul commit avec le message du builder (`git add -A`, git_helper.py:49), qui contient donc aussi le plan. adw_plan.py ne commite rien.",
+  "impact": "Dans le workflow par défaut des VM (`just sdlc` = adw_plan_build_test), le champ demandé au planner ne sert à rien et le plan part dans le commit du code. Ne pas compter sur un commit séparé du plan.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/documenter/user.md:43",
+  "ecrit": "`commit_message` : « imperative one-line git subject for committing THIS WRITE-UP, not the change it describes » (documenter/user.md:43).",
+  "realite": "Seul adw_simple_sdlc.py:169-171 (commit_docs) commite le write-up avec ce message. adw_document.py (l.46-66) n'a aucune phase de commit : le message n'est jamais utilisé et le document reste non commité dans l'arbre de la VM.",
+  "impact": "Avec `just document`, le write-up reste non commité dans l'arbre de la VM : il n'est pas dans les commits récoltés par harvest. L'étape artefacts du teardown copie `app_docs/` et `specs/` de l'arbre de travail tant que la VM est vivante (just/sandbox/lifecycle/teardown.just:101-111, ligne 109), commités ou non. De plus, le défaut des VM (`sdlc`) ne lance pas le documenter.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/builder/system.md:12 (aussi planner/system.md:13, reviewer/system.md:15, scout/system.md:11, documenter/system.md:17)",
+  "ecrit": "« You inherit the operator's shell environment — their PATH, toolchains and credentials are already live. Call tools by bare name (`bun`, `uv`, `pytest`) ».",
+  "realite": "Exact côté code : `load_dotenv()` charge `.env` (utils.py:13), `operator_env()` copie tout `os.environ` sauf `VIRTUAL_ENV` (utils.py:31-38) et Pi est lancé avec cette copie (agent_pi.py:281). Le prompt le dit à l'agent. `pytest` n'est utilisé nulle part dans le dépôt (seul l'exemple du modèle du skill, templates/adws/adw_modules/quality.py:18, :25) ; la commande de test réelle est `bun test` (quality.py:193).",
+  "impact": "Contraire à la décision 1 (liste fixe de variables, une seule clé OpenRouter) et à la règle « pas de vrai secret » : on dit à chaque agent que les clés sont utilisables. À réécrire dans les 5 prompts.",
+  "type": "perime_pour_nous"
+ },
+ {
+  "ou": "adws/adw_plan_build_test.py:49 et :67",
+  "ecrit": "Le builder « report[s] every file you changed » (builder/system.md:5) dans `changed_files` (builder/user.md:29) ; la table des portes typiques du cookbook donne `diff_matches_claims` pour le builder (.claude/skills/sssf/cookbooks/create_adw.md:15) ; les autres ADW qui appellent le builder l'utilisent (adw_build.py:34, adw_plan_build.py:39, adw_plan_build_test_quality.py:46, adw_simple_sdlc.py:94).",
+  "realite": "adw_plan_build_test.py met `gates=[gates.artifacts_exist]` au build (l.49) et au fix (l.67). `artifacts_exist` ne parcourt que `envelope.artifacts` (gates.py:29), vide dans l'exemple du prompt (builder/user.md:30). Une porte sans aucune vérification ne produit aucune violation et passe (agents.py:156-166). Les fichiers annoncés ne sont donc vérifiés d'aucune façon.",
+  "impact": "C'est le workflow par défaut des VM (just/adws.just:68-69 ; just/sandbox/lifecycle/execute.just:48) : les déclarations du builder n'y sont pas contrôlées, même pas pour l'existence. À corriger si on garde cet ADW.",
+  "type": "bug"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/reviewer/user.md:23 (avec reviewer/system.md:14 et adws/adw_modules/gates.py:84-94)",
+  "ecrit": "« Rule on every requirement in the spec — one `findings` entry each, with evidence » (reviewer/user.md:23) ; « `approved` is true ONLY when every requirement is met and `blocking` is empty » (reviewer/system.md:14) ; « Write the review to `<context_handoff_dir>/review.md` » (reviewer/user.md:24).",
+  "realite": "`verdict_consistent` (gates.py:84-94) ne fait que croiser `approved`, `blocking` et les `findings` présents. Expérience 3 (copie de la logique) : `approved=true`, `findings=[]`, `blocking=[]` PASSE. `artifacts_exist` ne teste que ce que l'agent déclare (gates.py:29) et `files_non_empty` n'est pas appliqué aux revues (adw_build_review.py:53-54 ; adw_simple_sdlc.py:120) : `review.md` peut ne pas exister ou être vide. Le verdict `review.approved` décide ensuite de `accepted` (adw_build_review.py:66 ; adw_simple_sdlc.py:144).",
+  "impact": "Un reviewer qui répond « approuvé » sans aucune exigence ni fichier fait passer le run au vert. La revue n'est un contrôle que si le modèle fait le travail.",
+  "type": "faille"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/documenter/system.md:9 (aussi documenter/user.md:21)",
+  "ecrit": "« **Read `diff_path`** — the full diff is the source of truth » (documenter/system.md:9) ; « Read the full diff at `previous_envelope.diff_path` » (documenter/user.md:21) ; `diff_path: str = \"\" # read this for the full diff` (data_types.py:234).",
+  "realite": "`changes.capture` coupe le diff à `max_diff_lines=2000` (data_types.py:181 ; changes.py:62-66) et ne nomme que les fichiers non suivis, sans leur contenu (changes.py:68-72). Le fichier `changes.diff` contient alors une ligne `[truncated at 2000 lines…]` que l'agent doit remarquer.",
+  "impact": "Sur un gros changement, le write-up s'appuie sur un diff partiel présenté comme complet. Le prompt devrait dire de continuer avec `git diff` quand le fichier est tronqué.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "adws/adw_sssf_config/sssf.config.yaml:133-134 (avec documenter/system.md:14 et permissions.py:146-148)",
+  "ecrit": "« documentation only — \"document only\" is a rule now, not a line in a prompt the model may drift from » (sssf.config.yaml:131-132) ; « Write documentation only. Never modify source code, tests, or config » (documenter/system.md:14) ; `protected_files` : « Off-limits to every agent that does not name them in its own `writes` » (sssf.config.yaml:20-23). Le YAML assume le choix : « Markdown anywhere, because docs live next to the code they describe » (sssf.config.yaml:133-134).",
+  "realite": "`\"**/*.md\"` et `\"*.md\"` autorisent tout fichier markdown. `permitted()` regarde `writes` AVANT `protected_files` (permissions.py:146-148) : expérience 3, le documenter peut écrire `adws/adw_modules/NOTE.md` et `adws/adw_sssf_config/NOTE.md` (dossiers protégés) et tous les fichiers d'instructions en markdown : `.claude/skills/sssf/SKILL.md`, cookbooks, références, `.claude/commands/*.md`, modèles de prompts sous `templates/`, `specs/*.md`, `README.md`. Le motif est le même dans les 4 YAML qui ont des `writes` et dans le modèle de config du skill.",
+  "impact": "Le choix « Markdown partout » est assumé dans le YAML, mais il ouvre en écriture tous les fichiers markdown qui servent d'instructions à d'autres agents et lève la protection des dossiers protégés pour le markdown. À restreindre à `app_docs/` chez nous.",
+  "type": "faille"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/scout/system.md:14",
+  "ecrit": "« Write your findings to `<context_handoff_dir>/scout_findings.md` for agents that follow » (scout/system.md:14).",
+  "realite": "`git grep scout -- 'adws/*.py'` ne montre que adw_scout.py (phase unique, l.31-34) et adw_prompt.py (`--agent scout`, l.30-32) ; recettes `just scout` (just/adws.just:36-38) et `just ask scout` (:32-34). L'enveloppe du scout n'est passée à aucun autre agent et `git grep scout_findings` ne montre aucun lecteur (seulement prompts, YAML et handoff.md:124).",
+  "impact": "Le travail du scout n'alimente pas la chaîne : il sert à l'humain. Ne pas bâtir un workflow qui compte sur un lecteur automatique de ce fichier.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/config.md:67",
+  "ecrit": "`prompt_engineering.system` : « Path to the system prompt — who the agent is, its single purpose, its output contract » (config.md:67).",
+  "realite": "Les cinq `system.md` ne contiennent aucun contrat de sortie (builder/system.md, planner/system.md, scout/system.md, documenter/system.md : aucun champ JSON ; reviewer/system.md:14 donne seulement la règle de `approved`). Le contrat JSON est dans `user.md`, section `## Report` (builder/user.md:21-34, etc.), et update_config.md:91 dit bien que le système est « Purpose + Instructions, nothing else ».",
+  "impact": "Un humain ou l'orchestrateur qui suit config.md écrira le contrat de sortie au mauvais endroit pour un nouvel agent.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/planner/user.md:39 (aussi planner/user.md:21 et :27 ; reviewer/user.md:21, :24, :39 ; documenter/user.md:22, :28, :42 ; scout/user.md:32)",
+  "ecrit": "Chaque user.md déclare ses variables en `{{context_handoff_dir}}` (section Variables, ex. planner/user.md:15), puis cite le dossier avec des chevrons `<context_handoff_dir>` dans la tâche, les commandes et l'exemple JSON d'`artifacts` (planner/user.md:21, :27, :39), de même `<adw_id>` et `<slug>`.",
+  "realite": "`prompts.render` ne remplace que `{{clé}}` (prompts.py:10-11 ; expérience 1, exp_render.py partie 7 : les chevrons restent littéraux). L'agent doit deviner que `<context_handoff_dir>` est la valeur affichée sous « ### context_handoff_dir », qui est un chemin relatif (agents.py:87, runner.py:54-55). Si le texte littéral reste dans `artifacts`, `artifacts_exist` échoue (gates.py:30-31) et la phase `plan` (sans `retries`) arrête le run (agents.py:167-169).",
+  "impact": "Un modèle faible qui recopie l'exemple tel quel perd un run entier sur une faute de syntaxe du gabarit. Chez nous : n'utiliser qu'une syntaxe, remplie par le code, avec un chemin absolu.",
+  "type": "doc_en_retard"
+ }
+]

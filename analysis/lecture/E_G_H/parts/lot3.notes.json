@@ -1,0 +1,430 @@
+{
+ ".claude/skills/sssf/apps/visualizer/server/db.ts": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Lecteur SQLite du visualiseur. Il ouvre sssf.db en lecture seule (une première connexion) et répond aux routes de index.ts : sessions, phases, agents, événements, enveloppes, portes. Il possède une seconde connexion, en lecture-écriture, pour une seule écriture : la colonne sessions.archived. Toutes les valeurs qui viennent de l'extérieur (identifiant de session, curseur, limite) passent par des paramètres « ? » : je n'ai trouvé aucune concaténation d'entrée dans le SQL. Il renvoie les données de la trace telles quelles, sans filtre.",
+  "points": [
+   "En-tête (l.1-13) : promesse que la connexion de lecture est « readonly » et que « every query on it is a SELECT » (l.4). Tenue : `new Database(path, { readonly: true })` (.claude/skills/sssf/apps/visualizer/server/db.ts:77) ; les requêtes de données de `this.db` sont des SELECT, plus trois PRAGMA de lecture ou de réglage (`table_info` l.115, `journal_mode` l.85, et les réglages de connexion `busy_timeout` / `synchronous` l.82-83 ; inventaire ci-dessous). L'exception unique est annoncée en l.8-12.",
+   "Même en-tête, l.11-12 : « it never runs unless a human clicks the button ». Le code ne peut pas le garantir : la route POST (.claude/skills/sssf/apps/visualizer/server/index.ts:135-146) n'a ni authentification ni contrôle d'origine. Expérience (serveur Bun de test, copie de la logique) : un POST sans corps, ou en text/plain avec un en-tête Origin d'un autre site, a rendu `archived: true`. Écart nouveau, au registre.",
+   "Imports (l.14-29) : `bun:sqlite`, `existsSync`, `dirname/isAbsolute/resolve`, et les types de .claude/skills/sssf/apps/visualizer/shared/types.ts. Aucun accès réseau, aucune bibliothèque tierce côté serveur : le serveur ne dépend d'aucun paquet npm au moment de l'exécution.",
+   "Constantes (l.31-33) : chemin par défaut `adws/adw_data/sssf.db`, `MAX_LIMIT = 1000`, `DEFAULT_LIMIT = 500`. Ce sont les seules bornes de taille du fichier (voir `clamp`, l.415-418).",
+   "`resolveDbPath` (l.39-49) : ordre `--db <chemin>`, puis `--db=<chemin>`, puis variable `SSSF_DB`, puis `adws/adw_data/sssf.db` ; un chemin relatif est résolu contre le dossier courant du processus (l.48). La base est donc cherchée là où le serveur est lancé, pas là où est le dépôt. Preuve de l'usage réel : just/obs.just:73 et just/sandbox/lifecycle/observe.just:113 passent `SSSF_DB` en absolu pour cette raison (commentaire observe.just:111-112).",
+   "`resolveDbPath` ne lit pas `sssf.config.yaml` : ni `observability.db` ni `data_dir`. Observability.md:9 dit pourtant « Location comes from observability.db ». Cela vaut pour le traceur (adws/adw_modules/session.py:40), pas pour le visualiseur. Les 5 fichiers de roster du dépôt gardent tous `db: adws/adw_data/sssf.db`, donc aucun trou aujourd'hui.",
+   "Cas limite vérifié par expérience (Bun 1.4.4) : `SSSF_DB=\"\"` ou `--db=` vide ne bascule pas sur le défaut (`??` ne remplace que null/undefined, l.42-46). Le chemin devient le dossier courant, `existsSync` répond oui (l.68), puis SQLite échoue avec « disk I/O error ». Le serveur s'arrête (index.ts:25-28) mais avec un message peu clair. `--db` donné en dernier argument (sans valeur) retombe sur la variable ou le défaut.",
+   "Champs de la classe (l.51-65) : `sessionsDir = <dossier de la base>/sessions` (l.76, calculé dans le constructeur) ; `journalMode` ; connexion de lecture `db` ; connexion d'écriture `writer` ouverte à la demande (null au départ) ; `columnCache` qui ne passe jamais de vrai à faux (l.64-65). Conséquence : si on déplace la base seule, le dossier des prompts suit la base, pas `data_dir`.",
+   "Constructeur, base absente (l.67-74) : si le fichier n'existe pas, il lève une erreur dont le message explique `--db` / `SSSF_DB`. .claude/skills/sssf/apps/visualizer/server/index.ts:23-28 l'attrape et fait `process.exit(1)`. Expérience : ouvrir un fichier absent en readonly donne « unable to open database file » et ne crée aucun fichier. Le visualiseur ne crée donc jamais la base ; c'est `provision.sh` (étape 7) qui l'initialise pour qu'il ne meure pas (sandbox_mount/guest/provision.sh:128-133).",
+   "Mode d'ouverture (l.75-77) : lecture seule de SQLite, rien d'autre. Pas de `PRAGMA query_only`, aucun contrôle des droits du fichier. Expérience (Python sqlite3 mode=ro et bun:sqlite readonly) : toute écriture sur cette connexion est refusée (« attempt to write a readonly database »).",
+   "Base verrouillée (l.79-83) : `PRAGMA busy_timeout = 5000` puis `synchronous = NORMAL`. Le second n'a pas d'effet attendu sur une simple lecture (non testé). Expérience : avec la base en mode WAL, un lecteur n'est pas bloqué par une transaction d'écriture ouverte (lecture immédiate) ; en mode journal classique il attend le délai puis échoue (« database is locked »), ce qui donne une réponse 500 (index.ts:51-53).",
+   "Contrôle du mode WAL (l.84-93) : le constructeur lit `PRAGMA journal_mode` et affiche un avertissement si ce n'est pas « wal » (l.88-93). Il ne vérifie rien de plus et ne refuse pas de démarrer. La fiche de la carte dit qu'il « vérifie journal_mode=wal » : c'est un simple avertissement.",
+   "`hasColumn` (l.111-120) : `PRAGMA table_info(${table})` est une interpolation, mais `table` ne vient que de littéraux dans ce fichier (`sessions` l.139, 156, 159, 161, 209 ; `agent_sessions` l.252-254 ; `gate_results` l.397). Aucune entrée extérieure n'arrive là. La valeur `false` est aussi stockée (l.117), mais la sonde est refaite à chaque appel tant que la valeur est fausse (l.113) ; elle ne se fige qu'une fois la colonne vue.",
+   "`optionalColumn` (l.122-124) : renvoie le nom de colonne ou `NULL AS <colonne>`, inséré dans le SQL. Les six colonnes concernées sont les six migrations du traceur (adws/adw_modules/tracer.py:94-99) : adw_name, archived, color, context_tokens, context_window, checks_json. Elles sont toutes protégées. Expérience : sur un schéma fabriqué avec le SCHEMA de tracer.py, aucune colonne lue par db.ts n'est absente (6 tables vérifiées) : pas de bug de schéma.",
+   "`close` (l.126-129) ferme les deux connexions. Appelé seulement sur SIGINT (.claude/skills/sssf/apps/visualizer/server/index.ts:209-212) ; SIGTERM n'est pas géré. Tant que le visualiseur tourne, sa connexion de lecture reste ouverte (voir le point WAL et la récolte plus bas).",
+   "`setArchived` (l.138-150), connexion : `new Database(this.path)` sans option ouvre en lecture-écriture (l.143, expérience : le lecteur voit ensuite `archived = 1`). La phrase « le lecteur est en lecture seule » ne vaut donc que pour la première connexion. Cette connexion ne pose que `busy_timeout` (l.144), pas `synchronous` ni `journal_mode` (observability.md:138 demande les trois sur chaque connexion).",
+   "`setArchived`, requête : `UPDATE sessions SET archived = ? WHERE adw_id = ?` (l.146-148). Valeurs : `archived ? 1 : 0` (booléen calculé) et `adwId`, qui vient de l'URL et a passé `isSafeSegment` (.claude/skills/sssf/apps/visualizer/server/index.ts:138). Une seule colonne est touchée, comme promis (l.8-12). Un identifiant inconnu ne modifie aucune ligne (expérience : `changes = 0`) ; la fonction rend `session(adwId) !== null` (l.149), d'où le 404.",
+   "`setArchived`, garde (l.139-141) : si la colonne `archived` manque (base d'un vieux traceur), elle lève une erreur « run any ADW once to migrate it ». Le message part au client en 500 (index.ts:53).",
+   "INVENTAIRE DES REQUÊTES SQL de ce fichier : 11 SELECT (sessions l.156-163 ; phases d'un lot de sessions l.174-176 ; une session l.209-212 ; phases d'une session l.221-223 ; agent_sessions d'un lot l.258-261 ; agent_start joints aux phases l.276-279 ; agent_end l.338 ; événements l.370-375 ; enveloppes l.389-391 ; portes l.400-402 ; compte l.409), 1 UPDATE (l.146-148) et 5 PRAGMA (l.82, 83, 85, 115, 144). Aucune requête n'utilise LIKE ni de fragment d'entrée utilisateur.",
+   "Origine de chaque valeur insérée dans le texte SQL (interpolation `${...}`) : l.115 `table` (littéral) ; l.123 `column` (littéral) ; l.156, 159, 209, 252-254, 397 `optionalColumn(...)` (littéraux) ; l.161 `archived` ou `0` selon la base (calculé) ; l.171, 244 `placeholders` = suite de « ? » dont le nombre est celui des identifiants (≤ 1000). Toutes les valeurs d'entrée (identifiant, `after`, `limit`) sont liées par « ? » (l.165, 177-178, 214, 225, 263, 281, 340, 377, 393, 404).",
+   "Expérience d'injection (Python sqlite3 + bun:sqlite, bases fabriquées hors du dépôt, requêtes recopiées de db.ts) : l'identifiant `x' OR '1'='1` ne renvoie que la session qui porte ce nom exact ; `abc123' OR 1=1 --`, `%`, `a;DROP TABLE sessions;--`, une chaîne de 1 Mo ou 2 Mo, une chaîne avec octet NUL : 0 ligne, aucune erreur, aucune table touchée. `after = 1e30` donne 0 ligne ; un `after` négatif est ramené à 0. Conclusion prouvée : pas d'injection SQL via les paramètres d'URL.",
+   "`sessions(limit = 200)` (l.153-203) : renvoie les sessions NON archivées (`COALESCE(archived,0) = 0`, l.161), les plus récentes d'abord, au plus 1000 (`clamp`, l.165). Chaque ligne embarque toutes ses phases (l.172-178) et tous ses agents (l.189). Les sessions archivées ne sont plus listées mais restent lisibles par leur identifiant (voir `session`).",
+   "Valeurs de la requête des phases (l.170-178) : les identifiants viennent des lignes lues dans la base (pas de l'URL) et sont liés (`.all(...ids)`). Expérience : un identifiant piégé stocké en base est traité comme du texte. Limite de variables SQLite : 1000 placeholders passent sur Bun 1.4.4 (essayé jusqu'à 40 000) ; avec un SQLite plus ancien que 3.32 la limite serait de 999 (à vérifier).",
+   "`session(adwId)` (l.205-216) : une ligne par `adw_id = ?`, ou null. Il n'y a pas de filtre sur `archived` : une session archivée reste lisible par son identifiant. Colonnes lues : adw_id, adw_name, request, status, engineer, started_at, ended_at, total_tokens, total_cost. Elles contiennent la demande de l'ingénieur (tronquée à 500 caractères par adws/adw_modules/tracer.py:158) et le nom git de l'ingénieur (adws/adw_modules/utils.py:66-77).",
+   "`phases(adwId)` (l.218-226) : toutes les phases d'une session, triées par `seq`, `rowid`. Pas de limite. Colonnes : description, error (jusqu'à 1000 caractères, adws/adw_modules/runner.py:90).",
+   "`agentSessions` / `agentsFor` (l.228-308) : lit `agent_sessions` (l.256-263) puis complète avec les événements `agent_start` des agents encore en cours, joints à `phases.owner` (l.266-281). Un agent qui n'a pas fini n'a pas de ligne dans `agent_sessions` (adws/adw_modules/agents.py:200-202 écrit la ligne après l'acceptation de l'enveloppe), d'où ce complément. La charge JSON de l'événement est lue dans un try/catch (l.287-292). Modèle, couleur et identifiant de session sont recopiés depuis la charge (l.297-299).",
+   "Détail de `agentsFor` : la jointure `events e JOIN phases p ON p.phase_id = e.phase_id` (l.277) écarte les événements dont `phase_id` est vide. Les `agent_start` ont toujours un `phase_id` (adws/adw_modules/agents.py:95-96), donc aucun trou ici. Un agent qui échoue n'a jamais de ligne `agent_sessions` : il n'apparaît que par son `agent_start`, avec `context_tokens` et `context_window` à null (l.301-302).",
+   "`sessionDetail` (l.310-321) : assemble session, usage, phases et agents. Rend null si la session est inconnue (c'est le 404 de la route).",
+   "`usage(adwId)` (l.335-360) : lit TOUTES les charges `agent_end` de la session (l.338, sans pagination), additionne `input_tokens + cache_write_tokens` (lu) et `output_tokens` (écrit). Les clés correspondent à `UsageBreakdown` (.claude/skills/sssf/apps/visualizer/shared/types.ts:184-201 ; adws/adw_modules/data_types.py:395-398). Un JSON illisible est ignoré (l.355-357).",
+   "Écart sur `usage` : `agent_end` n'est écrit qu'après acceptation d'une enveloppe valide (même si elle annonce un échec, l.209 avant la levée des l.219-220) (adws/adw_modules/agents.py:209, après les portes l.168, la lecture du JSON l.291 et le contrôle des droits l.183). Pour une phase qui échoue, les jetons dépensés sont dans `sessions.total_tokens` (agents.py:134 → runner.py:66-69) mais pas dans `usage`. Le chiffre « read/written » est donc trop bas exactement pour les runs qui ratent. Au registre.",
+   "`events(adwId, after = 0, limit = 500)` (l.366-384) : requête paginée par `rowid` (`WHERE adw_id = ? AND rowid > ? ORDER BY rowid LIMIT ?`). `after` est ramené à 0 au minimum (l.377), `limit` borné entre 1 et 1000 (l.367). `cursor` = dernier `rowid` de la page ou `after` si la page est vide (l.381). `has_more` vaut vrai dès que la page est pleine (l.382) : si le total est exactement la limite, un appel de plus rend une page vide. Aucune limite sur le total ni sur la taille de `payload_json`.",
+   "Les événements sortent en brut : `payload_json` n'est ni filtré ni masqué (l.370-371). On y trouve, d'après adws/adw_modules/agent_pi.py:212-227 et adws/adw_modules/agents.py:249-259, les arguments d'outils (jusqu'à 20 000 caractères par valeur, ARG_VALUE_CHARS), les sorties d'outils (RESULT_SNIPPET_CHARS = 20 000), la réflexion du modèle et ses messages (20 000 caractères chacun), les lignes de console et les erreurs. Une clé affichée par un `cat .env` de l'agent sortirait telle quelle (expérience : un faux `sk-or-FAKE` inséré en base ressort intact).",
+   "`envelopes(adwId)` (l.386-394) : toutes les enveloppes de la session, triées par `created_at`, `rowid` ; `payload_json` complet (ou, pour une réponse invalide, les 2000 derniers caractères du texte brut, adws/adw_modules/agents.py:306). Pas de limite.",
+   "`gates(adwId)` (l.396-405) : toutes les lignes de `gate_results`, avec `checks_json` si la colonne existe. Pas de limite.",
+   "`sessionCount()` (l.407-412) : `COUNT(*)` sur toute la table, archivées comprises. Sert à `/api/health`.",
+   "`clamp` (l.415-418) : renvoie le minimum pour NaN ou ±∞, tronque, puis borne. `limit` passe par `clamp` (l.367, 165). `after` passe seulement par `Math.max(0, after)` (l.377) et n'a pas de borne haute : sans effet (page vide). Par HTTP, `intQuery` (index.ts:75-80) ne rend jamais ±∞ (parseInt).",
+   "Table `processes` : le fichier ne la lit pas. Les pid et la colonne `command` ne sortent donc pas par l'API. Elle contient, pour l'agent, `pi <agent> <modèle>` seulement (adws/adw_modules/agents.py:130-132), et pour l'ADW la ligne de commande de l'ADW tronquée à 500 caractères (adws/adw_modules/session.py:46-47, adws/adw_modules/tracer.py:186). La ligne de commande complète de Pi (prompts compris) n'est écrite dans aucune table.",
+   "Absence d'index (schéma adws/adw_modules/tracer.py:17-90, aucun CREATE INDEX) : EXPLAIN QUERY PLAN sur le SCHEMA recopié donne `SCAN e` pour la requête agent_start (l.276-279), `SCAN events` pour `usage` (l.338), `SCAN phases` + tri pour les phases d'un lot (l.174-176), `SCAN` pour enveloppes et portes (l.389-391, 400-402) ; seule la requête d'événements (l.370-375) utilise la clé rowid. Interrogées toutes les 500 ms. Au registre (bug faible), à mesurer sur une vraie trace."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/server/index.ts:15 (seul importateur). Importe les types de .claude/skills/sssf/apps/visualizer/shared/types.ts:17-29 (import qui commence en l.17).",
+   "Lit les tables créées par `Tracer` (adws/adw_modules/tracer.py:17-90) : sessions, phases, events, envelopes, gate_results, agent_sessions. Il ne lit pas `processes`. La colonne `sessions.archived` est créée par le SCHEMA (adws/adw_modules/tracer.py:26) et par la migration (adws/adw_modules/tracer.py:99) ; elle est écrite par db.ts:147 seulement, jamais par le traceur (le conflit d'upsert de adws/adw_modules/tracer.py:141-142 ne la touche pas).",
+   "Les écrivains concurrents sont les ADW (Python, adws/adw_modules/tracer.py:108-111 : WAL, synchronous NORMAL, busy_timeout 5000). Le lecteur Bun est donc un client de plus sur le même fichier.",
+   "Carte à corriger : la fiche dit que le constructeur « vérifie journal_mode=wal » ; il avertit seulement (db.ts:88-93).",
+   "Carte exacte sur ce point : elle signale déjà la 2e connexion (« Ouvre une 2e connexion lecture-écriture »). À compléter seulement : aucun `existsSync` avant db.ts:143 (le contrôle n'est fait qu'au constructeur, l.68).",
+   "Carte à compléter : elle ne cite que `adws/adw_data/sssf.db` comme lue ; db.ts lit aussi, indirectement, le dossier `sessions/` voisin via index.ts (db.ts:76). Les lanceurs de db.ts/index.ts oubliés par la carte : `.claude/skills/sssf/templates/justfile:89`, `.claude/skills/sssf/cookbooks/run_adw.md:122` (mentionne des sessions tmux qui n'existent nulle part).",
+   "Harvest : la récolte de fin de sandbox copie seulement `adws/adw_data/sssf.db` (just/sandbox/lifecycle/teardown.just:109). Voir le point sur la connexion de lecture qui garde le WAL ouvert (registre)."
+  ],
+  "vigilance": [
+   "Le serveur renvoie toute la trace en clair, sans masque : arguments et sorties d'outils, réflexion du modèle, messages, lignes de console, enveloppes, prompts. Notre règle « jamais de vrai secret dans l'atelier » est la seule protection si un agent lit un fichier de clés (par exemple `~/.pi/agent/models.json`, que provision.sh remplit avec la clé : sandbox_mount/guest/provision.sh:92-99).",
+   "Aucune pagination sur phases, enveloppes, portes et usage ; seules les sessions (1000) et les événements (1000 par page) sont bornées. Une longue trace donne de grosses réponses, et l'interface réinterroge toutes les 500 ms (SessionsList.vue:33, SessionTrace.vue:84, SessionCard.vue:65).",
+   "La seconde connexion (lecture-écriture) peut créer une base vide si le fichier a disparu entre le démarrage et le premier clic (pas de `existsSync` avant, l.143). Cas très rare.",
+   "Le lecteur garde sa connexion ouverte pendant tout le run. Tant qu'elle est ouverte, SQLite ne rend pas le fichier -wal au dernier écrivain qui se ferme : voir le registre (récolte de sssf.db seul).",
+   "Le dossier des prompts (`sessions/`) est déduit de la base, pas de `data_dir` : si un roster déplace l'un sans l'autre, la route des prompts renvoie `{system:null, user:null}` sans erreur (db.ts:76)."
+  ],
+  "chez_nous": [
+   "Le SQL est propre et on peut le garder tel quel : tout est lié par paramètres, la connexion principale est en lecture seule. Le travail à faire est autour (écoute réseau, masque des clés, usage des phases échouées).",
+   "Piste à trancher : faire servir le visualiseur depuis une copie périodique de la base, ou l'arrêter avant la récolte, pour que sa connexion ne retienne pas le WAL.",
+   "Piste liée à la décision 4 (masquer les clés avant écriture) : comme ce fichier ne filtre rien, le masque doit être posé dans le traceur ; sinon toute clé vue par un agent est servie en clair par l'API.",
+   "Pour la décision 3 (copie de chaque prompt rangée par phase) : la route des prompts lit `sessions/<id>/<agent>/prompts/{system,user}.md`, un seul couple par agent. Elle ne montrera que le dernier envoi tant que la copie n'est pas rangée par phase."
+  ],
+  "a_verifier": [
+   "Comportement d'un lecteur en lecture seule sur une base WAL quand le dossier n'est pas inscriptible (fichier -shm impossible à créer) : je n'ai pas pu le tester (je suis root sur cette machine, les droits ne s'appliquent pas).",
+   "Version de bun sur les VM (installée par `curl https://bun.sh/install | bash`, sans version : sandbox_mount/guest/provision.sh:38) et version de SQLite embarquée : la limite du nombre de variables et le comportement des PRAGMA peuvent différer de Bun 1.4.4 testé ici.",
+   "Si `bun:sqlite` ignore une seconde instruction collée à `PRAGMA table_info(...)` : expérience faite, elle l'ignore (`PRAGMA table_info(sessions); select 1` renvoie 10 lignes). Sans conséquence ici, car `table` est un littéral, mais à garder en tête si le code évolue."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/server/index.ts": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Serveur HTTP du visualiseur, lancé avec `bun run server/index.ts`. Il sert une API JSON en lecture sur sssf.db, une seule écriture (POST archive), la lecture des fichiers de prompts du dossier `sessions/`, et l'interface construite (`dist/`) si elle existe. Il écoute sur le port 4600 (variable PORT), SANS préciser d'adresse : Bun écoute alors sur toutes les interfaces. Il n'a aucune authentification, aucun contrôle d'origine ni de Host, aucun en-tête CORS.",
+  "points": [
+   "En-tête (l.1-12) : promesse « Reads are read-only; the single write is POST /api/sessions/:adw_id/archive », « no ingest endpoint and no websocket ». Tenue : le seul POST est l.135 ; aucune route d'écriture de trace. Mais voir plus bas : les routes à fonction répondent à toutes les méthodes (expérience : POST sur une route GET rend 200).",
+   "Imports (l.13-16) : `node:fs`, `node:path`, db.ts, les types partagés. Pas de bibliothèque HTTP, pas de CORS, pas de journal d'accès.",
+   "Port (l.18) : `Number(process.env.PORT ?? 4600)`. Expérience (Bun 1.4.4) : `PORT=\"\"` donne `Number(\"\") = 0`, donc un port ALÉATOIRE (38903 dans l'essai) ; `PORT=abc` ou `4600x` donne NaN et une exception non attrapée au démarrage ; 70000 et -1 sont refusés. Le port n'est pas validé. Le même nom de variable `PORT` sert aussi au serveur Inkwell (apps/inkwell/server.ts:8, port 4501) : un `PORT` global les ferait se heurter.",
+   "Dossier servi (l.19) : `resolve(import.meta.dir, \"..\", \"dist\")`, soit `visualizer/dist`. Ce n'est ni `public/` ni la racine. `dist/` est la sortie de `vite build` (vite.config.ts:24-27) ; que Vite y recopie `public/` (logo, images de modèles) est son comportement habituel, non vérifié ici.",
+   "Chemin de la base (l.21-28) : `resolveDbPath()` puis `new SssfDb(dbPath)` dans un try/catch ; en cas d'erreur, message sur stderr et `process.exit(1)`. Preuve de l'usage : provision.sh (étape 7, l.128-133) crée la base et observe.just:97-104 vérifie sa présence avant le lancement, parce que le serveur sort sans elle.",
+   "`json()` (l.30-38) : réponses JSON avec `cache-control: no-store`. Aucun autre en-tête de sécurité : ni `Access-Control-*`, ni `X-Content-Type-Options`, ni `Content-Security-Policy` (grep sur server/ et vite.config.ts : aucune occurrence de access-control, cors, origin, hostname).",
+   "`notFound` (l.40-42) : 404 JSON `{error}`.",
+   "`safely` (l.44-56) : enveloppe chaque route dans un try/catch ; une erreur est journalisée (méthode et chemin) puis renvoyée au client avec `error.message` en 500 (l.52-53). Le message peut contenir du SQL, un chemin de fichier ou « database is locked » (db.ts:70, 140). Expérience : `%25ZZ` dans l'URL donne 500 `{\"error\":\"URI error\"}`.",
+   "`SAFE_SEGMENT` et `isSafeSegment` (l.58-67) : `^[A-Za-z0-9._-]+$` sauf « . » et « .. ». Utilisés SEULEMENT par la route archive (l.138) et la route prompts (l.170). Les trois points seuls « ... » sont acceptés (inoffensif : ce n'est pas un nom de dossier spécial). Les routes events, envelopes, gates, session ne valident pas l'identifiant, mais il n'arrive que dans un paramètre SQL.",
+   "`param()` (l.69-73) : `decodeURIComponent` sur le paramètre de route. Expérience : Bun décode DÉJÀ les paramètres de route (`a%2Fb` arrive comme `a/b`) ; l'appel décode donc une seconde fois (`%252e%252e` devient `..`). Sans danger ici, car la validation `isSafeSegment` vient après ce second décodage (l.137-138, 168-170) : essais `%2e%2e`, `a%2Fb`, `%252e%252e` refusés avec 400.",
+   "`intQuery()` (l.75-80) : `parseInt(valeur, 10)` ; vide ou illisible donne la valeur par défaut. Exemples : `12abc` donne 12, `1e3` donne 1. Les bornes sont posées plus loin par `clamp` (db.ts:415-418).",
+   "`serveStatic` (l.83-111), cas sans build (l.86-93) : si `dist/` n'existe pas, renvoie un texte en clair avec le port, statut 200. Le test `existsSync(DIST_DIR)` se refait à chaque requête, alors que le message de démarrage (l.203-207) est fixé une fois.",
+   "`serveStatic`, composition du chemin (l.95-101) : `resolve(join(DIST_DIR, pathname))`, accepté seulement si égal à `DIST_DIR` ou préfixé par `DIST_DIR + \"/\"`, et si c'est un fichier (`existsSync` et `statSync().isFile()`). `pathname` vient de `new URL(req.url)` : l'URL normalise les `..` et les `%2e` avant le calcul, et ne décode pas les autres `%xx`. Expérience (30 chemins envoyés en brut à un serveur Bun de test avec la même logique) : `/../secret.txt`, `/%2e%2e/`, `/%2E%2E/`, `/..%2f`, `/%2e%2e%2f`, `/..\\`, `/%5c..%5c`, `//secret.txt`, `/etc/passwd`, `/%2fetc%2fpasswd`, `/../dist-evil/`, `/%00`, `/.%2e/`, `/assets/%252e%252e/` ont tous rendu l'index de l'interface, aucun n'a rendu le fichier hors de `dist/`. Le dossier voisin au préfixe commun (`dist-evil`) est bien exclu grâce au « / ».",
+   "`serveStatic`, liens symboliques : `existsSync` et `statSync` suivent les liens, et `resolve` ne calcule pas le chemin réel. Expérience : un lien `dist/link_out.txt -> ../secret.txt` et un dossier lié `dist/dir_out -> ../outside` ont servi des fichiers HORS de `dist/` (`SECRET-OUTSIDE`, `SECRET-IN-LINKED-DIR`). Le commentaire « Reject traversal » (l.95) ne couvre pas les liens ; il faut un accès en écriture à `dist/` pour en poser (dossier ignoré par git, .gitignore:9, 87).",
+   "`serveStatic`, noms avec caractères codés : le chemin n'est pas décodé, donc `/with%20space.txt` ne trouve pas `with space.txt` et retombe sur l'index. Sans effet pour les fichiers de Vite (noms hachés sans espace).",
+   "`serveStatic`, types MIME : `new Response(Bun.file(candidate))` (l.99) laisse Bun choisir le type d'après l'extension. Expérience : .js `text/javascript;charset=utf-8`, .css `text/css`, .svg `image/svg+xml`, .json `application/json`, sans extension `application/octet-stream`. Seul l'index de repli fixe son type à la main (l.106-108). Pas de `nosniff`, pas de cache, pas de CSP.",
+   "`serveStatic`, repli SPA (l.103-110) : tout chemin qui n'est pas un fichier existant rend `dist/index.html` en 200, même `/assets/absent.js`. Et ce repli ne regarde pas la méthode : `POST /anything` et `DELETE /` rendent aussi la page (expérience). Si `index.html` manque, 404 JSON (l.110).",
+   "Route `/api/health` (l.116-124) : fonction, donc toutes méthodes (GET, POST, OPTIONS...). Rend `{ok, db, journal_mode, sessions}` avec le chemin ABSOLU de la base (révèle le dossier personnel et le nom d'utilisateur), le mode de journal et le nombre de sessions.",
+   "Route `/api/sessions` (l.126) : toutes méthodes. Paramètre `?limit=` (`intQuery`, défaut 200, borné 1..1000 par `clamp`). Rend les sessions non archivées avec phases et agents embarqués (db.ts:153-203) : adw_id, adw_name, request (≤ 500 caractères), engineer, status, jetons, coût, phases (description, error ≤ 1000 caractères).",
+   "Route `/api/sessions/:adw_id` (l.128-131) : toutes méthodes. Identifiant non validé, lié en paramètre SQL. Rend `{session, usage, phases, agents}` ou 404 JSON `no session <id>` (l.130 : l'identifiant reçu est recopié dans le message, sans danger car c'est du JSON). Marche aussi pour les sessions archivées.",
+   "Route `POST /api/sessions/:adw_id/archive` (l.135-147) : la SEULE écriture. Seule route restreinte à une méthode (`POST`) ; un GET tombe sur le 404 `no route` (l.196). Identifiant validé par `isSafeSegment` (400 sinon). Le corps est lu par `req.json().catch(() => ({}))` (l.141) : un corps absent, vide ou illisible vaut `{}` ; `archived` absent vaut vrai (l.142). Aucun contrôle du type de contenu, de l'origine ou du Host. Expérience : POST sans corps → `archived: true` ; POST `text/plain` avec `Origin: http://evil.example` → `archived: true` ; corps `{oops` → `archived: true`. Un corps JSON `null` ferait lever `null.archived` (500). `Boolean(\"false\")` est vrai : `{\"archived\":\"false\"}` archive. Au registre (sans authentification ni contrôle d'origine).",
+   "Route `/api/sessions/:adw_id/events` (l.149-157) : toutes méthodes. Paramètres `?after=` (défaut 0) et `?limit=` (défaut 500, max 1000). Rend `{events, cursor, has_more}` (db.ts:366-384). C'est la route qui sort le plus de données sensibles : `payload_json` brut. Elle n'a pas de limite de total : un client peut tout lire page par page. Un identifiant inconnu rend une page vide, pas de 404.",
+   "Route `/api/sessions/:adw_id/envelopes` (l.159-161) : toutes méthodes ; toutes les enveloppes de la session (db.ts:386-394), sans limite ; identifiant inconnu → liste vide.",
+   "Route `/api/sessions/:adw_id/gates` (l.163) : toutes méthodes ; tous les résultats de portes avec leurs preuves `checks_json` (db.ts:396-405) ; identifiant inconnu → liste vide.",
+   "Route `/api/sessions/:adw_id/agents/:agent/prompts` (l.167-191) : toutes méthodes. Valide les DEUX segments (l.170-172, 400 sinon), vérifie que la session existe (l.173, 404 sinon), compose `resolve(sessionsDir, adwId, agent, \"prompts\")` (l.175) et refuse un chemin qui sort de `sessionsDir` (l.177-179, deuxième barrière). Lit `system.md` et `user.md` en entier (l.183-190), `null` si le fichier manque. Rend les prompts complets, y compris la demande et l'enveloppe précédente injectées (adws/adw_modules/agents.py:89-92). Pas de limite de taille. Expériences : `..`, `.`, `%2e%2e`, `..%2fplanner` → 400 ; un agent sans dossier `prompts` → `{system:null,user:null}` ; un lien symbolique posé à la place de `system.md` serait suivi (même cause que ci-dessus, non essayé ici).",
+   "Repli `fetch` (l.194-198) : tout chemin commençant par `/api/` et sans route rend 404 JSON `no route` ; tout le reste va à `serveStatic`, quelle que soit la méthode. `/api` sans barre finale tombe donc dans le repli SPA. Ce repli n'est PAS enveloppé par `safely`, malgré « Guard every handler » (l.44), et `Bun.serve` n'a pas de gestionnaire `error` ; les 9 autres chemins sont gardés. Ce que Bun renvoie si `serveStatic` lève une exception n'est pas vérifié.",
+   "Écoute (l.113-115) : `Bun.serve({ port: PORT, routes })` SANS `hostname`. Expérience (serveur de test, Bun 1.4.4, `/proc/net/tcp`) : le port écoute sur `00000000` (0.0.0.0, toutes les interfaces IPv4). Bun affiche pourtant `server.hostname = \"localhost\"`. Le dépôt le sait et s'en sert : observe.just:54-56 « bun binds 0.0.0.0 by default » et le proxy exe.dev ne joint pas un 127.0.0.1 (gotchas.md:66).",
+   "Journal de démarrage (l.201-207) : `[sssf] visualizer api  http://localhost:${server.port}` : le mot « localhost » est écrit en dur, alors que l'écoute est sur toutes les interfaces. Au registre. Il affiche aussi le chemin de la base, le mode de journal et le dossier servi.",
+   "Arrêt (l.209-212) : SIGINT ferme la base et sort ; SIGTERM n'est pas géré (arrêt brutal, mais SQLite le supporte).",
+   "Authentification et origine : AUCUNE. Expérience (serveur de test avec les mêmes routes) : un `Host: evil.example` est servi comme un autre (donc exposé au « DNS rebinding » depuis un navigateur local) ; `OPTIONS` rend 200 avec le contenu de la route, sans `Access-Control-Allow-*` ; un GET avec `Origin: http://evil.example` rend les données (un navigateur en bloquerait la lecture par la règle de même origine, mais pas un `curl`). L'interface et l'API sont servies par le même processus, donc même origine : CORS n'est pas nécessaire pour le fonctionnement. Au registre (écoute sur toutes les interfaces sans authentification).",
+   "Ce que le dépôt prouve sur l'exposition par exe.dev : le lanceur démarre le serveur en tâche de fond (`nohup bun run server/index.ts`, observe.just:113) et ne partage PAS le port 4600 ; seul 4501 est rendu public (`share port` et `share set-public`, observe.just:130-131). Que 4600 soit « réservé au propriétaire » est une affirmation de la documentation (observe.just:159-160, 174-176 ; sandbox-exe-dev/SKILL.md:212), pas quelque chose que le code contrôle (voir registre sur observe.just:163-167). À vérifier côté exe.dev."
+  ],
+  "deps": [
+   "Importe db.ts (.claude/skills/sssf/apps/visualizer/server/index.ts:15) et les types partagés (.claude/skills/sssf/apps/visualizer/server/index.ts:16). Aucun module Python n'est appelé.",
+   "Lancé par : .claude/skills/sssf/apps/visualizer/package.json:9 (`server`), :10 (`dev:all`, en tâche de fond avec `&`), :12 (`preview`, identique à `server`) ; just/obs.just:73 (`just obs ui`, `bun install` puis serveur en arrière-plan puis `bunx vite` au premier plan) ; just/sandbox/lifecycle/observe.just:113 (sur la VM, `nohup`, journal `~/visualizer.log`) ; .claude/skills/sssf/templates/justfile:89 (modèle de `just obs` copié à l'installation).",
+   "Lit : la base via db.ts, les fichiers `sessions/<adw_id>/<agent>/prompts/{system,user}.md` écrits par adws/adw_modules/agents.py:89-92 et `prompts.save`, et `dist/` produit par `vite build` (sandbox_mount/guest/provision.sh:121).",
+   "Carte à corriger : la fiche dit « hôte non précisé dans Bun.serve ». Il faut compléter : l'écoute se fait sur toutes les interfaces (0.0.0.0, observé avec Bun 1.4.4 ; dépôt : observe.just:54-56).",
+   "Carte à corriger : la fiche de la route `/api/health` et des autres dit « GET ». Les routes données comme une fonction répondent à TOUTES les méthodes (expérience : POST et OPTIONS rendent 200). Seule la route archive est limitée à POST.",
+   "Carte à compléter : liens entrants oubliés, `.claude/skills/sssf/templates/justfile:89` et la mention de sessions tmux `viz-api`/`viz-ui` dans .claude/skills/sssf/cookbooks/run_adw.md:122 (aucune de ces sessions n'existe dans le dépôt : git grep viz-api ne trouve que cette ligne).",
+   "Registre n°7 confirmé : .claude/skills/sssf/SKILL.md:76 dit « The visualizer app ships in a later pass », alors que ce dossier contient déjà server/ (db.ts 418 l., index.ts 212 l.), shared/, src/ (8 composants), un lock de 120 paquets, et que provision.sh:114-122 et observe.just:113 le construisent et le lancent.",
+   "Les chemins `sessions/` viennent de db.ts:76 (dossier voisin de la base) : si un autre fichier de config déplace `data_dir`, la route des prompts ne le suit pas."
+  ],
+  "vigilance": [
+   "Écoute sur toutes les interfaces, sans mot de passe : sur la VM, tout ce qui peut joindre le port 4600 (autre processus, autre machine du même réseau si exe.dev le permet, ou l'agent lui-même par `curl localhost:4600`) lit toute la trace en clair et peut archiver des sessions. Le seul rempart prouvé est le proxy HTTPS d'exe.dev, et c'est une affirmation de leur documentation.",
+   "L'agent qui tourne dans la VM peut lire les traces des autres agents (prompts, réflexion, sorties) via `localhost:4600`, sans passer par les droits d'écriture (permissions.py ne regarde que les écritures).",
+   "Un lien symbolique posé dans `dist/` (ou à la place d'un fichier de prompts) fait lire n'importe quel fichier lisible par le processus (essai réussi). Un agent qui peut écrire dans le dépôt peut en poser un.",
+   "Les messages d'erreur renvoyés contiennent le texte brut des exceptions (SQL, chemins).",
+   "Le serveur n'a pas de limite de débit ni de taille de réponse ; l'interface l'interroge toutes les 500 ms par session ouverte.",
+   "`just obs ui` lance le serveur en arrière-plan avec `&` (just/obs.just:73) sans l'arrêter explicitement ; qu'il reste vivant après l'arrêt de Vite n'est pas vérifié."
+  ],
+  "chez_nous": [
+   "À trancher : nommer l'adresse d'écoute (127.0.0.1 par défaut, 0.0.0.0 seulement si on décide d'exposer). Le proxy exe.dev exige 0.0.0.0 (observe.just:55-56) : il faut donc choisir entre exposition par proxy (avec contrôle d'accès à vérifier) et accès par tunnel SSH.",
+   "À trancher : exiger un jeton (en-tête) sur toutes les routes et refuser les `Host` et `Origin` inattendus ; limiter les méthodes de chaque route.",
+   "À trancher : ne plus renvoyer `error.message` au client ; ne plus afficher le chemin absolu dans `/api/health`.",
+   "Liée à la décision 4 : le serveur ne masque rien ; le masque doit exister avant l'écriture dans la trace (traceur) pour que ni `events`, ni `envelopes`, ni `prompts` ne servent une clé.",
+   "Liée à la décision 3 : la route des prompts ne montre que la dernière copie par agent. Elle devrait lire des copies rangées par phase."
+  ],
+  "a_verifier": [
+   "Adresse d'écoute par défaut de `Bun.serve` sur la version de bun installée dans les VM (non épinglée : provision.sh:38) : observée sur Bun 1.4.4 ici (IPv4 toutes interfaces) ; le dépôt l'affirme aussi (observe.just:54).",
+   "Si la VM exe.dev est joignable directement sur le port 4600 depuis l'extérieur (adresse IP, pare-feu) ou seulement par le proxy : rien dans le dépôt ne le montre (git grep de ufw, iptables, firewall : vide).",
+   "Si le proxy d'exe.dev exige bien une connexion pour les ports 3000-9999 non partagés (affirmé par .claude/skills/sandbox-exe-dev/SKILL.md:212 et gotchas.md:67) et ce que donnent `share add` et `share add-link` sur ces ports.",
+   "Si un navigateur réel laisse un site tiers envoyer le POST text/plain vers localhost:4600 (protections « Private Network Access » de Chrome) : mes essais n'ont utilisé que des requêtes brutes.",
+   "Si le « DNS rebinding » est exploitable de bout en bout : le serveur accepte n'importe quel Host (essai), le reste dépend du navigateur.",
+   "Comportement de Bun face à un `Content-Length` énorme ou à des requêtes très nombreuses : non testé.",
+   "Si le serveur Bun lancé par `just obs ui` reste en vie après Ctrl-C sur Vite (dépend du shell et du groupe de processus) : non rejoué.",
+   "Comportement de Bun quand le repli `fetch` (index.ts:194-198, hors `safely`) lève une exception : page d'erreur ou 500 ?"
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/shared/types.ts": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Types TypeScript partagés entre le serveur Bun et l'interface Vue. Ils décrivent les lignes de sssf.db, les trois formes de charges d'événements que l'interface lit, et les réponses de l'API. Ce sont des types seulement : rien n'est vérifié à l'exécution (les lignes lues de SQLite sont juste déclarées de ce type). Le fichier est exact sur la liste des douze types d'événements réellement écrits.",
+  "points": [
+   "En-tête (l.1-7) : « Every interface mirrors a table in sssf.db one-for-one ». Vrai pour six tables (sessions, phases, events, envelopes, gate_results, agent_sessions). La septième, `processes` (adws/adw_modules/tracer.py:71-79), n'a ni type ni route : ses pid et commandes ne sortent pas par l'API.",
+   "`SessionStatus` (l.10) : running | success | fail. Écrit par adws/adw_modules/tracer.py:143 (running) et adws/adw_modules/tracer.py:163 (success/fail). Correct.",
+   "`PhaseStatus` (l.13) : queued | running | success | fail, avec le commentaire « queued only for manifest-declared phases not yet entered ». `queued` n'est écrit par aucun code : la phase naît « running » (adws/adw_modules/runner.py:77), le défaut du modèle est « fail » (data_types.py:63), et il n'existe aucun mécanisme de « manifest » dans adws/ (git grep vide). Le mot existe aussi dans adws/adw_modules/data_types.py:17 (Literal) et dans l'interface (SessionTrace.vue:374, 407-413, 531-545 ; PhaseDots.vue:12 ; StatusChip.vue:10 ; PhaseDetail.vue:355). Valeur morte côté écriture.",
+   "`PhaseKind` (l.16) : engineer | code | agent, identique à adws/adw_modules/data_types.py:16.",
+   "`EventType` (l.19-31) : 12 types fermés. Je confirme avec les 16 sites `EventRecord(` (agents.py 8, runner.py 6, console.py 1, quality.py 1) de adws/ : phase_start (runner.py:80-81), phase_end (runner.py:95-96, 107-108), agent_start (agents.py:95-96), agent_end (agents.py:209-210), thinking et agent_message (agents.py:249-252, venant de agent_pi.py:154-162), tool_call (agents.py:258-259 et quality.py:87-90), handoff (agents.py:205-206), gate_pass et gate_fail (agents.py:158-160), log (runner.py:28-30, console.py:43-44, agents.py:193-194), error (runner.py:92-93, 135-138 ; agents.py:186-187). Aucun autre type n'est émis. Registre n°37 confirmé : observability.md:15-26 en liste dix, il manque `thinking` et `agent_message` ; la même liste de dix est dans le commentaire de adws/adw_modules/data_types.py:359 et dans observability.md:76-77.",
+   "Nuance sur la carte : « pas de paths_touched ni permission_breach ». Ce sont des NOMS d'événements (`log` nommé paths_touched, agents.py:193-194 ; `error` nommé permission_breach, agents.py:186-187), pas des types. Le fichier est donc complet.",
+   "Commentaire de `EventType` : « the twelve types tracer.py emits ». Le traceur n'émet rien lui-même : `EventRecord.type` est une chaîne libre (data_types.py:359) ; les types sont posés par agents.py, runner.py, console.py et quality.py.",
+   "`Session` (l.33-46) : champs identiques aux colonnes de `sessions` (adws/adw_modules/tracer.py:18-27), `archived` compris. `request` est limité à 500 caractères par le traceur (adws/adw_modules/tracer.py:158). Typé `number | null` pour `archived`, écrit seulement par db.ts:147.",
+   "`SessionSummary` (l.52-61) : session + phases + `phase_count` + agents, construit par db.ts:193-200.",
+   "`Phase` (l.63-77) : mêmes champs que `phases` (adws/adw_modules/tracer.py:28-37). `error` jusqu'à 1000 caractères (runner.py:90).",
+   "`Event` (l.79-94) : `rowid` comme curseur, `parent_id`, `payload_json` « raw JSON string as written by the tracer ». `parent_id` est toujours vide dans les données : aucun code d'adws/ ne le renseigne (seul le défaut `\"\"` de data_types.py:362 existe) et l'interface ne le lit pas (grep dans src/ : aucune occurrence). Le commentaire « span nesting: an agent phase expands into its tool-call children » (l.85) décrit donc un mécanisme absent (voir registre, observability.md:28).",
+   "`Envelope` (l.96-108) : colonnes de `envelopes` (adws/adw_modules/tracer.py:49-59). `output_type` est le nom de la classe du modèle (adws/adw_modules/agents.py:307).",
+   "`GateResult` et `GateCheck` (l.110-135) : colonnes de `gate_results` (adws/adw_modules/tracer.py:60-70) ; `GateCheck = {item, ok, note}` comme adws/adw_modules/data_types.py:252-262. `checks_json` est null pour les anciennes lignes (migration adws/adw_modules/tracer.py:95).",
+   "`AgentSession` (l.137-159) : colonnes de `agent_sessions` (adws/adw_modules/tracer.py:80-89), `color` et deux champs de contexte venant de migrations (adws/adw_modules/tracer.py:94-98).",
+   "`AgentStartPayload` (l.167-177) : model, thinking, session_id, color, coding_agent, purpose, tools, harness_engineering. Identique à la charge écrite par adws/adw_modules/agents.py:97-103. `tools: null` = tous les outils (agent.tools, commentaire de adws/adw_modules/agents.py:102).",
+   "`UsageBreakdown` (l.184-201) : 11 champs, `reasoning_tokens` facultatif. Même liste que adws/adw_modules/data_types.py:395-409 (il y est obligatoire, avec un défaut 0 ; ici facultatif pour les vieux runs, ce qui est correct).",
+   "`AgentEndPayload` (l.204-211) : cost, usage, context_tokens, context_window ; identique à la charge de adws/adw_modules/agents.py:211-214. Elle n'existe que pour une phase réussie (voir registre sur db.ts `usage`).",
+   "`ToolCallPayload` (l.218-226) : tool, tool_call_id, args, result_snippet, ok, duration_ms, agent, tous facultatifs. Correspond à adws/adw_modules/agent_pi.py:212-227 plus `agent` ajouté par adws/adw_modules/agents.py:262. N'est PAS la forme des `tool_call` écrits par quality.py:87-100, dont la charge est area, operation, command, returncode, passed, output_artifact : pour ceux-là, `tool` et `ok` n'existent pas (l'interface doit les traiter à part).",
+   "Charges sans type (l.161-164 dit que seules celles que l'interface rend sont typées) : thinking et agent_message `{text, stop_reason, agent}` (agent_pi.py:157-162), handoff `{artifacts, summary}` (agents.py:206-208), gate `{attempt, violations, checks}` (agents.py:161-163), log `{message, level}` (console.py:45-46), paths_touched `{agent, paths}`, erreurs `{error}` ou `{reason}` ou permission_breach `{agent, error, writes, protected_files}` (agents.py:187-190). Toutes sont des chaînes JSON en clair.",
+   "`SessionUsage` et `SessionDetail` (l.240-260) : « derived from agent_end payloads » (l.249). Comme `agent_end` manque pour les phases en échec, `usage` sous-compte ces runs. `SessionDetail.agents` mélange lignes `agent_sessions` et événements `agent_start` (db.ts:241-308), ce que le commentaire de la ligne 253-258 décrit exactement.",
+   "`EventsPage` (l.269-273) : `{events, cursor, has_more}`, contrat de db.ts:379-383. Commentaire l.263 : « limit=500 » = défaut de la route (index.ts:154).",
+   "`AgentPrompts` / `PromptsResponse` (l.284-290) : `{system, user}`, chacun `string | null`, renvoyé par index.ts:187-190. Le commentaire dit que les prompts ne vivent QUE dans des fichiers : vrai (aucune table n'a de copie) ; sur la VM ils disparaissent avec elle (teardown.just:109 ne rapatrie pas `adws/adw_data/sessions/`).",
+   "`HealthResponse` et `ApiError` (l.299-308) : correspond à index.ts:118-123 et index.ts:41. Pas de type pour l'API d'archive ({adw_id, archived}, index.ts:144).",
+   "Alias exportés (l.231 `SessionsResponse`, l.293 `EnvelopesResponse`, l.296 `GatesResponse`) : git grep ne les trouve que dans leur définition, aucun import. Code mort sans effet.",
+   "Commentaires en retard sur le code : l.12 (« queued only for manifest-declared phases »), l.85 (« span nesting », `parent_id` jamais renseigné), l.144-149 (la couleur serait « null ... for agents with no configured color » alors que le traceur écrit la chaîne vide : data_types.py:309, 329 `color: str = \"\"`), l.18 (« tracer.py emits »), l.4-6 (« one-for-one » alors que `processes` n'a ni type ni route)."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/server/db.ts:17-29, .claude/skills/sssf/apps/visualizer/server/index.ts:16 et .claude/skills/sssf/apps/visualizer/src/lib/types.ts:26 (qui le ré-exporte pour l'interface).",
+   "Miroir de adws/adw_modules/tracer.py:17-99 (schéma et migrations) et des charges écrites par adws/adw_modules/agents.py, adws/adw_modules/agent_pi.py, adws/adw_modules/runner.py, console.py, quality.py. Seul `tracer.py` fait foi pour les colonnes.",
+   "Carte à corriger : la fiche dit que `EventType` n'a « pas de paths_touched ni permission_breach » ; ce sont des noms d'événements `log` et `error`, pas des types (agents.py:186-194). La liste de douze types est exacte.",
+   "Carte à compléter : liste d'entrants complète (db.ts, index.ts, src/lib/types.ts). Aucun lien sortant : correct."
+  ],
+  "vigilance": [
+   "Aucun type n'est vérifié à la lecture : une ligne mal formée de la base serait traitée comme valide. Sans conséquence de sécurité, mais l'interface peut afficher n'importe quoi.",
+   "`PhaseStatus` et le commentaire sur « manifest-declared phases » décrivent une fonction qui n'existe pas dans le code d'écriture.",
+   "Les charges des événements contiennent tout ce que l'agent a vu ou dit ; aucun type ne marque un champ comme sensible."
+  ],
+  "chez_nous": [
+   "Fichier à garder tel quel. Si nous ajoutons des champs (par exemple une copie de prompt rangée par phase, ou un indicateur « masqué »), il faudra les ajouter ici et dans le traceur ensemble.",
+   "Si nous ajoutons un type d'événement, la liste fermée de `EventType` et la table d'observability.md doivent suivre (c'est déjà l'écart n°37)."
+  ],
+  "a_verifier": [
+   "Si l'interface sait afficher les `tool_call` de quality.py (charge sans `tool`) : relève du lot de l'interface (src/lib/events.ts, PhaseDetail.vue), pas relu ici.",
+   "Le nom exact des clés d'usage de Pi (`reasoning`, `cacheRead`, `cacheWrite`...) : lu dans le code (adws/adw_modules/data_types.py:418-428) mais Pi n'est pas installé pour le confirmer."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/package.json": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Manifeste du visualiseur (`sssf-visualizer`, privé). Il déclare 3 dépendances d'exécution (vue, lucide-vue-next, @fontsource/play) et 6 de développement (vite, plugin Vue, TypeScript, vue-tsc, oxlint, types Bun), et 7 scripts. Toutes les versions sont des plages avec `^` : rien n'est épinglé ici. Pas de script d'installation (`postinstall`, `prepare`) ni de `trustedDependencies`.",
+  "points": [
+   "Identité (l.2-6) : nom `sssf-visualizer`, version 0.1.0, `private: true`, `type: module`. La description (l.6) dit « Read-only observability UI » alors que le serveur a une écriture (POST archive, .claude/skills/sssf/apps/visualizer/server/index.ts:135). Au registre (petit écart).",
+   "Script `dev` (l.8) : `vite`, serveur de développement sur 4601 (vite.config.ts:16).",
+   "Script `server` (l.9) : `bun run server/index.ts`. C'est ce que lance observe.just:113 (sur la VM, directement avec bun, pas via ce script).",
+   "Script `dev:all` (l.10) : `bun run server/index.ts & vite` : le serveur part en arrière-plan avec `&` et n'est pas arrêté quand Vite s'arrête.",
+   "Script `build` (l.11) : `vue-tsc --noEmit && vite build` (vérifie les types puis construit `dist/`). La VM ne l'utilise pas : provision.sh:116-121 lance `bunx vite build` directement pour qu'une erreur de type ne fasse pas échouer le montage.",
+   "Script `preview` (l.12) : identique à `server`.",
+   "Scripts `typecheck` (l.13) et `lint` (l.14, `oxlint .`) : aucun gate ni recette du dépôt ne lance ces scripts du visualiseur. En revanche adws/adw_modules/quality.py:22, 125 et 134 lancent `bun x oxlint@1.36.0` (version épinglée) sur apps/inkwell, avec leurs propres options, via `adw_quality` (just/adws.just:59), sans ni ce script ni .oxlintrc.json.",
+   "Dépendances d'exécution (l.16-20) : `@fontsource/play ^5.3.0`, `lucide-vue-next ^1.0.0`, `vue ^3.5.13`. Toutes en `^`. Le serveur Bun (server/*.ts) n'importe aucun de ces paquets : ils ne servent qu'à construire l'interface (Vite les empaquette dans `dist/`). Le polices viennent du paquet local (src/main.ts:2-3), pas d'un CDN.",
+   "Dépendances de développement (l.21-28) : `@types/bun ^1.1.14`, `@vitejs/plugin-vue ^6`, `oxlint ^1`, `typescript ^5.7.2`, `vite ^7`, `vue-tsc ^3`. Quatre sont des plages sur la version MAJEURE seule (`^6`, `^1`, `^7`, `^3`).",
+   "Comparaison avec .claude/skills/sssf/apps/visualizer/bun.lock (l.6-21 du lock reprend les mêmes plages) : les 9 plages sont identiques. Versions verrouillées : @fontsource/play 5.3.0, lucide-vue-next 1.0.0, vue 3.5.40, @types/bun 1.3.14, plugin-vue 6.0.8, oxlint 1.76.0, typescript 5.9.3, vite 7.3.6, vue-tsc 3.3.8.",
+   "Absences : pas de `scripts.postinstall`, `prepare`, `preinstall` ; pas de `trustedDependencies` ; pas de `overrides` ni `resolutions` ; pas de champ `engines` ni `packageManager` (la version de bun n'est donc fixée nulle part dans le dossier). Pas de fichier `bunfig.toml` ni `.npmrc` dans le dépôt (`git ls-files` vide).",
+   "Installation réelle : sandbox_mount/guest/provision.sh:107 lance `bun install` (sans `--frozen-lockfile` ni `--ignore-scripts`), et just/obs.just:73 aussi. Dans bun 1.4.4 ici, `bun pm default-trusted` (liste, lecture seule) contient `esbuild`, qui est dans le lock (voir la note de bun.lock) : ses scripts d'installation seraient donc exécutés par défaut. Voir la note bun.lock."
+  ],
+  "deps": [
+   "Scripts lancés par : provision.sh (`bun install` l.107, `bunx vite build` l.121), just/obs.just:73, templates/justfile:89. Lancement du serveur par .claude/skills/sssf/apps/visualizer/package.json:9.",
+   "Verrou : .claude/skills/sssf/apps/visualizer/bun.lock (120 paquets, tous avec somme d'intégrité).",
+   "Carte : fiche correcte (29 lignes, scripts et dépendances). À compléter : liens entrants oubliés, templates/justfile:89 ; et la carte ne note pas que le serveur n'utilise aucun paquet npm à l'exécution."
+  ],
+  "vigilance": [
+   "Contradiction avec « versions épinglées » : les neuf plages sont en `^` ; quatre sont même `^<majeur>`. C'est bun.lock qui épingle les versions réelles, à condition que `bun install` ne le réécrive pas (pas de `--frozen-lockfile`).",
+   "Contradiction avec « ignore-scripts à true » : aucune protection dans le projet ; `esbuild` figure dans la liste de confiance par défaut de bun 1.4.4 (lecture locale). Pas de preuve qu'il tourne sur les VM (version de bun non fixée).",
+   "`dev:all` et `just obs ui` laissent un serveur écouter après la sortie de Vite.",
+   "La description « Read-only » est trompeuse : le serveur peut modifier `sessions.archived`."
+  ],
+  "chez_nous": [
+   "Pistes (sans trancher) : épingler les neuf plages en versions exactes ; installer avec `bun install --frozen-lockfile --ignore-scripts` (les deux options existent dans bun 1.4.4 : `bun install --help`) ; envisager `--minimum-release-age` ; fixer la version de bun.",
+   "Puisque seul `dist/` sert à l'exécution, on peut construire l'interface une fois sur l'hôte et ne copier que `dist/` + `server/` sur la VM (plus de `bun install` dans la VM). Idée à étudier."
+  ],
+  "a_verifier": [
+   "Je n'ai pas pu tester `bun install` (interdit d'installer). Je ne sais donc pas si `esbuild` exécute un script à l'installation avec cette version de bun ni ce qu'il fait ; ni si la construction de `dist/` marche avec `--ignore-scripts`.",
+   "Hôte de téléchargement : bun.lock ne note pas l'URL du registre (champ vide), donc l'hôte dépend de la configuration de la VM (non vue dans le dépôt) ; par défaut c'est le registre npm de bun."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/bun.lock": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Fichier de verrouillage de bun (format `lockfileVersion` 1, `configVersion` 1) du visualiseur. Il fige 120 paquets avec version exacte et somme d'intégrité sha512. Lu avec un script Python (pas de bun install). Il ne note ni scripts, ni `trustedDependencies`, ni URL de téléchargement.",
+  "points": [
+   "Format (l.1-4) : JSON avec virgules finales (lu par suppression des virgules). `lockfileVersion: 1`, `configVersion: 1`. 263 lignes.",
+   "Espace de travail (l.4-21) : nom `sssf-visualizer`, mêmes plages que .claude/skills/sssf/apps/visualizer/package.json (3 dependencies, 6 devDependencies). Aucune différence entre package.json et lock.",
+   "Paquets (l.22-262) : 120 entrées de la forme `\"nom\": [\"nom@version\", \"<registre>\", {dépendances, os, cpu, bin}, \"sha512-...\"]`. Les 120 ont une somme d'intégrité sha512 (aucune entrée sans). Aucune entrée n'est de type git, lien, fichier ou http : toutes sont des versions semver du registre.",
+   "Champ registre : vide (`\"\"`) pour les 120. Il n'y a donc aucune URL `resolved` dans le fichier : l'hôte de téléchargement vient de la configuration au moment de l'installation (par défaut le registre npm). Le dépôt ne contient ni `bunfig.toml` ni `.npmrc`.",
+   "Répartition : 71 paquets sont des binaires par plateforme (`os`/`cpu`) installés en option, dont 26 `@esbuild/*`, 25 `@rollup/*`, 19 `@oxlint/*` et `fsevents`. Les autres : 49 paquets JS. Sur une VM Linux seuls quelques-uns sont installés, ordre de grandeur cohérent avec « 54 pkgs » dans ai_docs/exedev_sandbox_mounting.md:382 (non recoupé).",
+   "Prod contre dev : en suivant `dependencies` (sans les pairs), les dépendances d'exécution déclarées amènent 25 paquets (vue et ses `@vue/*`, `@babel/parser|types`, `postcss`, `nanoid`, `picocolors`, `source-map-js`, `magic-string`, `entities`, `estree-walker`, `csstype`, `@jridgewell/sourcemap-codec`, `@fontsource/play`, `lucide-vue-next`) ; 95 paquets ne servent qu'au développement. Mais comme le serveur n'importe aucun de ces paquets, rien de tout cela ne tourne au moment de servir.",
+   "Versions verrouillées des paquets déclarés : vue 3.5.40, vite 7.3.6, typescript 5.9.3, oxlint 1.76.0, vue-tsc 3.3.8, plugin-vue 6.0.8, @types/bun 1.3.14 (tire `bun-types 1.3.14` et `@types/node 26.1.2`), @fontsource/play 5.3.0, lucide-vue-next 1.0.0. Autres paquets notables : esbuild 0.28.1, rollup 4.62.3, postcss 8.5.24, nanoid 3.3.16.",
+   "Scripts d'installation : le fichier ne les enregistre pas, et il n'y a pas de section `trustedDependencies`. Seul `esbuild` est dans la liste de confiance par défaut de bun 1.4.4 (`bun pm default-trusted`, 367 noms, lecture locale) parmi les 120 paquets : c'est le seul dont un script d'installation pourrait tourner par défaut (non vérifié, voir a_verifier). Aucun des autres paquets du lock n'y figure.",
+   "Paquets à binaire (`bin`) : @babel/parser, esbuild, nanoid, oxlint, rollup, typescript, vite, vue-tsc. Ils sont exécutés par les scripts, pas à l'installation.",
+   "Appels réseau à l'exécution : aucun nom de paquet du lock (ni `@fontsource/play`, qui est empaqueté) n'implique de CDN ; index.html et src/ ne contiennent aucune URL externe (grep)."
+  ],
+  "deps": [
+   "Lu par `bun install` (sandbox_mount/guest/provision.sh:107, just/obs.just:73). Écrit par bun si les plages de .claude/skills/sssf/apps/visualizer/package.json changent.",
+   "Cohérent avec .claude/skills/sssf/apps/visualizer/package.json (mêmes 9 plages). Pas de fiche dans la carte pour ce fichier."
+  ],
+  "vigilance": [
+   "Les versions réelles sont épinglées ici, pas dans package.json. Sans `--frozen-lockfile`, un `bun install` peut modifier le verrou si les plages ne sont plus satisfaites.",
+   "Pas d'URL de téléchargement dans le fichier : on ne peut pas l'auditer par lui seul. L'intégrité sha512 protège le contenu, pas le choix du registre.",
+   "Les versions du lock (vue 3.5.40, vite 7.3.6...) sont postérieures à ce que je connais ; je ne les ai pas comparées à un registre (pas de réseau)."
+  ],
+  "chez_nous": [
+   "À garder avec `--frozen-lockfile`. Piste : vérifier le lock une fois sur l'hôte, construire `dist/` là, et ne rien installer dans la VM.",
+   "Nos règles « versions épinglées » : le lock les respecte (versions exactes + sha512) ; il manque d'épingler aussi la version de bun et de rendre `--frozen-lockfile --ignore-scripts` obligatoires dans les recettes."
+  ],
+  "a_verifier": [
+   "Ce que fait le script d'installation d'esbuild 0.28.1 (je n'ai pas le paquet) et si bun 1.4.4 le lance sur le projet : à tester dans un dossier jetable, avec réseau, hors de ce lot.",
+   "Registre réellement utilisé par `bun install` sur la VM (variables d'environnement, `.npmrc` du compte).",
+   "Existence et exactitude des 120 versions/sommes sur le registre : non contrôlé (pas de réseau)."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/vite.config.ts": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Configuration de Vite pour le développement et la construction de l'interface : plugin Vue, alias `@` et `@shared`, serveur de développement sur 4601, proxy `/api` vers le serveur Bun, sortie dans `dist/`. Aucun code d'exécution du serveur de production.",
+  "points": [
+   "Imports (l.1-3) : `node:url`, `vite`, `@vitejs/plugin-vue`. Pas de plugin réseau.",
+   "`API_PORT` (l.5) : `process.env.PORT ?? \"4600\"`. Même variable `PORT` que le serveur (index.ts:18) : si `PORT` est posé pour les deux, ils restent d'accord ; si `PORT` est vide, `??` ne la remplace pas et le proxy vise `localhost:` sans port.",
+   "Plugin et alias (l.8-14) : `vue()` ; `@` vers `./src`, `@shared` vers `./shared` (même alias que tsconfig.json:24-27).",
+   "Serveur de développement (l.15-23) : port 4601 (l.16), sans `host` ni `strictPort`. Vite 7 écoute par défaut sur `localhost` seulement (non vérifiable ici : Vite n'est pas installé) ; si 4601 est pris, Vite prend un autre port (comportement par défaut de Vite).",
+   "Proxy (l.17-22) : `/api` vers `http://localhost:${API_PORT}` avec `changeOrigin: true`. Le navigateur parle donc toujours au même site (4601) : pas de CORS. Le nom `localhost` peut se résoudre en IPv6 alors que Bun écoute en IPv4 (observé 0.0.0.0) : problème connu de Node, à vérifier.",
+   "Construction (l.24-27) : `outDir: \"dist\"`, `emptyOutDir: true` (vide `dist/` avant chaque build). `dist/` est le dossier servi par .claude/skills/sssf/apps/visualizer/server/index.ts:19."
+  ],
+  "deps": [
+   "Lu par `vite` (.claude/skills/sssf/apps/visualizer/package.json:8, :11), par `bunx vite` (just/obs.just:73) et par `bunx vite build` (sandbox_mount/guest/provision.sh:121). Inclus dans tsconfig.json:29.",
+   "Port 4601 cité dans .claude/skills/sssf/apps/visualizer/server/index.ts:206, templates/justfile:87 et run_adw.md:122.",
+   "Carte à compléter : la carte n'indique aucun lien entrant ; il y en a 4 (ci-dessus)."
+  ],
+  "vigilance": [
+   "Le proxy et le serveur de développement ne sont utiles qu'en développement (`just obs ui`). Sur les VM, seul le serveur Bun sur 4600 sert l'interface construite.",
+   "Aucune option de sécurité réseau n'est posée (hôtes autorisés, host) : on dépend des valeurs par défaut de Vite 7."
+  ],
+  "chez_nous": [
+   "Garder. Si on décide un port ou une adresse fixes pour le visualiseur, il faudra les poser à la fois ici (proxy) et dans index.ts."
+  ],
+  "a_verifier": [
+   "Valeur par défaut de `server.host` et de `allowedHosts` dans Vite 7.3.6 : Vite n'est pas installé ici.",
+   "Résolution IPv6 de `localhost` vers un serveur Bun IPv4 sur la machine de développement."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/tsconfig.json": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Réglages TypeScript du visualiseur : mode strict, modules « bundler », types de Bun et de Vite, alias `@` et `@shared`, sans émission de fichiers. Sert à `vue-tsc --noEmit` et aux éditeurs.",
+  "points": [
+   "Cible et modules (l.3-6) : `ESNext`, résolution `bundler`, bibliothèques ESNext + DOM + DOM.Iterable (le code serveur reçoit donc aussi les types du navigateur).",
+   "Types (l.7) : `bun` et `vite/client`. `bun` vient de `@types/bun` (devDependency, package.json:22) ; sans installation, la vérification de types échoue.",
+   "Rigueur (l.9-12) : `strict`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`.",
+   "Modules (l.13-17) : `verbatimModuleSyntax`, `isolatedModules`, `skipLibCheck`, `resolveJsonModule`, `allowImportingTsExtensions` (nécessaire parce que le serveur importe `./db.ts` avec l'extension, db.ts/index.ts:15-16).",
+   "Interop et JSX (l.18-21) : `esModuleInterop`, `jsx: preserve` avec `jsxImportSource: vue`, `noEmit`.",
+   "Chemins (l.23-27) : `baseUrl: .` et alias `@/*`, `@shared/*` (les mêmes que vite.config.ts:10-13).",
+   "Fichiers (l.29) : `shared/**/*.ts`, `server/**/*.ts`, `src/**/*.ts`, `src/**/*.vue`, `vite.config.ts`. `dist/` et `node_modules/` sont hors liste."
+  ],
+  "deps": [
+   "Utilisé par `vue-tsc --noEmit` (.claude/skills/sssf/apps/visualizer/package.json:11, :13). `vue-tsc` n'est pas lancé par la construction des VM (sandbox_mount/guest/provision.sh:121 lance `bunx vite build`). Carte : fiche correcte (30 lignes). Lien entrant à compléter : package.json:11, :13.",
+   "Carte : fiche correcte (30 lignes). Lien entrant à compléter : package.json:11, :13."
+  ],
+  "vigilance": [
+   "Aucune vigilance de sécurité. Les types ne protègent pas le serveur à l'exécution (voir types.ts)."
+  ],
+  "chez_nous": [
+   "Garder tel quel."
+  ],
+  "a_verifier": [
+   "Que `vue-tsc` passe sans erreur sur ce projet : non lancé (pas d'installation). La note app_docs/27ef9462_model-routing-context.md:38 dit qu'il passait dans leur dernière session.",
+   "Si `vite build` (qui transpile avec esbuild) lit des options de ce tsconfig.json : Vite n'est pas installé ici."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/.oxlintrc.json": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Réglages d'oxlint (analyseur de code) : règles « correctness » en erreur, « suspicious » et « perf » en avertissement. Utilisé seulement par `bun run lint` du visualiseur, que rien dans le dépôt ne lance (oxlint est lancé ailleurs, sur Inkwell, avec une autre configuration).",
+  "points": [
+   "`$schema` (l.2) : pointe vers `./node_modules/oxlint/configuration_schema.json`, qui n'existe qu'après installation.",
+   "Greffons (l.3) : typescript, unicorn, oxc.",
+   "Catégories (l.4-8) : correctness = erreur, suspicious = avertissement, perf = avertissement.",
+   "Environnement (l.9-12) : `browser` et `es2024`. Pas d'environnement Node ni Bun alors que server/*.ts utilise `Bun`, `process` et `import.meta.dir` : le linter peut signaler ces globales (à vérifier).",
+   "Règles (l.13-16) : `no-console` désactivée (le serveur journalise avec console), `typescript/no-explicit-any` en avertissement.",
+   "Ignorés (l.17) : `dist/**`, `node_modules/**`."
+  ],
+  "deps": [
+   "Utilisé par .claude/skills/sssf/apps/visualizer/package.json:14 (`oxlint .`). Aucun gate, aucune recette, aucun agent ne lance ce script ni ne lit cette config (git grep : seuls package.json:14 et ce fichier). oxlint est pourtant utilisé par adws/adw_modules/quality.py:22, 125 et 134 (`bun x oxlint@1.36.0` sur apps/inkwell/public/app.js et server.ts), sans cette config.",
+   "Carte : fiche correcte (18 lignes). Lien entrant à compléter : package.json:14."
+  ],
+  "vigilance": [
+   "La config du visualiseur est inutilisée en pratique : elle existe, personne ne la lit, donc elle ne protège de rien."
+  ],
+  "chez_nous": [
+   "Sans intérêt pour la sécurité ; à garder tel quel ou à ignorer."
+  ],
+  "a_verifier": [
+   "Que `oxlint .` passe sans erreur sur ce projet, et ce qu'il dit des globales de Bun : non lancé."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/index.html": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Page HTML de départ de l'application Vue (Vite) : un `div#app`, un script de module, une icône. C'est le modèle que Vite transforme en `dist/index.html` ; le serveur Bun ne sert pas ce fichier-ci.",
+  "points": [
+   "Page (l.1-13) : `lang=\"en\"`, `charset UTF-8`, `viewport` (l.2-5), titre « Super Simple Software Factory » (l.7).",
+   "Icône (l.6) : `/logo.svg`, qui existe dans `public/logo.svg` (316 octets, dessin de trois barres).",
+   "Script (l.11) : `<script type=\"module\" src=\"/src/main.ts\">`, point d'entrée qui importe les polices locales de `@fontsource/play` (src/main.ts:2-3) puis monte l'application (src/main.ts:6).",
+   "Aucune ressource externe : pas de CDN, pas de police distante, pas d'analytics, pas de meta CSP (grep des URL http dans index.html et src/ : seulement l'espace de noms SVG de logo.svg)."
+  ],
+  "deps": [
+   "Charge .claude/skills/sssf/apps/visualizer/src/main.ts (index.html:11) et .claude/skills/sssf/apps/visualizer/public/logo.svg (index.html:6). Utilisé par Vite (vite.config.ts), qui écrit `dist/index.html`, servi par .claude/skills/sssf/apps/visualizer/server/index.ts:104-108.",
+   "Carte : fiche correcte. À compléter : le lien vers public/logo.svg."
+  ],
+  "vigilance": [
+   "Pas de politique de sécurité de contenu : l'interface injecte du HTML construit à partir de la trace (v-html dans PhaseDetail.vue:492, 620, 662, 670, 677). L'échappement est à vérifier dans src/lib/markdown.ts et highlight.ts, qui sont relus par le lot de l'interface."
+  ],
+  "chez_nous": [
+   "Garder. Si on expose le visualiseur, une CSP serait un filet de plus (à ajouter côté serveur ou ici)."
+  ],
+  "a_verifier": [
+   "Que l'échappement de la trace dans l'interface est complet (hors de ce lot, lot 4)."
+  ]
+ },
+ ".claude/skills/sssf/references/observability.md": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Référence d'observabilité : schéma des événements, sept tables SQLite, réglages WAL, contrat de lecture par curseur. Plusieurs affirmations sont en retard sur le code : liste des types d'événements (dix au lieu de douze), colonnes de `sessions`, `parent_id`, `queued`, `agent_end`, recettes `just procs` / `just kill`, `poll_ms`, et l'idée que les fichiers sont l'enregistrement brut.",
+  "points": [
+   "Titre et résumé (l.1-3) : « seven SQLite tables », « agents → sqlite → web ui ». Sept tables : exact (adws/adw_modules/tracer.py:17-89).",
+   "« Two stores » (l.5-7) : « Files are the raw record » (raw_output.jsonl, envelope.json, agent_map.json) et « Losing the db loses nothing that can't be rebuilt from files ». Les trois fichiers existent (adws/adw_modules/agents.py:122, adws/adw_modules/agents.py:313, adws/adw_modules/runner.py:56), plus `events.jsonl` (adws/adw_modules/tracer.py:127) que la phrase ne cite pas. Mais aucun code ne reconstruit la base depuis les fichiers (git grep « rebuild » dans adws, just, sandbox_mount : vide), et `envelope.json` ne garde que la dernière enveloppe acceptée de chaque agent ; sessions, phases et lignes d'enveloppes invalides ne sont que dans la base. Registre n°69 confirmé : sur une VM, le rapatriement ne prend que `specs`, `app_docs`, `adws/adw_data/sssf.db` et `run.log` (just/sandbox/lifecycle/teardown.just:109) ; `adws/adw_data/sessions/` (fichiers bruts, prompts) est perdu avec la VM.",
+   "Emplacement (l.9) : « Location comes from observability.db » dans la config ; « gitignored ». Le traceur le lit (adws/adw_modules/session.py:40) mais pas le visualiseur (db.ts:39-49) ; `.gitignore:153` (`sssf.db*`) couvre bien la base, son -wal et son -shm.",
+   "Tableau des types (l.13-26) : « `tracer.py` emits these types ». Dix lignes. Le code en émet douze (.claude/skills/sssf/apps/visualizer/shared/types.ts:19-31, preuves dans la note de types.ts). Registre n°37 confirmé : manquent `thinking` et `agent_message`, émis en adws/adw_modules/agents.py:249-252 depuis agent_pi.py:154-162 (absents du modèle du skill). Le traceur n'émet rien lui-même ; « every one logged against phase_id » est faux pour les lignes de console avant la première phase (`phase_id` vide, console.py:33, 43-44).",
+   "Ligne `agent_start` (l.18) : exact (adws/adw_modules/agents.py:95-103) ; émis une fois par appel d'agent.",
+   "Ligne `tool_call` (l.19) : « one event per real call, named `bash: ls -la src`, payload {tool, tool_call_id, args, result_snippet, ok, duration_ms, agent} » : exact pour Pi (adws/adw_modules/agent_pi.py:166-173, 212-227). Les outils cités (read, bash, edit, write) sont ceux de Pi, non vérifiés ici. Omission : quality.py:87-100 écrit aussi des `tool_call` (nom `quality:<nom>`, charge area/operation/command/returncode/passed/output_artifact).",
+   "Ligne `handoff` (l.20) : « an envelope crosses from one agent to the next ». En réalité l'événement est écrit à la fin de CHAQUE appel réussi (adws/adw_modules/agents.py:205-208), qu'un autre agent suive ou non. Charge : artifacts et summary.",
+   "Lignes `gate_pass` et `gate_fail` (l.21-22) : exact (adws/adw_modules/agents.py:158-163, charge attempt, violations, checks).",
+   "Ligne `log` (l.23) : « an explicit `ph.log(...)` from the ADW script ». En réalité `log` est aussi écrit pour CHAQUE ligne affichée par la console (console.py:43-46, via `_emit`), et pour `paths_touched` (adws/adw_modules/agents.py:193-195). C'est la grande majorité des `log`. Au registre.",
+   "Ligne `agent_end` (l.24) : « the agent's run completes; envelope parsed or not — payload carries cost, usage, context_tokens, context_window ». Charge exacte (adws/adw_modules/agents.py:209-214), mais l'événement n'est écrit qu'APRÈS le contrôle des droits et l'enregistrement de l'enveloppe (adws/adw_modules/agents.py:183, 200-206, 209) ; une enveloppe jamais valide (adws/adw_modules/agents.py:291), un échec de porte (adws/adw_modules/agents.py:168), une violation de droits ou une erreur de Pi sautent l'événement. Aucun autre code n'écrit `agent_end`. Au registre.",
+   "Lignes `phase_start`, `phase_end`, `error` (l.17, 25, 26) : exact (runner.py:80-81, 92-96, 107-109). `error` est aussi écrit sous les noms permission_breach (adws/adw_modules/agents.py:186-190) et not_accepted (runner.py:135-138).",
+   "« `parent_id` nests spans, so an agent phase expands into its tool-call spans in the UI » (l.28). Faux : `parent_id` n'est jamais renseigné (data_types.py:362 : défaut `\"\"`, aucun appel ne le passe, git grep) et l'interface ne le lit pas. Au registre.",
+   "« Spend is itemised per phase » (l.30) : `agent_end.usage` = `UsageBreakdown.model_dump()` (adws/adw_modules/agents.py:211-212, data_types.py:388-428). « The four components sum to total_tokens and their costs sum to total_cost » dépend de ce que Pi renvoie : `total_tokens` vient de `totalTokens` de Pi sinon de la somme (agent_pi.py:101-105), le coût de `cost.total` ; le code n'impose pas l'égalité.",
+   "`reasoning_tokens` (l.32) : champ présent (data_types.py:403, 422), lu dans la clé `reasoning` de l'usage de Pi. « measured across every session on disk » : non vérifiable ici ; la clé `reasoning` de Pi est non vérifiable (Pi absent).",
+   "Contexte (l.34-38) : calcul en adws/adw_modules/agent_pi.py:94-105, 306-310 (dernier tour valide, `totalTokens` sinon somme, tours `aborted`/`error` sautés) : conforme. « `context_window` is the same `contextWindow` pi reads from `~/.pi/agent/models.json` » (l.36) : incomplet ; le code lit models.json PUIS retombe sur le catalogue de Pi (agent_pi.py:108-117) et rend 0 si inconnu. Au registre (même cause que n°70, autre fichier).",
+   "Preuves des portes (l.40-42) : `{item, ok, note}` (adws/adw_modules/data_types.py:252-262), exemple « exists, 454B » = adws/adw_modules/gates.py:29-30 ; `violations` dérivées en « item: note » (data_types.py:278-279). Exact.",
+   "Durées (l.44) : « a tool_call is the one event that spans time ». Exact pour `started_at`/`ended_at` (adws/adw_modules/agents.py:260-261, quality.py:100-101 ; les autres types laissent `ended_at` vide, tracer.py:134).",
+   "Flux (l.46) : « agent_pi.py tails pi's JSONL stdout line by line and the tracer inserts each event while the agent is still working ». Exact : boucle ligne à ligne et `on_event` (agent_pi.py:286-313), insertion à chaque événement (tracer.py:129-135, connexion en autocommit `isolation_level=None`, tracer.py:108).",
+   "Table `sessions` (l.51-58) : manque `adw_name` et `archived`, présents dans le schéma (adws/adw_modules/tracer.py:20, 26). Colonne `request` : « the engineer's ask » ; limitée à 500 caractères (adws/adw_modules/tracer.py:158). La phrase de la l.146 parle bien de `sessions.archived` : le document se contredit. Au registre.",
+   "Tables `phases`, `envelopes`, `agent_sessions`, `processes` (l.60-127) : colonnes conformes à adws/adw_modules/tracer.py:28-89, y compris les commentaires. `gate_results.id` est écrit `INTEGER PRIMARY KEY` ; le code a `AUTOINCREMENT` (adws/adw_modules/tracer.py:61). `events.type` (l.76-77) : liste de dix (n°37 encore).",
+   "« A hung agent emits nothing... `just procs <adw_id>` lists what is live, `just kill <adw_id>` stops children before the parent, and both verify the recorded command still matches the pid » (l.130). Les recettes à la racine n'existent pas : le justfile racine ne contient que des modules (justfile:38-50), elles sont `just obs procs` et `just obs kill` (même cause que n°34, autre fichier). `procs` ne vérifie rien (just/obs.just:48 : simple SELECT). Registre n°72 confirmé : `kill` laisse passer toute commande contenant `pi`, `adw_` ou `python` (obs.just:62-65), il ne compare pas à la commande enregistrée (le SELECT de la l.56 ne lit même pas la colonne `command`). L'ordre « enfants d'abord » est exact (obs.just:56). « SIGTERM and SIGINT are turned into SystemExit in session.ensure » : exact (session.py:30-35 ; appelé en session.py:48).",
+   "« Derived, never stored » (l.132) : exact pour durées et progression. Statuts de phase (l.134) : « queued only for manifest-declared phases ... (dashed in the UI) » : `queued` n'est écrit par aucun code et le « manifest » n'existe pas (voir types.ts). Les autres règles (running à l'entrée, success seulement après sortie propre, tout le reste fail) sont exactes (runner.py:77, 89, 105). Au registre.",
+   "Réglages WAL (l.138-144) : « Open every connection — writer and reader — with journal_mode=WAL, synchronous=NORMAL, busy_timeout=5000 ». Le traceur le fait (adws/adw_modules/tracer.py:109-111). Le lecteur du visualiseur ne peut pas poser journal_mode (db.ts:79-81) et pose les deux autres (db.ts:82-83) ; la connexion d'écriture d'archivage ne pose que busy_timeout (db.ts:144). Au registre (petit).",
+   "Exception d'écriture (l.146) : « exactly one exception: archiving a session » : exact (db.ts:138-150 ; index.ts:135-146). « no tracer ever writes or reads it » : exact (aucune requête de tracer.py ne cite `archived` hors schéma et migration).",
+   "Contrat de lecture (l.150-158) : « No ingest endpoint, no WebSocket » : exact (index.ts:5-6). « polls on a rowid cursor every observability.poll_ms (default 500) » : FAUX, registre n°41 confirmé. `poll_ms` n'est lu nulle part dans src/ ni server/ ; l'interface sonde toutes les 500 ms en dur (SessionCard.vue:65 et :73, SessionTrace.vue:84, et aussi SessionsList.vue:33 que la liste connue ne cite pas). La requête citée est celle de db.ts:370-375 (exact, limite 500 par défaut, maximum 1000). « History ... with filters, lazy-paged » : la route n'offre aucun filtre (seulement `after` et `limit`, index.ts:149-157).",
+   "Mention de l'emplacement des journaux et de la structure : le document ne parle ni de l'écoute réseau du visualiseur, ni de l'absence d'authentification, ni du fait que l'API sert toute la trace en clair. Ce sujet n'est pas traité dans ce document."
+  ],
+  "deps": [
+   "Décrit adws/adw_modules/tracer.py (tables, événements), adws/adw_modules/agents.py et adws/adw_modules/agent_pi.py (émission), .claude/skills/sssf/apps/visualizer/server/db.ts (lecteur), adws/adw_modules/session.py (signaux), just/obs.just (recettes), ~/.pi/agent/models.json (hors dépôt).",
+   "Cité par .claude/skills/sssf/SKILL.md:28 et :58, cookbooks/run_adw.md:98, cookbooks/sssf_overview.md:88, .claude/skills/sssf/apps/visualizer/shared/types.ts:5 et specs/scaffold.md:35. Au moins ces documents s'appuient sur des affirmations fausses d'ici (types, poll_ms, recettes).",
+   "Carte à corriger : la carte note un seul écart (n°37). Il y en a au moins huit autres ici (voir le registre).",
+   "Carte à compléter : lien faible « the visualizer » (.claude/skills/sssf/references/observability.md:146) = server/index.ts et db.ts ; « just procs/kill » (l.130) = just/obs.just:47, 53 sous le nom `obs`."
+  ],
+  "vigilance": [
+   "Quiconque suit ce document (humain ou agent) croit que les recettes `just procs` et `just kill` existent et vérifient la commande, que `poll_ms` règle l'interface, que les fichiers permettent de reconstruire la base. Tout cela est faux.",
+   "Le document ne dit pas que toute la trace (sorties de commandes, arguments d'outils, réflexion du modèle, prompts) est stockée et servie en clair, ni qu'aucun masque de clé n'existe."
+  ],
+  "chez_nous": [
+   "À réécrire avant usage : 12 types, colonnes de `sessions`, `agent_end` seulement en cas de réussite (ou corriger le code pour qu'il soit aussi écrit en cas d'échec), `parent_id` à supprimer ou à renseigner, `queued` à supprimer, recettes `just obs ...`, `poll_ms`.",
+   "Y ajouter ce qui nous importe : liste de ce qui est stocké en clair, absence de masque, adresse d'écoute, et le fait que la récolte ne rapatrie que la base."
+  ],
+  "a_verifier": [
+   "Noms des outils de Pi (read, bash, edit, write), clé `reasoning` de l'usage, et fonction `calculateContextTokens` de Pi (l.19, 32, 36) : Pi 1.3.0 n'est pas installé ici.",
+   "Mesures annoncées « across every session on disk » (l.32) : non vérifiables, aucune session de disler n'est dans le dépôt.",
+   "« Two caveats worth knowing » (l.38) : Pi ajoute une estimation pour les messages qui suivent le dernier usage, et la compaction automatique en dernier acte rend le chiffre d'avant compaction ; comportements de Pi 1.3.0, non installé ici."
+  ]
+ }
+}

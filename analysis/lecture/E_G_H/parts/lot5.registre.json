@@ -1,0 +1,170 @@
+[
+ {
+  "ou": ".claude/skills/sssf/scripts/install.py:10-11 (docstring)",
+  "ecrit": "« adws/adw_data/prompt_engineering/ (4 starter agents) » (install.py:10-11).",
+  "realite": "`templates/prompt_engineering/` contient 5 dossiers : builder, documenter, planner, reviewer, scout (`git ls-files`, 10 fichiers) ; cookbooks/install.md:23 en liste cinq. La liste de la docstring oublie aussi `harness_engineering/` et `justfile`, posés aux l.72-73 et l.81.",
+  "impact": "Faible : le lecteur de la docstring compte un agent de moins et ne sait pas que le justfile est posé.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/scripts/install.py:90-96 (« next steps »)",
+  "ecrit": "Les étapes suivantes affichées sont `just demo`, `just sessions`, `just obs` (install.py:92-94), sans condition.",
+  "realite": "Ces trois recettes n'existent que dans le justfile du modèle (templates/justfile:29, 67, 88). Quand un `justfile` existe déjà, install.py le saute (l.78-81, texte « Skipped like any other file ») mais imprime quand même ces trois lignes. Dans Inkwell : pas de `demo` ni de `sessions` à la racine (justfile:38-54) et `just obs` ne fait que lister le module (just/obs.just:10-12).",
+  "impact": "Après une pose dans un dépôt qui a déjà un justfile, les commandes proposées échouent ; l'ingénieur ne sait pas pourquoi.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/install.md:34 ; .claude/skills/sssf/scripts/install.py:88-89",
+  "ecrit": "« install.py skips every file that already exists ... and reports what it skipped, so a second run doubles as a drift check » (install.md:34).",
+  "realite": "Pour les fichiers sautés, install.py n'imprime que leur NOMBRE (install.py:88-89 : `skipped (already exist, use --force to overwrite): N`) ; jamais leurs noms. Il ne compare pas le contenu : un fichier identique au modèle et un fichier modifié sont tous deux « skipped » (l.43-45). Expérience : 2e passage sur 43 fichiers = « skipped 43 », sans aucune différence signalée.",
+  "impact": "On ne peut pas savoir par ce script si une installation a dérivé du modèle ; la promesse donne une fausse assurance.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/scripts/install.py:43-48",
+  "ecrit": "« Existing files are skipped unless --force » (install.py:13) ; toutes les destinations sont sous le dossier courant (l.66-81).",
+  "realite": "`dest.exists()` (l.43) suit les liens symboliques. Un lien CASSÉ vaut « n'existe pas » : `shutil.copy2` (l.47) écrit alors le fichier visé par le lien, même sans `--force`. Avec `--force`, un lien valide est écrit à travers. Expérience (réplique de stamp, dossiers fictifs) : `.env.sample` lié vers un fichier hors du dépôt est écrasé avec `--force` ; `justfile` lié vers un fichier absent crée ce fichier hors du dépôt.",
+  "impact": "Faible : suppose des liens symboliques dans le dépôt cible. Mais le script peut écrire hors du dossier cible et écraser un fichier que l'opérateur croyait protégé.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/scripts/make_adw.py:25",
+  "ecrit": "Le squelette généré déclare `# dependencies = [\"pydantic\", \"python-dotenv\", \"pyyaml\"]` (make_adw.py:25) ; la doc le présente comme le squelette canonique (cookbooks/create_adw.md:48, 50-57).",
+  "realite": "`adws/adw_modules/console.py:11-14` importe `rich` au niveau du module (chaîne session -> runner -> console), et les 12 ADW du dépôt déclarent `rich` (adws/adw_*.py:3 ; squelette de create_adw.md:57). Un ADW généré n'aurait pas `rich` dans son environnement `uv run`. Expérience : squelette régénéré, `grep rich` : absent ; comportement de uv non essayé.",
+  "impact": "Le fichier généré échouerait à l'import avant la première phase (à confirmer avec uv). Ajouté au défaut `run.succeeded` (n°24), aucun ADW généré ne peut aller au bout.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/scripts/make_adw.py:105-110",
+  "ecrit": "`--name` : « snake_case adw name » (make_adw.py:78) ; le fichier est écrit dans `adws/adw_<name>.py` (l.105).",
+  "realite": "`args.name` n'est pas validé. Expérience (même construction de chemin, `Path.cwd() / \"adws\" / f\"adw_{name}.py\"` puis `mkdir(parents=True)`) : avec le nom `/../../../x`, le fichier est écrit UN niveau au-dessus du dossier courant (le dossier parent) ; chaque `..` de plus remonte d'un cran.",
+  "impact": "Faible : l'argument vient de l'opérateur ou d'un orchestrateur qui suit create_adw.md. Un nom mal formé écrit hors de `adws/`.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/install.md:41",
+  "ecrit": "« install.py appends `adws/adw_data/sessions/`, `adws/adw_data/sssf.db*`, and `.env` for you ... All three ».",
+  "realite": "`GITIGNORE_ENTRIES` contient cinq lignes : les trois citées plus `__pycache__/` et `*.pyc` (install.py:23-33).",
+  "impact": "Faible : la liste de contrôle fait vérifier trois lignes sur cinq.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/create_adw.md:27 ; .claude/skills/sssf/cookbooks/update_adw.md:58",
+  "ecrit": "« a kind=\"code\" phase runs it (`quality.run_tests(run)` -> `quality.as_envelope(result, \"tests\")`) » (create_adw.md:27) ; `test = quality.run_tests(run)` dans le modèle de boucle (update_adw.md:58).",
+  "realite": "Dans ce dépôt, `adws/adw_modules/quality.py` n'a pas de `run_tests` : la fonction est `run_inkwell_tests` (quality.py:198), appelée par adw_build_test.py:56. Seul le modèle du skill a `run_tests` (templates/.../quality.py:177). gotchas.md:101-103 documente l'AttributeError que cela produit.",
+  "impact": "Un agent qui compose un ADW d'après ces cookbooks écrit un appel qui plante en fin de chaîne, après avoir payé planner et builder.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/create_adw.md:9",
+  "ecrit": "« The starter six cover most chains » (create_adw.md:9).",
+  "realite": "Les cinq rosters et le modèle n'ont que cinq agents : planner, builder, scout, reviewer, documenter (`grep '  - name:'` sur les YAML). Le tableau l.13-19 en liste cinq, plus la ligne « no tester » et la ligne générique.",
+  "impact": "Faible : l'agent ou l'humain cherche un sixième agent de départ qui n'existe pas.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/update_config.md:68",
+  "ecrit": "« The starter roster ships with none [harness extensions] — this is an escape hatch, not a default » (update_config.md:68).",
+  "realite": "Le roster livré (templates/sssf.config.yaml:48-49, 87-88) et celui d'Inkwell (adws/adw_sssf_config/sssf.config.yaml, mêmes lignes) mettent `adws/adw_data/harness_engineering/subagents.ts` sur le planner et sur le scout. cookbooks/install.md:30 le dit.",
+  "impact": "Un lecteur croit que les agents n'ont aucune extension ; or deux d'entre eux chargent du code TypeScript qui lance des sous-agents (registre n°21, n°68).",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/update_config.md:25",
+  "ecrit": "« the starter roster ships violet/cyan/amber/green » (update_config.md:25).",
+  "realite": "Les couleurs sont #a78bfa (violet), #22d3ee (cyan), #fbbf24 (ambre), #fb7185 (rose), #e879f9 (fuchsia) (sssf.config.yaml:43, 65, 82, 109, 126, identiques dans le modèle). Pas de vert, et cinq couleurs au lieu de quatre.",
+  "impact": "Négligeable ; erreur de fait dans une doc lue pour changer la config.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/create_config.md:53 ; .claude/skills/sssf/cookbooks/update_config.md:56",
+  "ecrit": "« a read-only recon agent gets `[read, bash]` » (create_config.md:53) ; « withholding `edit` makes that structural instead of merely prompted » pour un relecteur qui doit « change nothing » (update_config.md:56).",
+  "realite": "`bash` permet d'écrire n'importe où et `write` reste dans la liste du relecteur (sssf.config.yaml:116-123). Le code le dit : « `tools` cannot express this: `bash` runs anything and `write` reaches any path » (data_types.py:315-317) ; seul `writes: []` est appliqué par permissions.py. Aucun des 9 cookbooks ne mentionne la clé de config `writes` (les 5 occurrences du mot sont le verbe « écrire » ; seul references/config.md la documente).",
+  "impact": "Un agent ajouté d'après ces cookbooks est tenu pour « en lecture seule » alors qu'il peut tout modifier hors fichiers protégés (cf. registre n°29, n°42, n°60).",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/create_config.md:53 ; .claude/skills/sssf/cookbooks/update_config.md:32",
+  "ecrit": "« Pi's builtin tools are `read`, `bash`, `edit`, `write` » (create_config.md:53) ; « Pi's seven builtins: read, bash, edit, write, grep, find, ls » (update_config.md:32).",
+  "realite": "Les deux phrases se contredisent dans les mêmes cookbooks ; references/config.md:110 en liste sept (comme update_config.md). Liste réelle de Pi 1.3.0 non vérifiable ici.",
+  "impact": "Faible : l'allowlist d'un agent peut oublier `grep`, `find`, `ls` si on suit create_config.md.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/create_config.md:24",
+  "ecrit": "`harness_engineering: []          # pi extension names` (create_config.md:24).",
+  "realite": "Chaque entrée est passée telle quelle à `pi -e <entrée>` (agent_pi.py:263-264) et la config d'Inkwell y met un CHEMIN de fichier : `adws/adw_data/harness_engineering/subagents.ts` (sssf.config.yaml:49). update_config.md:68 le dit correctement.",
+  "impact": "Faible : un nom court écrit d'après ce commentaire n'est pas un chemin et ne chargerait rien (comportement de Pi à vérifier).",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/update_modules.md:26",
+  "ecrit": "`utils.py` : « safe subprocess env, logging, resolve_prompt ».",
+  "realite": "`operator_env()` renvoie `os.environ.copy()` (utils.py:31) dont seul `VIRTUAL_ENV` est retiré (l.32-38) ; `.env` est chargé dès l'import (utils.py:13). Aucune clé n'est filtrée. Pi (agent_pi.py:281) et les commandes de qualité reçoivent tout.",
+  "impact": "Un lecteur croit que les agents ne voient pas les clés. Chez nous : liste fixe de variables (décision 1).",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/update_modules.md:23-24",
+  "ecrit": "Le tableau des modules décrit `console.py` deux fois : « the terminal narrative ... plain sequential lines, no spinners » (l.23) et « the rich stdout reporter » (l.24).",
+  "realite": "Un seul module `console.py`, qui importe `rich` (console.py:11-14). Deux lignes, deux descriptions presque identiques, dont l'une dit « plain » et l'autre « rich ».",
+  "impact": "Négligeable ; signe d'un tableau recopié sans relecture.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/run_adw.md:122 (`just obs`)",
+  "ecrit": "« the visualizer app in the skill (`just obs` ...) » polls the db (run_adw.md:122) : `just obs` est donné comme la commande qui lance l'interface.",
+  "realite": "Chez Inkwell `just obs` est un module : sans recette, il liste ses recettes (just/obs.just:10-12). L'interface se lance par `just obs ui` (obs.just:71-73). `just obs` démarre l'interface seulement dans le justfile du modèle (templates/justfile:88-89). Les sessions tmux de la même phrase sont traitées dans le registre du lot 3.",
+  "impact": "Faible : l'orchestrateur lance `just obs` et n'obtient pas d'interface.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "justfile:13-14 ; justfile:20-22",
+  "ecrit": "« `kill` below runs as a bash script and only calls real binaries » (justfile:13-14) ; « Still needed at root: the observability recipes below read the same roster/db » (justfile:21, au-dessus de `config :=`, l.22).",
+  "realite": "Le justfile racine n'a qu'une recette, `default` (l.53-54). `kill` est dans just/obs.just:53 ; `config` n'est utilisée par aucune recette du fichier (`grep '{{config}}' justfile` : aucune ligne) et obs.just écrit le chemin de la base en dur (obs.just:36, 40, 44, 48), sans lire `SSSF_CONFIG`.",
+  "impact": "Faible : deux commentaires décrivent une structure d'avant le passage aux modules ; ils font croire que la variable `config` et le zsh interactif de la racine servent aux recettes d'observation.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "just/inkwell.just:8-9",
+  "ecrit": "« Recipes run bash (not the root's interactive zsh): they call real binaries only » (inkwell.just:8-9).",
+  "realite": "Seules `run` et `dev` ont un shebang bash (inkwell.just:20, 27). `test` (l.33-34) n'en a pas et tourne sous le shell par défaut de just (`sh`).",
+  "impact": "Négligeable pour une commande simple ; mais la phrase « identiques sur l'hôte et dans la VM » repose sur un bash qui n'est pas partout posé.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/commands/prime.md:11 ; .claude/commands/prime.md:29",
+  "ecrit": "« `just` (four namespaces, nothing else), then `just --list sbx`, `adw`, `obs`, `local` » (prime.md:11) ; « the four namespaces » (prime.md:29).",
+  "realite": "Le justfile racine déclare cinq modules : inkwell, local, adw, sbx, obs (justfile:38-50). `inkwell` manque dans la liste et dans le résumé demandé à l'agent. install.md:47 et :78 listent bien les cinq.",
+  "impact": "Faible : l'agent amorcé par `/prime` ne regarde pas le module `inkwell` et résume un système à quatre espaces. (L'écart n°1 concerne TREE.md ; celui-ci est un autre fichier.)",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/commands/prime.md:21",
+  "ecrit": "« Walk one phase end to end: `just/sandbox/create.just` » (prime.md:21).",
+  "realite": "Ce fichier n'existe pas (`git ls-files just/sandbox`) ; la phase create est dans `just/sandbox/lifecycle/create.just` (create.just:17).",
+  "impact": "Faible : l'agent cherche un fichier absent au lieu de lire la phase annoncée.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/templates/justfile:82-89 (recette `obs`)",
+  "ecrit": "`just obs` « boot the trace UI » (templates/justfile:87-89) dans le justfile que install.py pose dans un dépôt cible ; install.py:94 l'annonce (« the trace UI, needs bun »).",
+  "realite": "La recette fait `cd .claude/skills/sssf/apps/visualizer`, un dossier du PROJET que install.py ne copie pas (le visualiseur n'est pas dans `templates/`). cookbooks/install.md:11 admet que le skill peut vivre dans `~/.claude/skills/sssf` ; dans ce cas ce `cd` échoue.",
+  "impact": "Sur une installation en portée utilisateur, `just obs` plante ; l'interface de trace ne se lance pas depuis le justfile posé.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/commands/install.md:30 ; :42 ; :46 ; :47",
+  "ecrit": "« Auto-install what has a clean CDN installer (bun, just); ask before anything heavier » (l.30) : `curl -fsSL https://bun.sh/install | bash` (l.42), `curl -LsSf https://astral.sh/uv/install.sh | sh` (l.46), `curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin` (l.47).",
+  "realite": "Trois scripts distants sont téléchargés et exécutés d'un seul geste, sans version épinglée (aucun numéro dans les URL ni `--tag`) et sans vérification d'empreinte ; l'agent est invité à le faire seul pour bun et just. just s'installe dans `~/.local/bin`, hors du dépôt ; bun et uv écrivent dans le dossier personnel. La même chose est faite sur chaque VM (sandbox_mount/guest/provision.sh:38, 66). La procédure est juste pour disler ; elle est périmée pour nous.",
+  "impact": "Contredit « versions épinglées » et « rien d'installé sans relecture » : un agent qui suit la commande installe du code non relu. Fait noté, pas corrigé.",
+  "type": "perime_pour_nous"
+ },
+ {
+  "ou": "just/local.just:25-27 (recette `cc`)",
+  "ecrit": "`cc` : « Claude Code orchestrator » lancé par `claude --dangerously-skip-permissions \"Read and Execute .claude/skills/sssf/SKILL.md\"` (local.just:27).",
+  "realite": "Claude Code démarre avec toutes les demandes de permission désactivées, sur le compte `claude` de la machine (abonnement ou clé de l'opérateur). `ipi` (l.34-35) est une fonction zsh absente du dépôt. Même posture dans sandbox/orch/mod.just.",
+  "impact": "Va contre « jamais l'abonnement Claude pour ce qui tourne seul » si la recette est lancée sans personne devant. Chez nous : seul `pi` avec la clé OpenRouter de la VM.",
+  "type": "perime_pour_nous"
+ }
+]

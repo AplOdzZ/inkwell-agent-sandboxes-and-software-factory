@@ -1,0 +1,647 @@
+[
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/server/db.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/server/db.ts",
+   "type": "code",
+   "langage": "typescript",
+   "lignes": 418,
+   "role": "Lecteur SQLite de sssf.db (bun:sqlite, connexion en lecture seule) ; seule écriture possible : la colonne sessions.archived via setArchived. Résout le chemin de la base (--db, SSSF_DB, ou adws/adw_data/sssf.db relatif au cwd) et dérive le dossier sessions/ comme voisin de la base.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Les requêtes SQL et le chemin par défaut de la base ; sinon mécanique de lecture."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "resolveDbPath",
+     "lignes": "39-49",
+     "ce_quelle_fait": "Choisit le chemin : argument --db / --db=, puis variable SSSF_DB, puis adws/adw_data/sssf.db, relatif au cwd s'il n'est pas absolu. Ne lit PAS sssf.config.yaml (data_dir n'est pas lu)."
+    },
+    {
+     "nom": "SssfDb.constructor",
+     "lignes": "67-95",
+     "ce_quelle_fait": "Échoue si la base n'existe pas ; ouvre en readonly ; fixe sessionsDir = <dossier de la base>/sessions ; vérifie journal_mode=wal."
+    },
+    {
+     "nom": "setArchived",
+     "lignes": "138-150",
+     "ce_quelle_fait": "Ouvre une 2e connexion lecture-écriture et exécute UPDATE sessions SET archived = ? WHERE adw_id = ? (seule écriture du processus)."
+    },
+    {
+     "nom": "sessions",
+     "lignes": "153-203",
+     "ce_quelle_fait": "Liste les sessions non archivées, plus récentes d'abord, avec phases et agents embarqués."
+    },
+    {
+     "nom": "agentsFor",
+     "lignes": "241-308",
+     "ce_quelle_fait": "Agents par session : table agent_sessions complétée par les événements agent_start pour les agents en cours."
+    },
+    {
+     "nom": "usage",
+     "lignes": "335-360",
+     "ce_quelle_fait": "Tokens lus/écrits dérivés des payloads agent_end."
+    },
+    {
+     "nom": "events",
+     "lignes": "366-384",
+     "ce_quelle_fait": "Page d'événements par curseur rowid (tables events), limite 1000 max."
+    },
+    {
+     "nom": "envelopes / gates",
+     "lignes": "386-405",
+     "ce_quelle_fait": "Lit les tables envelopes et gate_results."
+    }
+   ],
+   "lit": [
+    {
+     "quoi": "adws/adw_data/sssf.db (tables sessions, phases, events, agent_sessions, envelopes, gate_results)",
+     "ligne": 77
+    }
+   ],
+   "ecrit": [
+    {
+     "quoi": "adws/adw_data/sssf.db (colonne sessions.archived uniquement)",
+     "ligne": 143
+    }
+   ],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [
+    {
+     "nom": "SSSF_DB",
+     "ligne": 45,
+     "lue_ou_ecrite": "lue"
+    }
+   ],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/server/db.ts",
+    "vers": "adws/adw_data/sssf.db",
+    "type": "ecrit",
+    "preuve": ".claude/skills/sssf/apps/visualizer/server/db.ts:143",
+    "confiance": "haute",
+    "produit_a_l_execution": true,
+    "note": "Seule écriture : UPDATE sessions SET archived (db.ts:146-148), sur clic humain."
+   },
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/server/db.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/shared/types.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/server/db.ts:17",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/server/db.ts",
+    "vers": "adws/adw_data/sssf.db",
+    "type": "lit",
+    "preuve": ".claude/skills/sssf/apps/visualizer/server/db.ts:77",
+    "confiance": "haute",
+    "produit_a_l_execution": true,
+    "note": "Chemin = --db, sinon SSSF_DB, sinon adws/adw_data/sssf.db relatif au cwd (db.ts:39-49) ; ouverte en readonly (db.ts:77)."
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/server/db.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/server/index.ts:15",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+   "type": "code",
+   "langage": "typescript",
+   "lignes": 212,
+   "role": "Serveur HTTP Bun (JSON API en lecture + SPA construite si ./dist existe) au-dessus de sssf.db ; une seule écriture (POST archive). Lit aussi les fichiers de prompts compilés dans le dossier sessions/ voisin de la base.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Port (PORT) et liste des routes ; sinon mécanique."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "route /api/health",
+     "lignes": "116-124",
+     "ce_quelle_fait": "GET : ok, chemin de la base, journal_mode, nombre de sessions."
+    },
+    {
+     "nom": "route /api/sessions",
+     "lignes": "126",
+     "ce_quelle_fait": "GET : liste des sessions (?limit=, défaut 200)."
+    },
+    {
+     "nom": "route /api/sessions/:adw_id",
+     "lignes": "128-131",
+     "ce_quelle_fait": "GET : détail session + usage + phases + agents."
+    },
+    {
+     "nom": "route /api/sessions/:adw_id/archive",
+     "lignes": "135-147",
+     "ce_quelle_fait": "POST : seule écriture ; bascule archived (corps JSON {archived}); id validé par SAFE_SEGMENT."
+    },
+    {
+     "nom": "route /api/sessions/:adw_id/events",
+     "lignes": "149-157",
+     "ce_quelle_fait": "GET : événements après un curseur rowid (?after=&limit=)."
+    },
+    {
+     "nom": "route /api/sessions/:adw_id/envelopes",
+     "lignes": "159-161",
+     "ce_quelle_fait": "GET : enveloppes de sortie des agents."
+    },
+    {
+     "nom": "route /api/sessions/:adw_id/gates",
+     "lignes": "163",
+     "ce_quelle_fait": "GET : résultats de gates."
+    },
+    {
+     "nom": "route /api/sessions/:adw_id/agents/:agent/prompts",
+     "lignes": "167-191",
+     "ce_quelle_fait": "GET : lit system.md et user.md dans <sessionsDir>/<adw_id>/<agent>/prompts/, null si absent ; anti-traversée."
+    },
+    {
+     "nom": "serveStatic",
+     "lignes": "83-111",
+     "ce_quelle_fait": "Sert ./dist (avec repli SPA sur index.html) si le dossier existe ; sinon message texte."
+    }
+   ],
+   "lit": [
+    {
+     "quoi": "adws/adw_data/sessions/<adw_id>/<agent>/prompts/{system,user}.md",
+     "ligne": 184
+    },
+    {
+     "quoi": "visualizer/dist/ (UI construite)",
+     "ligne": 96
+    }
+   ],
+   "ecrit": [
+    {
+     "quoi": "adws/adw_data/sssf.db via db.setArchived (colonne archived)",
+     "ligne": 143
+    }
+   ],
+   "lance": [],
+   "reseau": [
+    {
+     "hote": "localhost:PORT (écoute, port 4600 par défaut ; hôte non précisé dans Bun.serve)",
+     "ligne": 18
+    }
+   ],
+   "variables_env": [
+    {
+     "nom": "PORT",
+     "ligne": 18,
+     "lue_ou_ecrite": "lue"
+    },
+    {
+     "nom": "SSSF_DB",
+     "ligne": 11,
+     "lue_ou_ecrite": "lue (via db.ts ; citée en commentaire ici)"
+    }
+   ],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/server/db.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/server/index.ts:15",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/shared/types.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/server/index.ts:16",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+    "vers": "adws/adw_data/sessions/<adw_id>/<agent>/prompts/system.md",
+    "type": "lit",
+    "preuve": ".claude/skills/sssf/apps/visualizer/server/index.ts:184",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true,
+    "note": "Dossier = dirname(sssf.db)/sessions (db.ts:76) ; lit system.md et user.md (index.ts:188-189)."
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/package.json",
+    "vers": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+    "type": "lance",
+    "preuve": ".claude/skills/sssf/apps/visualizer/package.json:9",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/obs.just",
+    "vers": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+    "type": "lance",
+    "preuve": "just/obs.just:73",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/sandbox/lifecycle/observe.just",
+    "vers": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+    "type": "lance",
+    "preuve": "just/sandbox/lifecycle/observe.just:113",
+    "confiance": "haute",
+    "note": "demarre sur la VM"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/shared/types.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/shared/types.ts",
+   "type": "code",
+   "langage": "typescript",
+   "lignes": 308,
+   "role": "Types TypeScript partagés serveur/client : miroir des tables de sssf.db (Session, Phase, Event, Envelope, GateResult, AgentSession), des payloads d'événements (agent_start, agent_end, tool_call) et des réponses d'API.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Ajouter ici un champ/événement si le tracer en émet un nouveau (EventType, ligne 19-31)."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "EventType",
+     "lignes": "19-31",
+     "ce_quelle_fait": "Liste fermée de 12 types d'événements dont tool_call, gate_fail, error (pas de paths_touched ni permission_breach)."
+    },
+    {
+     "nom": "ToolCallPayload",
+     "lignes": "218-226",
+     "ce_quelle_fait": "Forme d'un tool_call : tool, args, result_snippet, ok."
+    }
+   ],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/server/db.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/shared/types.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/server/db.ts:17",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/shared/types.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/server/index.ts:16",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/lib/types.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/shared/types.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/lib/types.ts:26",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/package.json",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/package.json",
+   "type": "config",
+   "langage": "json",
+   "lignes": 29,
+   "role": "Manifeste du visualiseur (nom sssf-visualizer) : scripts dev (vite), server, dev:all, build, preview (bun run server/index.ts), typecheck, lint (oxlint) ; dépendances vue, lucide-vue-next, @fontsource/play.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Scripts et dépendances."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "scripts.server / preview / dev:all",
+     "lignes": "9-12",
+     "ce_quelle_fait": "Lancent server/index.ts (dev:all lance aussi vite)."
+    }
+   ],
+   "lit": [],
+   "ecrit": [],
+   "lance": [
+    {
+     "commande": "bun run server/index.ts",
+     "ligne": 9
+    },
+    {
+     "commande": "vite",
+     "ligne": 8
+    },
+    {
+     "commande": "vue-tsc --noEmit && vite build",
+     "ligne": 11
+    },
+    {
+     "commande": "oxlint .",
+     "ligne": 14
+    }
+   ],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/package.json",
+    "vers": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+    "type": "lance",
+    "preuve": ".claude/skills/sssf/apps/visualizer/package.json:9",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": "sandbox_mount/guest/provision.sh",
+    "vers": ".claude/skills/sssf/apps/visualizer/package.json",
+    "type": "lit",
+    "preuve": "sandbox_mount/guest/provision.sh:106",
+    "confiance": "haute"
+   },
+   {
+    "de": "specs/c5f50a47_modelname-helper-tests.md",
+    "vers": ".claude/skills/sssf/apps/visualizer/package.json",
+    "type": "decrit",
+    "preuve": "specs/c5f50a47_modelname-helper-tests.md:50",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/vite.config.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/vite.config.ts",
+   "type": "config",
+   "langage": "typescript",
+   "lignes": 28,
+   "role": "Configuration Vite : plugin Vue, alias @ / @shared, serveur de dev port 4601, proxy /api vers localhost:PORT (4600 par défaut), build vers dist.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Ports."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [
+    {
+     "hote": "localhost:PORT (proxy dev)",
+     "ligne": 19
+    }
+   ],
+   "variables_env": [
+    {
+     "nom": "PORT",
+     "ligne": 5,
+     "lue_ou_ecrite": "lue"
+    }
+   ],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/tsconfig.json",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/tsconfig.json",
+   "type": "config",
+   "langage": "json",
+   "lignes": 30,
+   "role": "Configuration TypeScript stricte (types bun et vite/client, alias @ et @shared) couvrant shared, server, src et vite.config.ts.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Mécanique."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/.oxlintrc.json",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/.oxlintrc.json",
+   "type": "config",
+   "langage": "json",
+   "lignes": 18,
+   "role": "Règles oxlint (correctness en erreur, suspicious/perf en avertissement).",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Mécanique."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/index.html",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/index.html",
+   "type": "code",
+   "langage": "html",
+   "lignes": 13,
+   "role": "Page HTML hôte de la SPA : div #app et script /src/main.ts ; icône /logo.svg.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Titre de l'onglet."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/index.html",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/main.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/index.html:11",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/references/observability.md",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/references/observability.md",
+   "type": "doc",
+   "langage": "markdown",
+   "lignes": 158,
+   "role": "Reference de l'observabilite : schema des evenements, sept tables SQLite, pragmas WAL, contrat de polling par rowid, comptabilite des tokens/couts/contexte et gates avec preuves.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Specification du schema de trace ; la mecanique est dans tracer.py."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": ".claude/skills/sssf/references/observability.md:15",
+     "code": "adws/adw_modules/agents.py:248",
+     "resume": "La table des types d'evenements n'en liste que dix ; agents.py:248-251 emet aussi des evenements 'thinking' et 'agent_message' (absents du modele templates/.../agents.py)."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/references/observability.md",
+    "vers": ".claude/skills/sssf/apps/visualizer",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/observability.md:146",
+    "confiance": "faible",
+    "pourquoi_faible": "Parle de 'the visualizer' et de son endpoint d'archivage sans chemin."
+   },
+   {
+    "de": ".claude/skills/sssf/references/observability.md",
+    "vers": "adws/adw_data/sssf.db",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/observability.md:9",
+    "confiance": "haute",
+    "produit_a_l_execution": true
+   },
+   {
+    "de": ".claude/skills/sssf/references/observability.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/observability.md:46",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/observability.md",
+    "vers": "adws/adw_modules/session.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/observability.md:130",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/observability.md",
+    "vers": "adws/adw_modules/tracer.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/observability.md:7",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/observability.md",
+    "vers": "adws/adw_sssf_config/sssf.config.yaml",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/observability.md:9",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/observability.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/observability.md:130",
+    "confiance": "faible",
+    "pourquoi_faible": "Cite 'just procs/kill' sans fichier ; recettes dans just/obs.just:47,53."
+   },
+   {
+    "de": ".claude/skills/sssf/references/observability.md",
+    "vers": "~/.pi/agent/models.json",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/observability.md:36",
+    "confiance": "haute",
+    "hors_depot": true
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/SKILL.md",
+    "vers": ".claude/skills/sssf/references/observability.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/SKILL.md:58",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": ".claude/skills/sssf/references/observability.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:98",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/sssf_overview.md",
+    "vers": ".claude/skills/sssf/references/observability.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/sssf_overview.md:88",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ }
+]

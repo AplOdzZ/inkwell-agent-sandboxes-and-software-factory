@@ -1,0 +1,441 @@
+{
+ "adws/adw_data/prompt_engineering/builder/system.md": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Prompt système du builder : l'agent qui modifie le dépôt. Il dit : suivre le plan ou les échecs de test, faire le plus petit changement, juger par le code de sortie, mettre les sorties de travail dans /tmp, annoncer tous les fichiers changés. 14 lignes, aucun `{{...}}`. Le builder est le seul agent du YAML sans `writes` (sssf.config.yaml:70-71) : il est libre d'écrire hors fichiers protégés.",
+  "points": [
+   "l.1-5 (titre et Purpose) : « Implement the plan (or request) exactly; report every file you changed ». Le YAML dit presque la même chose (`purpose`, sssf.config.yaml:66 : « Implement the plan exactly; report every changed file in the envelope »). Le texte est lu par agents.py:89 (`prompts.render`) puis envoyé à Pi par `--system-prompt` (agent_pi.py:259). Aucun `{{...}}` dans ce fichier : le rendu le laisse identique (expérience 1, exp_render.py, ligne « system builder identique : True »).",
+   "l.5 « report every file you changed » : le champ demandé est `changed_files` (user.md:29). Le seul contrôle est `diff_matches_claims` (gates.py:61-68) : chaque fichier annoncé doit EXISTER. Il ne regarde pas git, donc un fichier modifié mais non annoncé passe (registre n°28 confirmé). Inversement, un fichier supprimé puis annoncé fait échouer la porte (gates.py:66-67), alors que « every file you changed » inclut les suppressions.",
+   "l.5 dans le workflow par défaut des VM (`just sdlc` = `adw_plan_build_test.py`, just/adws.just:68-69 ; `execute` prend `sdlc` par défaut, just/sandbox/lifecycle/execute.just:48), la porte du builder n'est PAS `diff_matches_claims` mais `artifacts_exist` (adw_plan_build_test.py:49 et :67). Cette porte ne lit que `artifacts` (gates.py:29), vide dans l'exemple du prompt (user.md:30) : elle passe sans rien vérifier (agents.py:156-166 : zéro violation = succès). Écart nouveau au registre.",
+   "l.9 « If `previous_envelope` references a plan or test failures, follow them — they are your spec » : ce que le builder reçoit dépend de l'ADW. Après le planner : l'enveloppe `PlanOutput` en JSON, qui ne porte que le résumé et les chemins, pas le plan lui-même (adw_plan_build.py:38, adw_simple_sdlc.py:93 ; data_types.py:72-90). Après un test rouge : `VerifyOutput` (adw_build_test.py:65-67 ; quality.py:208-220). Après une revue : `ReviewOutput` (adw_build_review.py:63 ; adw_simple_sdlc.py:127). Le prompt ne dit pas d'ouvrir `plan.md` : l'agent doit le deviner depuis la liste `artifacts`.",
+   "l.9 « they are your spec » : le texte libre d'un autre agent (résumé, notes) ou la sortie brute d'une commande devient la spécification du builder. Rien ne le filtre (agents.py:86 injecte `model_dump_json` entier). Voir vigilance sur l'injection par enveloppe.",
+   "l.10 « smallest change… do not refactor unrelated code » : consigne pure. Aucune porte ne mesure la taille d'un diff (gates.py ne contient que artifacts_exist, files_non_empty, json_parses, diff_matches_claims, verdict_consistent, tests_pass).",
+   "l.11 « address every reported failure » : les échecs arrivent dans `failures` : une chaîne par commande, avec la commande, son code de sortie et les 4 000 derniers caractères de la sortie (quality.py:198-205, TAIL_CHARS=4_000 l.27, l.116). « Every » est donc au mieux « tout ce qui tient dans 4 000 caractères ». La boucle fix est bornée (adw_plan_build_test.py:53-67).",
+   "l.12 « You inherit the operator's shell environment — their PATH, toolchains and credentials are already live » : exact dans le code. Preuve : `load_dotenv()` charge `.env` à l'import (utils.py:13), `operator_env()` copie tout `os.environ` en ne retirant que `VIRTUAL_ENV` (utils.py:31-38), et Pi est lancé avec cette copie (agent_pi.py:281). Le prompt annonce à l'agent que les clés sont utilisables : à l'opposé de la décision 1 de Theo (liste fixe de variables). Écart nouveau au registre (même phrase dans les 5 prompts système).",
+   "l.12 « Call tools by bare name (`bun`, `uv`, `pytest`) ; never… an absolute `/usr/bin/*` path » : `bun` est bien la commande de tests du dépôt (quality.py:39, :193). `pytest` n'est utilisé nulle part dans le dépôt (git grep : seulement des exemples dans le modèle du skill : templates/adws/adw_modules/quality.py:18, :25, :144, et les system.md du modèle, builder:12, planner:13, scout:11) : exemple recopié du modèle. Le prompt ne pousse pas à installer ni à télécharger ; `uv run` peut pourtant résoudre des paquets par le réseau (à vérifier hors dépôt).",
+   "l.13 « Verify your work compiles/runs before reporting, and judge that by exit status » : consigne de conduite. Le vrai test est fait par le code (`quality.run_inkwell_tests`, adw_plan_build_test.py:56), pas par cette vérification. « runs » peut pousser le builder à lancer le serveur de l'application : aucun délai maximal sur l'exécution de Pi (agent_pi.py:243-321 ; seul `pi --list-models` a un `timeout=30`, agent_pi.py:49 ; n°64) et la photo de permissions ne voit pas les processus.",
+   "l.14 « Send scratch output to `/tmp`, never into the repo » : bonne règle, elle évite de polluer le dépôt. Elle a été ajoutée par Inkwell ; la copie du skill ne l'a pas (voir comparaison).",
+   "l.14 « A redirect like `bun test > out.txt` inside the working tree is an out-of-scope write and will be undone » : FAUX pour le builder. Il n'a pas de `writes`, donc `permitted()` rend `agent.writes is None` = vrai (permissions.py:150) : `out.txt` est permis, jamais annulé. Expérience 3 (exp_perm.py) : colonne builder = « T » pour out.txt, out.log, out.md. Registre n°60 confirmé. Pire, `git add -A` le commitera (git_helper.py:49, n°32).",
+   "l.14 « will be undone » pour les fichiers ignorés par git : jamais vus. `snapshot()` liste les non-suivis avec `--exclude-standard` (permissions.py:79) ; `out.log` est ignoré par `*.log` (.gitignore:137, `git check-ignore -v out.log`). Expérience 3 : `out.log` n'apparaît pas dans `touched`. Registre n°19 confirmé : la phrase est fausse même pour les agents qui ont des `writes`.",
+   "Droits réels du builder, comparés au prompt : `writes` absent = libre (sssf.config.yaml:70-71) ; protégé seulement `adws/adw_modules/`, `adws/adw_sssf_config/`, `adws/adw_*.py` (sssf.config.yaml:29-32) ; `adws/adw_data/` toujours permis (permissions.py:139, :144), donc le builder peut réécrire les prompts de tous les agents, celui-ci compris (n°14 confirmé ; expérience 3 : ligne `adws/adw_data/prompt_engineering/builder/system.md` = T pour les 5 agents). `.claude/` n'est pas protégé non plus (ligne SKILL.md = T).",
+   "Outils réels : read, grep, find, ls, bash, edit, write (sssf.config.yaml:72-79) ; aucune extension (`harness_engineering` absent, `[]` par défaut, agents.py:40) ; modèle et réflexion hérités des défauts : `openrouter/deepseek/deepseek-v4-flash-0731`, `medium` (sssf.config.yaml:5-6). Le prompt ne mentionne ni sous-agents ni outil absent : cohérent.",
+   "Ce que le prompt ne dit pas : comment dire qu'on n'a pas réussi. Le type accepte `status: fail` (data_types.py:75) et un statut autre que `success` arrête le run (agents.py:219-220), mais ni ce fichier ni user.md:27 ne le présentent. Le seul exemple montre `success`.",
+   "Comparaison au modèle du skill (`diff -u .claude/skills/sssf/templates/prompt_engineering/builder/system.md adws/adw_data/.../builder/system.md`) : une seule différence, la ligne 14 (+1 ligne, la règle /tmp). Effet : sans elle, un agent qui redirige un test dans le dépôt écrit un fichier hors portée ; avec le `permissions.py` du modèle (une écriture interdite arrête TOUJOURS la phase, templates/.../permissions.py:184) la phase meurt, avec celui d'Inkwell (seuil de 3, permissions.py:244-253) elle continue. La ligne 14 est le pendant « prompt » de ce pardon (commentaire permissions.py:244-247).",
+   "Rien dans ce fichier ne pousse à lire `.env`, lancer un service ou télécharger. L'inverse n'est pas dit non plus : aucune interdiction de `bun install`, de `curl` ou de lire `.env`."
+  ],
+  "deps": [
+   "Lu et rendu par agents.py:89 (`prompts.render`, prompts.py:8-12), copié dans `<session>/builder/prompts/system.md` (agents.py:91 ; écrasé à chaque passage du builder, n°46), envoyé à Pi par `--system-prompt` (agent_pi.py:259).",
+   "Sélectionné par `agents.builder.prompt_engineering.system` dans les 5 YAML : sssf.config.yaml:68, sssf.deepestseek.config.yaml:76, sssf.frontier.config.yaml:65, sssf.open-weights.config.yaml:77, sssf.top-speed.config.yaml:77.",
+   "Droits appliqués par permissions.py:142-150 avec `builder.writes` absent (sssf.config.yaml:70-71) ; ADW appelants : adw_build.py:31, adw_build_review.py:42/61, adw_build_test.py:46/62, adw_plan_build.py:36, adw_plan_build_test.py:46/62, adw_plan_build_test_quality.py:43/74, adw_simple_sdlc.py:91/107/125, adw_prompt.py:30.",
+   "Copie : .claude/skills/sssf/templates/prompt_engineering/builder/system.md (13 lignes, sans la règle /tmp). Décrit aussi par specs/scaffold.md:154.",
+   "Carte à corriger : la contradiction est rattachée à permissions.py:144, qui est l'exemption de `adws/adw_data/` ; la ligne qui rend la phrase fausse est permissions.py:150 (`return agent.writes is None`). Les prompts sous `adws/adw_data/` ne sont pas le sujet de la phrase l.14.",
+   "Carte à corriger : `liens_sortants` est vide. Il manque agents.py:84-92 (rendu et copie), permissions.py:142-150 (droits), utils.py:13/31-38 (environnement annoncé l.12), gates.py:61-68 (porte sur `changed_files`)."
+  ],
+  "vigilance": [
+   "Le prompt promet une annulation qui n'existe pas pour le builder (l.14) : un agent qui le croit ne vérifiera pas ses fichiers temporaires, et ils seront commités.",
+   "La phrase l.12 invite l'agent à utiliser les clés de la machine. Avec le code actuel, toutes les variables du `.env` de l'hôte sont dans son environnement (utils.py:13, :31).",
+   "Le builder lit comme « spec » des textes écrits par d'autres agents ou par des commandes (l.9). Si un fichier du dépôt contient des instructions et qu'un test les affiche, elles arrivent dans le prompt du builder.",
+   "Le builder peut réécrire n'importe quel prompt sous `adws/adw_data/` (n°14) : sa propre consigne de la prochaine phase, mais aussi celle du reviewer qui doit le juger.",
+   "Exemple `src/server.ts` (user.md:29) : ce chemin n'existe pas ici (le serveur est `apps/inkwell/server.ts`, quality.py:134). Un agent qui recopie l'exemple échouerait à `diff_matches_claims` (gates.py:66)."
+  ],
+  "chez_nous": [
+   "Réécrire la ligne 14 pour dire la vérité du code qu'on choisira : soit « les fichiers hors portée sont annulés » (seulement si on active un `writes` pour le builder), soit « n'écris rien hors des fichiers du plan ».",
+   "Retirer « credentials are already live » et décrire l'environnement réel : liste fixe PATH, HOME, LANG, TERM et la seule clé OpenRouter de la VM (décision 1). Ne pas parler de clés à l'agent.",
+   "Remplacer les exemples `bun`, `uv`, `pytest` par nos commandes réelles, et dire explicitement qu'on n'installe rien et qu'on ne lit pas `.env`.",
+   "Ajouter une phrase sur l'échec : « si tu ne peux pas finir, réponds `status: fail` avec la raison ». Sinon un modèle faible répondra `success` par défaut.",
+   "Donner au builder un `writes` explicite (décision 2 : `writes` obligatoire) ; sans cela la phrase l.14 reste fausse."
+  ],
+  "a_verifier": [
+   "Pi 1.3.0 : `--system-prompt` remplace-t-il le prompt par défaut de Pi (qui décrit les outils) ou s'y ajoute-t-il ? Non vérifiable ici (Pi absent). Cela change ce que l'agent croit avoir comme règles.",
+   "Pi 1.3.0 : l'outil bash de Pi transmet-il à ses commandes tout l'environnement reçu (agent_pi.py:281) ? Si non, la phrase « credentials are already live » serait fausse dans l'autre sens.",
+   "Pi montre-t-il le code de sortie d'une commande au modèle ? La consigne « judge by exit status » en dépend.",
+   "Pi charge-t-il tout seul des fichiers du dépôt (AGENTS.md, .pi/) en plus de ce prompt ? Hors dépôt, voir les `a_verifier` de N3_lot1."
+  ]
+ },
+ "adws/adw_data/prompt_engineering/builder/user.md": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Gabarit de la tâche du builder : trois variables (demande, enveloppe précédente, dossier de passation), une consigne d'une phrase, et le JSON de rapport `BuildOutput`. C'est le message envoyé en dernier argument de Pi (agent_pi.py:265). 34 lignes.",
+  "points": [
+   "l.1-3 (titre « Build Task », « Variables ») : texte fixe. Le message commence toujours par « # Build Task » : il ne peut donc pas être pris pour une option par la ligne de commande de Pi (il ne commence ni par `-` ni par `@`).",
+   "l.5-7 `### prompt` puis `{{prompt}}` : remplacé par `call.prompt` (agents.py:85). C'est la demande de l'ingénieur ; si l'argument de la ligne de commande est un fichier existant, tout son contenu est pris (utils.py:55-63). Le texte est injecté brut, sans balise ni échappement. Expérience 1 (exp_render.py, cas 5) : une demande qui contient « ## Task » et « ## Report » donne un message avec deux sections « ## Task » et deux « ## Report ». Le prompt système, envoyé à part (agent_pi.py:259), n'est pas touché.",
+   "l.9-11 `### previous_envelope` puis `{{previous_envelope}}` : « (none) » s'il n'y a pas d'enveloppe, sinon `model_dump_json(indent=2)` de toute l'enveloppe (agents.py:86). Pour le builder : `PlanOutput` (adw_plan_build.py:38), `VerifyOutput` avec les échecs verbatim (adw_build_test.py:65-67), `ReviewOutput` (adw_build_review.py:63). Dans adw_build.py:33 et le premier build de adw_build_test.py:48, il n'y a pas d'enveloppe : « (none) ».",
+   "l.13-15 `### context_handoff_dir` puis `{{context_handoff_dir}}` : `str(run.context_handoff_dir)` (agents.py:87), un chemin RELATIF `adws/adw_data/sessions/<adw_id>/context_handoff` (runner.py:54-55). Registre n°47 confirmé. L'agent tourne dans `run.repo_root` (agents.py:125) alors que le chemin est relatif au dossier de l'ADW : si les deux diffèrent, le chemin pointe ailleurs (à vérifier). Le builder n'écrit rien dans ce dossier : la variable ne sert qu'à retrouver `plan.md`, ce que le texte ne dit pas.",
+   "Ordre des remplacements (prompts.py:10-11, dict dans l'ordre prompt, previous_envelope, context_handoff_dir) : expérience 1, cas 2 et 3. Un `{{previous_envelope}}` écrit DANS la demande est remplacé ensuite par l'enveloppe ; un `{{context_handoff_dir}}` écrit dans la demande ou dans l'enveloppe est remplacé par le chemin ; un `{{prompt}}` écrit dans l'enveloppe reste littéral ; un `{{inconnu}}` reste littéral (cas 4) ; `{{prompt}}` dans la demande n'est pas re-remplacé (cas 6). Aucune erreur, aucun plantage.",
+   "l.17-19 « Implement the work described in `prompt`, guided by `previous_envelope` if present, then emit your `Report` JSON » : « if present » veut dire « (none) » en toutes lettres. « Report » renvoie à la section l.21. Le texte ne dit pas d'ouvrir `plan.md` ni de lire `context_handoff_dir`.",
+   "l.21-23 « Respond with ONLY valid JSON matching `BuildOutput` — no prose before or after » : le code est plus tolérant que le prompt. `_extract_json` accepte un bloc ``` et du texte autour tant qu'il n'y a qu'un objet (agents.py:266-277). Expérience 2 (exp_contract.py, partie C) : prose + accolades avant le JSON, ou deux objets, ou du texte avec `{x}` après : JSONDecodeError. En cas d'échec : 2 relances dans la même session (JSON_FIX_ATTEMPTS=2, agents.py:24, :283-300) puis RuntimeError.",
+   "l.25-34 contrat de sortie, champ par champ (data_types.py:72-95 ; expérience 2 partie A) : `status` Literal success|fail, OBLIGATOIRE ; `summary` str, défaut vide ; `changed_files` list[str], défaut [] ; `artifacts` list[str], défaut [] ; `commit_message` str, défaut vide ; `notes_for_next_agent` str, défaut vide. Les 6 clés du prompt sont exactement les 6 champs du type : aucune en trop, aucune en moins. Seul `status` est obligatoire. Une clé inconnue est ignorée sans erreur (pydantic par défaut, expérience 2 partie B).",
+   "Types attendus par chaque ADW pour le builder : `BuildOutput` partout (adw_build.py:33, adw_build_review.py:44/63, adw_build_test.py:48/65, adw_plan_build.py:38, adw_plan_build_test.py:48/65, adw_plan_build_test_quality.py:45/76, adw_simple_sdlc.py:93/110/127), sauf `adw_prompt.py:32` qui lui demande `GenericOutput` (status, summary, artifacts, notes_for_next_agent) : avec `--agent builder`, `changed_files` et `commit_message` sont ignorés. Tableau complet dans parts/matrice_agents.md.",
+   "l.27 `\"status\": \"success\"` : seul exemple. Valeurs permises : `success` ou `fail`. Une autre valeur (« partial ») est refusée (expérience 2 partie B) et déclenche une relance JSON. `fail` arrête le run (agents.py:219-220). Le prompt ne présente pas `fail`.",
+   "l.29 `\"changed_files\": [\"src/server.ts\"]` : exemple générique qui n'existe pas dans ce dépôt (`git ls-files | grep src/server.ts` : 0 ; le serveur est apps/inkwell/server.ts). Les chemins sont testés relativement au dossier courant de l'ADW (gates.py:30, :65).",
+   "l.30 `\"artifacts\": []` : liste vide par défaut. `artifacts_exist` et `files_non_empty` parcourent cette liste (gates.py:29, :38) : pour le builder elles ne vérifient donc rien tant qu'il ne déclare aucun artefact. C'est ce qui rend vide la porte de adw_plan_build_test.py:49 et :67.",
+   "l.31 `commit_message` « this is what the commit of your work will say » : vrai seulement dans 4 ADW : adw_plan_build.py:43-44, adw_plan_build_test.py:73-74, adw_plan_build_test_quality.py:85-86, adw_simple_sdlc.py:69-70 et :148. Faux dans adw_build.py, adw_build_review.py, adw_build_test.py (aucun commit : `git grep commit_all` ne les trouve pas). Dans adw_plan_build_test.py:73 et adw_plan_build_test_quality.py:85 le message est celui de la DERNIÈRE enveloppe du builder (`previous`), donc celui d'un `fix_i` s'il y en a eu. Le commit contient tout (`git add -A`, git_helper.py:49, n°32), donc aussi le plan sous `specs/`.",
+   "l.32 `notes_for_next_agent` « how to verify this work » : texte libre, copié tel quel dans le message du reviewer (adw_build_review.py:51-52, adw_simple_sdlc.py:119). C'est un canal par lequel le builder écrit dans le prompt de l'agent qui le juge.",
+   "Rien dans ce fichier ne parle de réseau, d'installation, de service ou de `.env`.",
+   "Comparaison au modèle du skill : IDENTIQUE (`diff -u` sans sortie). Rien ne change.",
+   "Copie d'audit : `prompts.save` écrit le message rendu dans `<session>/builder/prompts/user.md` (agents.py:92). Le même nom est réutilisé à chaque passage du builder (build, fix_i, revise_i) : le dernier écrase les précédents ; les messages de correction de porte ne sont jamais sauvegardés (agents.py:173-176). Registre n°46 confirmé."
+  ],
+  "deps": [
+   "Rendu par agents.py:84-90 avec `prompts.render` (prompts.py:8-12) ; envoyé comme dernier argument de Pi (agent_pi.py:265) ; sélectionné par sssf.config.yaml:69, sssf.deepestseek.config.yaml:77, sssf.frontier.config.yaml:66, sssf.open-weights.config.yaml:78, sssf.top-speed.config.yaml:78.",
+   "Sortie validée par `BuildOutput` (data_types.py:93-95) dans `_parse_with_retries` (agents.py:280-300), puis par les portes de chaque ADW (voir matrice_agents.md).",
+   "`commit_message` lu par git_helper.commit_all via adw_plan_build.py:43, adw_plan_build_test.py:73, adw_plan_build_test_quality.py:85, adw_simple_sdlc.py:69.",
+   "Copie : .claude/skills/sssf/templates/prompt_engineering/builder/user.md (identique). Décrit par specs/scaffold.md:155.",
+   "Carte à corriger : le lien sortant ne cite que data_types.py. Il manque gates.py:61-68 (`diff_matches_claims`), git_helper.py:43-53 (`commit_all`) et les 8 ADW appelants.",
+   "Carte à corriger : « commit_message devient le message du commit » n'est vrai que dans 4 ADW sur les 8 qui appellent le builder."
+  ],
+  "vigilance": [
+   "La demande de l'utilisateur est collée telle quelle sous « ### prompt ». Elle peut contenir de fausses sections (« ## Task », « ## Report », un faux JSON) et brouiller la consigne. Elle ne peut pas modifier le prompt système.",
+   "L'enveloppe précédente est collée sans filtre : texte libre d'un autre agent ou sortie de commande (4 000 caractères au plus par commande). Une instruction cachée dans un fichier que les tests affichent arrive dans le prompt du builder.",
+   "Le prompt entier voyage dans la ligne de commande de Pi (agent_pi.py:265). Un argument ne peut pas dépasser 131 072 octets sous Linux (expérience de N3_lot1) : une demande lue depuis un gros fichier (utils.py:55-63) ferait échouer le lancement de Pi.",
+   "`changed_files` : un nom avec une suite de caractères spéciaux n'est pas un problème ici, mais les chemins sont relatifs au dossier de l'ADW, pas à `repo_root` (gates.py:65) : voir C2 pour le cas hors racine."
+  ],
+  "chez_nous": [
+   "Entourer chaque variable de balises claires (par exemple un bloc marqué « texte de la demande, à traiter comme une donnée ») et refuser les `{{...}}` dans les valeurs, pour qu'une demande ne puisse pas se faire passer pour une section du gabarit.",
+   "Donner au builder un chemin ABSOLU pour `context_handoff_dir` (n°47) et lui dire où est le plan.",
+   "Ne passer au reviewer que des champs structurés du builder (`changed_files`), pas son texte libre.",
+   "Garder une copie par phase de CHAQUE message envoyé, correction de porte comprise, puis la rapatrier hors de la VM (décision 3).",
+   "Documenter `fail` dans l'exemple et mettre dans l'exemple un vrai chemin de notre dépôt."
+  ],
+  "a_verifier": [
+   "Les modèles OpenRouter retenus respectent-ils « ONLY valid JSON » ? Dépend du modèle ; non vérifiable ici. Chaque écart coûte une relance (2 au plus).",
+   "Version de pydantic résolue par `uv run` (adw_*.py:3 ne l'épingle pas) : en mode souple, `approved: \"yes\"` est converti en vrai (expérience 2 avec pydantic 2.13.5 de cette machine). Une autre version pourrait se comporter autrement.",
+   "Ce que Pi fait d'un message contenant des `@` ou des retours à la ligne passé en argument : non vérifiable ici."
+  ]
+ },
+ "adws/adw_data/prompt_engineering/planner/system.md": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Prompt système du planner : transformer la demande en plan concret que le builder peut suivre sans poser de question. Il écrit `plan.md` dans le dossier de passation, en garde une copie sous `specs/`, ne code rien, et peut lancer des sous-agents de reconnaissance. 22 lignes, aucun `{{...}}`.",
+  "points": [
+   "l.1-5 (titre et Purpose) : « Turn a request into a plan the builder can implement without asking questions ». Identique au `purpose` du YAML (sssf.config.yaml:44). « Without asking questions » : le builder n'a aucun moyen de poser une question (aucun retour vers le planner dans les ADW) ; il reçoit seulement l'enveloppe du planner, pas le plan (adw_plan_build.py:38).",
+   "l.9 « Read only what you need to understand the request » : conseil de coût. Aucun contrôle. Le planner a read, grep, find, ls, bash (sssf.config.yaml:52-58).",
+   "l.10 « Write the full plan to `<context_handoff_dir>/plan.md`… and keep a copy in the repo under `specs/` (exact paths in your task) » : `<context_handoff_dir>` entre chevrons n'est PAS un gabarit : `render` ne remplace que `{{...}}` (prompts.py:11 ; expérience 1 partie 7 : 1 occurrence littérale restante dans planner/system.md). L'agent doit lire la valeur dans la section Variables du message utilisateur (user.md:13-15). « Exact paths in your task » est trop fort : user.md:24 donne un modèle de nom, pas le chemin exact.",
+   "l.10 droits : `plan.md` est sous `adws/adw_data/` (toujours permis, permissions.py:139, :144) et `specs/` est dans `writes: [specs/]` (sssf.config.yaml:50-51 ; permissions.py:146). Ce que le prompt demande d'écrire est donc bien autorisé. La copie sous `specs/` est ce que commit_plan commitera dans adw_simple_sdlc.py:87-89 ; sans copie, `commit_all` refuse (git_helper.py:50-51). Aucune porte n'exige les DEUX chemins : `artifacts_exist` ne vérifie que ceux que l'agent déclare (gates.py:29).",
+   "l.11 « List `specs/` before naming that copy… Two plans in one session share an `adw_id`, and an overwritten spec is a lost record » : le fait est exact (`adw_id` réutilisé par `--adw-id`, session.py:39 ; dossier de session runner.py:54). La CONSÉQUENCE n'est pas gardée par le code : `specs/` est dans `writes`, donc écraser un spec est permis (permissions.py:146), et si l'ancien spec n'est pas encore commité l'écrasement est invisible (empreinte « untracked » identique, permissions.py:81-82). Expérience 3 : spec non suivi réécrit = absent de `touched` ; spec suivi réécrit = présent mais permis pour planner. Écart nouveau au registre.",
+   "l.12 « Keep the plan concrete: files to touch, changes to make, how to verify » : seules l'existence et la non-vacuité du fichier sont testées (gates.py:27-44 ; adw_plan.py:33-34). La qualité du plan n'est jugée par personne dans la chaîne par défaut (pas de reviewer dans adw_plan_build_test.py ; gates.py:8 le dit : « plan quality is a reviewer's job »).",
+   "l.13 « You inherit the operator's shell environment — … credentials are already live. Call tools by bare name » : exact côté code. Preuve : `load_dotenv()` charge `.env` à l'import (utils.py:13), `operator_env()` copie tout `os.environ` en ne retirant que `VIRTUAL_ENV` (utils.py:31-38), et Pi est lancé avec cette copie (agent_pi.py:281). Même remarque que le builder : cela annonce des clés utilisables, contre la décision 1.",
+   "l.14 « Judge any command you run by its exit status, never by scanning its output for words » : consigne de conduite, aucun contrôle. Le planner a bash.",
+   "l.15 « Send scratch output to `/tmp`… inside the working tree is an out-of-scope write and will be undone » : pour le planner (`writes: [specs/]`), `out.txt` à la racine est refusé donc supprimé (permissions.py:209-212, expérience 3 : breach = out.txt). MAIS : seulement si la phase réussit jusqu'au bout (enforce n'est appelé qu'une fois, après les portes, agents.py:183, n°49), au plus 3 chemins (permissions.py:248-253, n°26) et pas pour un fichier ignoré comme `out.log` (permissions.py:79, .gitignore:137, n°19).",
+   "l.16 « Do not implement anything » : tenu par `writes: [specs/]` dans 4 YAML sur 5 (sssf.config.yaml:50, deepestseek, open-weights, top-speed). Dans sssf.frontier.config.yaml il n'y a aucun `writes` pour le planner (bloc l.37-58) : le planner y est libre d'écrire partout (n°18 confirmé). Le commentaire YAML « no edit — the planner never touches repo files » (sssf.config.yaml:52) est faux comme garantie : `write` et `bash` suffisent (n°12 de même nature).",
+   "l.18-20 (Subagents) : les quatre outils existent bien dans l'extension : `subagent_create` (subagents.ts:306), `subagent_continue` (:345), `subagent_remove` (:384), `subagent_list` (:409). Ils sont listés dans `tools` du planner (sssf.config.yaml:59-62) et l'extension est chargée par `-e` (sssf.config.yaml:48-49 ; agent_pi.py:263-264). Avertissement du YAML l.9-11 respecté.",
+   "l.20 « Give each a self-contained task; omit `model` » : l'outil impose aussi `thinking` (low, medium, high, xhigh), obligatoire (subagents.ts:313-315) ; le prompt ne le dit pas, mais le schéma d'outil le fait. Sans `model`, le sous-agent prend le modèle du parent, sinon le repli `openrouter/google/gemini-3.5-flash` (subagents.ts:27, :216-223), absent de models.json (n°15).",
+   "l.22 « They run in the background. Wait for every one you spawned to report before writing `plan.md` or your Report JSON » : l'outil rend la main tout de suite (subagents.ts:335-341) ; le résultat revient plus tard comme message de suite (:283-287). Rien dans agents.py n'attend ni ne vérifie les sous-agents : c'est une consigne de conduite, pas un contrôle. La sortie retenue est le DERNIER message assistant (agent_pi.py:301) : si un résultat de sous-agent déclenche un tour après le JSON, le JSON pourrait ne plus être le dernier message (à vérifier avec Pi).",
+   "l.18-22 les sous-agents échappent au contrôle : Pi lancé avec `--tools read,bash,grep,find,ls` (subagents.ts:235), `--no-extensions` (:233), environnement complet `{...process.env}` (:240), sessions sous `~/.pi/agent/sessions/subagents` (:122-126). Le flux des sous-agents n'est pas dans la trace (n°21). Un sous-agent peut écrire par bash.",
+   "l.22 « Skip them when a few reads would do » : conseil de coût.",
+   "Comparaison au modèle du skill (`diff -u`) : une seule différence, +1 ligne l.15 (règle /tmp). Même effet que pour le builder : sans elle, avec le `permissions.py` du modèle, une redirection dans le dépôt arrête la phase (templates/.../permissions.py:184).",
+   "Droits réels du planner : `writes: [specs/]` ; outils read, grep, find, ls, bash, write + 4 `subagent_*` (pas `edit`) ; extension `subagents.ts` ; modèle `openrouter/google/gemini-3.6-flash`, réflexion `high` (sssf.config.yaml:41-62). Aucun réseau, installation ou `.env` demandé par le prompt."
+  ],
+  "deps": [
+   "Rendu par agents.py:89 ; copié dans `<session>/planner/prompts/system.md` (agents.py:91) ; sélectionné par sssf.config.yaml:46, sssf.deepestseek.config.yaml:54, sssf.frontier.config.yaml:43, sssf.open-weights.config.yaml:54, sssf.top-speed.config.yaml:54.",
+   "Outils de sous-agents : adws/adw_data/harness_engineering/subagents.ts:306, 345, 384, 409. Droits : permissions.py:142-150 avec `writes: [specs/]` (sssf.config.yaml:50-51).",
+   "Décrit par .claude/skills/sssf/references/config.md:30, specs/scaffold.md:148 et app_docs/306a0046_prevent-overwriting-specs-docs.md:12 (qui présente la règle de non-écrasement comme acquise alors qu'elle n'est que dans le prompt). Copie : .claude/skills/sssf/templates/prompt_engineering/planner/system.md.",
+   "Carte à corriger : `liens_sortants` ne cite pas permissions.py (droits `specs/`), utils.py:31 (environnement annoncé l.13) ni agent_pi.py:263-264 (chargement de l'extension).",
+   "Carte à corriger : la fiche dit « <context_handoff_dir> n'est pas substitué ici » : exact, mais elle omet la conséquence (l'agent doit recopier la valeur depuis le message utilisateur)."
+  ],
+  "vigilance": [
+   "« Never overwrite a spec » n'est pas une règle du code (permissions.py:146 autorise tout `specs/`).",
+   "Dans la config frontier, rien n'empêche le planner d'implémenter (pas de `writes`).",
+   "Les sous-agents (lecture/écriture par bash, environnement complet, hors trace) sont une porte dérobée par rapport au contrôle des droits du planner.",
+   "`<context_handoff_dir>` n'est pas remplacé dans ce fichier : un modèle faible recopiera le texte littéral dans `artifacts`, la porte échouera (gates.py:31) et le run mourra sans nouvelle tentative (phase `plan` sans `retries`, agents.py:167-169)."
+  ],
+  "chez_nous": [
+   "Écrire `<context_handoff_dir>` en `{{context_handoff_dir}}` dans le système aussi (ou donner un chemin absolu déjà résolu) pour qu'il n'y ait qu'une seule syntaxe.",
+   "Si on veut vraiment « jamais d'écrasement », il faut une porte ou un contrôle (noms uniques calculés par le code, pas par le modèle) ; le prompt seul ne garantit rien.",
+   "Donner `retries=1` à la phase plan (voir C2) pour qu'une faute de chemin soit corrigeable.",
+   "Ne pas copier le planner de la config frontier (aucun `writes`).",
+   "Décider si les sous-agents restent : ils contournent la trace et les droits (n°21)."
+  ],
+  "a_verifier": [
+   "Pi en mode `-p` attend-il les messages de suite des sous-agents avant de terminer ? Sinon « wait for every one » est impossible à tenir.",
+   "Quel modèle un sous-agent prend-il dans une VM où `ctx.model` n'est pas fourni ? (subagents.ts:216-223).",
+   "Pi charge-t-il `~/.pi/agent/` (sessions, extensions globales) même avec `--no-extensions` ? Non vérifiable ici."
+  ]
+ },
+ "adws/adw_data/prompt_engineering/planner/user.md": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Gabarit de tâche du planner : trois variables, puis trois étapes (écrire plan.md, le copier sous `specs/` sans jamais écraser, émettre le rapport) et le JSON `PlanOutput`. 45 lignes. C'est le prompt qui contient la règle de non-écrasement.",
+  "points": [
+   "l.1-15 (titre, variables) : mêmes trois sections que le builder (`{{prompt}}` l.7, `{{previous_envelope}}` l.11, `{{context_handoff_dir}}` l.15). Le planner n'a jamais d'enveloppe précédente : aucun ADW ne passe `previous=` à l'appel du planner (adw_plan.py:33, adw_plan_build.py:33, adw_plan_build_test.py:43, adw_plan_build_test_quality.py:40, adw_simple_sdlc.py:84) : la section affiche toujours « (none) » (agents.py:86). Mécanique de remplacement : voir builder/user.md et exp_render.py (ordre prompt → previous_envelope → context_handoff_dir, `{{inconnu}}` laissé tel quel).",
+   "l.19 « Plan the work described in `prompt` » : la demande est collée sous « ### prompt » sans balise (agents.py:85). Voir vigilance (une demande peut recréer des sections).",
+   "l.21 « Write the full plan to `<context_handoff_dir>/plan.md` — this is the copy the builder reads » : le builder reçoit l'enveloppe du planner (résumé et chemins) mais pas le fichier (adw_plan_build.py:38) ; builder/system.md ne dit pas d'ouvrir `plan.md`. Le reviewer, lui, le lit (reviewer/system.md:9).",
+   "l.22-25 nommage `specs/<adw_id>_<slug>.md` : `<adw_id>` « est le nom du dossier de session dans `context_handoff_dir` (`.../sessions/<adw_id>/context_handoff`) » : exact (runner.py:54-55 : `data_dir/sessions/<adw_id>/context_handoff`). « A session that plans more than once reuses its `<adw_id>` » : exact (`--adw-id`, session.py:39). Suffixes `_v2`, `_v3` : convention du prompt, aucun code n'en calcule.",
+   "l.25 « **Never overwrite an existing spec** — the earlier plan is the record » : règle de prompt SEULEMENT. `specs/` est dans les `writes` du planner (sssf.config.yaml:50-51) donc permis (permissions.py:146). Expérience 3 (exp_perm.py) : réécrire un spec non commité ne change pas l'empreinte (« untracked » avant et après) ; réécrire un spec commité apparaît mais est permis. Écart nouveau au registre. Le document app_docs/306a0046_prevent-overwriting-specs-docs.md:21 présente pourtant « Existing documentation and specifications remain preserved » comme un résultat.",
+   "Règle du `<slug>` : « two to four kebab-case words » (user.md:24) est une consigne de style ; le slug est un texte libre choisi par le modèle et glissé dans la commande `cp \"…\" \"specs/<adw_id>_<slug>.md\"` (user.md:27). Aucun code ne le valide (permissions.py:146 ne regarde que le début du chemin). Un slug avec `/` casse le `cp` (dossier absent) ou écrit dans un sous-dossier permis ; entre guillemets doubles, bash développe `$(…)` et les backticks d'un slug. Impact faible, car l'agent a déjà bash, mais le nom n'est pas calculé par le code.",
+   "l.26-27 « Copy it, do not retype it. One bash call… `mkdir -p specs && cp \"<context_handoff_dir>/plan.md\" \"specs/<adw_id>_<slug>.md\"` » : la commande est valable (le planner a bash, sssf.config.yaml:57 ; `specs/` existe et n'est pas ignoré : `git ls-files specs/`, `git check-ignore specs` vide). Mais `cp` sans `-n` écrase en silence : la protection dépend du listing fait avant. `<context_handoff_dir>` et `<adw_id>` sont à remplacer par l'agent (chevrons, pas `{{}}`).",
+   "l.28 « Writing the plan a second time through `write` re-emits every line… lets the two copies drift » : argument de coût correct en principe. Aucun contrôle ne compare les deux copies.",
+   "l.29 « Emit your `Report` JSON, declaring BOTH paths in `artifacts` » : exigence non vérifiée en tant que telle. `artifacts_exist` (gates.py:27-33) contrôle les chemins DÉCLARÉS ; un rapport qui n'en déclare qu'un passe.",
+   "l.31-43 contrat `PlanOutput`, champ par champ (data_types.py:72-90) : `status` Literal success|fail OBLIGATOIRE ; `summary` str ; `artifacts` list[str] ; `commit_message` str ; `notes_for_next_agent` str. Les 5 clés du prompt = les 5 champs du type (expérience 2 partie A). Tous optionnels sauf `status`.",
+   "Types attendus par chaque ADW pour le planner : `PlanOutput` dans adw_plan.py:33, adw_plan_build.py:33, adw_plan_build_test.py:43, adw_plan_build_test_quality.py:40, adw_simple_sdlc.py:84, toujours avec `[artifacts_exist, files_non_empty]` et sans `retries` ; `GenericOutput` dans adw_prompt.py:32 (`--agent planner`), sans porte : le plan n'a alors pas besoin d'exister.",
+   "l.39 `\"artifacts\": [\"<context_handoff_dir>/plan.md\", \"specs/<adw_id>_<slug>.md\"]` : les deux entrées sont des modèles à remplacer. La porte teste `Path(a).exists()` (gates.py:30-31) : un chemin relatif à la racine du dépôt est correct si l'ADW tourne à la racine. Si l'agent laisse `<context_handoff_dir>` tel quel, la porte échoue ; comme la phase `plan` n'a pas de `retries` (data_types.py:29 défaut 0), `GateFailure` est levée tout de suite (agents.py:167-169) : pas de correction possible.",
+   "l.40 `commit_message` « for committing THIS PLAN DOCUMENT, not the work it describes » : lu seulement par adw_simple_sdlc.py:87-89 (commit_plan, via `commit(ph, plan)` l.69-70). Dans adw_plan_build.py:41-44, adw_plan_build_test.py:71-74 et adw_plan_build_test_quality.py:83-86, il n'y a qu'un commit, avec le message du builder, qui contient aussi le plan (`git add -A`). adw_plan.py ne commite rien. Écart nouveau au registre.",
+   "l.41 `notes_for_next_agent` « what the builder must know » : transmis tel quel au builder via `previous_envelope` (adw_plan_build.py:38 etc.), donc consigne libre venant d'un modèle.",
+   "l.45 « Both `artifacts` entries are the paths you ACTUALLY wrote, `_v2` suffix and all. Gates open these files — a name you meant to use fails them » : exact pour `artifacts_exist` et `files_non_empty` (gates.py:29-31, :38-43). Mais sans nouvelle tentative : l'échec arrête le run (voir l.39).",
+   "Rien sur réseau, installation, service ou `.env`.",
+   "Comparaison au modèle du skill : IDENTIQUE (`diff -u` sans sortie)."
+  ],
+  "deps": [
+   "Rendu par agents.py:84-90 ; sélectionné par sssf.config.yaml:47, sssf.deepestseek.config.yaml:55, sssf.frontier.config.yaml:44, sssf.open-weights.config.yaml:55, sssf.top-speed.config.yaml:55 ; copie d'audit agents.py:92.",
+   "Sortie validée par `PlanOutput` (data_types.py:85-90) ; portes gates.py:27-44 ; `commit_message` consommé par adw_simple_sdlc.py:69, :89.",
+   "Droits : `writes: [specs/]` (sssf.config.yaml:50-51), permissions.py:142-150.",
+   "Décrit par .claude/skills/sssf/references/config.md:31, specs/scaffold.md:149, app_docs/306a0046_prevent-overwriting-specs-docs.md:14. Copie : .claude/skills/sssf/templates/prompt_engineering/planner/user.md (identique).",
+   "Carte à corriger : la fiche donne « jamais d'ecrasement » comme comportement du prompt ; c'est vrai du texte, pas du code (aucun contrôle). Les liens sortants omettent gates.py:27-44 et permissions.py."
+  ],
+  "vigilance": [
+   "Aucune porte ne vérifie que la copie sous `specs/` existe, que son nom est nouveau, ni qu'elle ressemble à `plan.md`.",
+   "`artifacts` contient des chemins relatifs : si l'ADW n'est pas lancé à la racine, la porte juge au mauvais endroit (gates.py:30) alors que l'agent écrit à la racine (agents.py:125).",
+   "Une demande hostile peut fabriquer de fausses sections « ## Task » / « ## Report » dans ce message (expérience 1, cas 5).",
+   "Le plan écrit par le planner (texte libre) devient la « spec » du builder et du reviewer : un plan qui contient des instructions les atteint tous les deux.",
+   "Le `<slug>` est choisi par le modèle et inséré dans une commande bash (user.md:24, :27) sans validation : voir la piste « nom calculé par le code »."
+  ],
+  "chez_nous": [
+   "Faire calculer le nom `specs/<adw_id>_<slug>[_vN].md` par le code (listing + premier nom libre) et ne laisser au planner que le `slug`.",
+   "Donner `retries=1` à la phase plan, et un chemin absolu pour `context_handoff_dir`.",
+   "Ajouter une porte qui vérifie que les deux chemins déclarés existent, que le premier est sous le dossier de passation et le second sous `specs/`.",
+   "Pour les ADW à un seul commit, dire au planner que son `commit_message` ne sert à rien, ou choisir le modèle à trois commits de adw_simple_sdlc."
+  ],
+  "a_verifier": [
+   "Comportement du modèle de planification choisi (OpenRouter) face à un gabarit qui mélange `{{...}}` et `<...>` : non vérifiable ici.",
+   "Les ADW sont-ils toujours lancés depuis la racine du dépôt sur nos VM ? Le chemin relatif de `context_handoff_dir` en dépend."
+  ]
+ },
+ "adws/adw_data/prompt_engineering/reviewer/system.md": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Prompt système du reviewer : vérifier que ce qui a été construit est ce qui a été demandé (ce n'est pas un test), sans rien modifier. Spec = `plan.md` s'il existe, sinon la demande. Verdict `approved` vrai seulement si toutes les exigences sont remplies. 17 lignes, aucun `{{...}}`.",
+  "points": [
+   "l.1-5 (titre et Purpose) : « Confirm that what was built is what was asked for. This is not testing ». Le YAML ajoute « change nothing » (sssf.config.yaml:110). Aucun test n'est lancé par le reviewer dans les ADW : les tests sont une phase de code (adw_simple_sdlc.py:98-101).",
+   "l.9 « Your spec is `<context_handoff_dir>/plan.md` when that file exists… Otherwise the spec is `prompt` » : `<context_handoff_dir>` entre chevrons n'est pas remplacé (prompts.py:11 ; expérience 1 partie 7 : 1 occurrence littérale). L'agent doit prendre la valeur dans user.md:13-15. `plan.md` existe dans adw_simple_sdlc.py (planner dans la même session) ; dans adw_build_review.py il n'existe que si `--adw-id` rejoint une session déjà planifiée (adw_build_review.py:13 le dit). Il n'y a pas de reviewer dans le workflow par défaut (adw_plan_build_test.py).",
+   "l.10 « Judge the code on disk, never the builder's summary of it. Start from `previous_envelope.changed_files`… use `git diff` » : `changed_files` est bien un champ de `BuildOutput` (data_types.py:93-95) et l'enveloppe du builder est injectée dans le message du reviewer (agents.py:86 ; adw_build_review.py:51-52 ; adw_simple_sdlc.py:119). Le résumé du builder (texte libre) est donc DANS le message du reviewer ; « never » est le seul rempart. `git` est atteint par le PATH hérité (utils.py:31-38) et le reviewer a bash (sssf.config.yaml:121).",
+   "l.11 « Break the spec into concrete requirements and rule on each one: met, or not met with the evidence — a `file:line` » : correspond à `ReviewFinding(requirement, met, evidence)` (data_types.py:107-112). Aucune porte ne lit `findings` pour exiger qu'il soit non vide, ni `evidence` (gates.py:71-95).",
+   "l.12 « Not your job: running tests, style opinions, refactors… Work the request DID ask for and is missing always is [blocking] » : consigne de jugement, rien de mécanique.",
+   "l.13 « Change nothing. Findings go back to the builder — that is the only repair path » : (a) `writes: []` pour le reviewer dans 4 YAML (sssf.config.yaml:114-115) ; AUCUN `writes` dans sssf.frontier.config.yaml (bloc reviewer l.101-116) : libre d'écrire (n°18 confirmé). (b) Même avec `writes: []` : l'annulation n'a lieu que si la phase va au bout (agents.py:183, n°49), au plus 3 chemins (permissions.py:248-253, n°26), jamais pour un fichier ignoré (permissions.py:79, n°19), et tout `adws/adw_data/` est permis (permissions.py:144) : expérience 3, colonne reviewer = T pour `adws/adw_data/prompt_engineering/builder/system.md` (n°14). Un reviewer peut donc réécrire le prompt du builder sans être annulé. (c) « only repair path » : vrai dans adw_build_review.py:61-64 et adw_simple_sdlc.py:125-128 ; mais à la dernière ronde il n'y a aucune révision (adw_build_review.py:58-59 ; adw_simple_sdlc.py:122-123) et avec `adw_prompt --agent reviewer` il n'y a pas de builder (adw_prompt.py:32).",
+   "l.14 « `approved` is true ONLY when every requirement is met and `blocking` is empty. Every blocking item names the specific gap » : `verdict_consistent` (gates.py:84-94) vérifie trois choses : pas approuvé avec des `blocking`, pas approuvé avec une exigence non remplie, pas de rejet sans motif. Il ne vérifie PAS qu'il y a des exigences : expérience 3 (copie de la logique) : `approved=true, findings=[], blocking=[]` PASSE. Et il ne vérifie pas que chaque `blocking` « nomme l'écart précis ». Le verdict utilisé par les ADW est `review.approved` (adw_build_review.py:56, :66 ; adw_simple_sdlc.py:122, :144). Écart nouveau au registre.",
+   "l.14 portes du reviewer par ADW : `[artifacts_exist, verdict_consistent]` (adw_build_review.py:53-54 ; adw_simple_sdlc.py:120), phase SANS `retries` (adw_build_review.py:49-50 ; adw_simple_sdlc.py:117-118) : un seul écart de porte arrête le run (agents.py:167-169).",
+   "l.15 « You inherit the operator's shell environment — … credentials are already live » : exact côté code. Preuve : `load_dotenv()` charge `.env` à l'import (utils.py:13), `operator_env()` copie tout `os.environ` en ne retirant que `VIRTUAL_ENV` (utils.py:31-38), et Pi est lancé avec cette copie (agent_pi.py:281). Même remarque : annonce des clés utilisables, contre la décision 1.",
+   "l.16 « Judge any command you run by its exit status… » : consigne de conduite.",
+   "l.17 « Send scratch output to `/tmp`… will be undone » : reviewer `writes: []` : `out.txt` refusé et supprimé (expérience 3 : breach = out.txt), sous les mêmes limites que pour le planner (phase réussie, 3 chemins, pas les fichiers ignorés comme `out.log`). Le reviewer doit pourtant écrire `review.md` : permis parce que sous `adws/adw_data/` (permissions.py:144).",
+   "Droits réels du reviewer : `writes: []` ; outils read, grep, find, ls, bash, write (pas d'`edit`) ; aucune extension ; modèle `openrouter/z-ai/glm-5.2`, réflexion `high` (sssf.config.yaml:106-122). Le commentaire YAML l.116 « no edit — a reviewer that cannot fix cannot quietly fix » vaut pour l'outil `edit` seulement : `write` et `bash` peuvent tout modifier (même nature que la ligne 12 du registre de 48 lignes : une liste d'outils n'est pas une frontière ; VALUE.md n'est pas dans ce dépôt).",
+   "Comparaison au modèle du skill (`diff -u`) : une seule différence, +1 ligne l.17 (règle /tmp). Même effet que pour les autres agents.",
+   "Rien sur le réseau, l'installation, un service ou `.env`."
+  ],
+  "deps": [
+   "Rendu par agents.py:89 ; copie d'audit agents.py:91 ; sélectionné par sssf.config.yaml:112, sssf.deepestseek.config.yaml:118, sssf.frontier.config.yaml:107, sssf.open-weights.config.yaml:121, sssf.top-speed.config.yaml:121.",
+   "Droits : permissions.py:142-150 (`writes: []`, sssf.config.yaml:114-115) ; porte gates.py:71-95. ADW appelants : adw_build_review.py:49, adw_simple_sdlc.py:117 (et adw_prompt.py:30 avec `--agent reviewer`).",
+   "Copie : .claude/skills/sssf/templates/prompt_engineering/reviewer/system.md (diff : +1 ligne /tmp).",
+   "Carte à corriger : `contradictions` est vide, alors que « Change nothing » est contredit par la config frontier (aucun `writes`, n°18), par permissions.py:144 (prompts réinscriptibles, n°14) et par l'annulation tardive (n°49). La carte ne cite aucun lien vers gates.py ni permissions.py."
+  ],
+  "vigilance": [
+   "Le reviewer lit le résumé du builder (texte libre) dans son message : le builder, qui est jugé, écrit dans le prompt de son juge. Seule la phrase « never the builder's summary » s'y oppose.",
+   "Un reviewer paresseux peut rendre `approved: true` avec zéro exigence et sans `review.md` : tout passe (gates.py:84-94 ; `artifacts_exist` ne lit que ce qui est déclaré).",
+   "Dans la config frontier, le reviewer a les mêmes droits que le builder (aucun `writes`).",
+   "Le reviewer peut réécrire les prompts (n°14), dont celui du builder qui sera relancé pour la révision."
+  ],
+  "chez_nous": [
+   "Exiger dans la porte : au moins une exigence dans `findings`, `review.md` non vide et déclaré, et une preuve (`evidence`) pour chaque exigence.",
+   "Ne donner au reviewer que les champs structurés du builder (`changed_files`) et le diff calculé par le code, pas son texte libre.",
+   "Donner `writes: []` à tous les reviewers de nos configs et sortir `adws/adw_data/prompt_engineering/` de la zone toujours permise.",
+   "Prévoir ce qui se passe quand la dernière revue est rejetée : aujourd'hui le run finit en échec sans dernière réparation."
+  ],
+  "a_verifier": [
+   "Un reviewer de petit modèle suit-il « Rule on every requirement » sans se contenter d'approuver ? Non vérifiable ici.",
+   "Pi ouvre-t-il le dossier de passation relatif si l'agent y écrit `review.md` depuis `repo_root` ? Dépend du dossier courant de l'ADW (runner.py:53-55)."
+  ]
+ },
+ "adws/adw_data/prompt_engineering/reviewer/user.md": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Gabarit de tâche du reviewer : trois variables, quatre étapes (établir la spec, lire le code, juger chaque exigence, écrire `review.md`) et le JSON `ReviewOutput`. 44 lignes.",
+  "points": [
+   "l.1-15 (titre, variables) : `{{prompt}}` l.7, `{{previous_envelope}}` l.11, `{{context_handoff_dir}}` l.15, remplis par agents.py:84-90 (mécanique : voir builder/user.md et exp_render.py). L'enveloppe précédente du reviewer est l'enveloppe du builder, `BuildOutput` en JSON (adw_build_review.py:51-52 ; adw_simple_sdlc.py:119) : elle contient les champs libres `summary` et `notes_for_next_agent` écrits par le builder.",
+   "l.19 « Confirm that the work reported in `previous_envelope` is what was asked for » : le message désigne le rapport du builder comme point de départ, alors que system.md:10 dit de ne jamais s'y fier. Les deux phrases se complètent (rapport = liste de fichiers à lire).",
+   "l.21 « Establish the spec: read `<context_handoff_dir>/plan.md` if it exists, else use `prompt` » : « if it exists » est une vérification faite par l'agent, aucune variable ne dit si le plan existe. Chevrons non remplacés dans ce passage (le chemin réel est à lire l.15).",
+   "l.22 « Read the code that was actually written, starting from `previous_envelope.changed_files` » : champ présent dans `BuildOutput`. Si le builder oublie un fichier, la porte `diff_matches_claims` ne le sait pas (n°28) ; le reviewer doit alors compléter par `git diff` (system.md:10).",
+   "l.23 « Rule on every requirement in the spec — one `findings` entry each, with evidence » : exigence jamais contrôlée. `findings` vide est valide pour le type (data_types.py:119) et pour la porte (expérience 3). `evidence` a pour défaut une chaîne vide (data_types.py:112).",
+   "l.24 « Write the review to `<context_handoff_dir>/review.md`, then emit your `Report` JSON » : nom fixe. À chaque tour de revue (`review_1`, `review_2`…) l'agent écrit le même fichier (adw_build_review.py:48-54 ; adw_simple_sdlc.py:116-120) : les revues précédentes sont écrasées (les enveloppes restent dans la base de trace). Le contrôle n'existe que si l'agent met `review.md` dans `artifacts` (`artifacts_exist`, gates.py:27-33) ; `files_non_empty` n'est pas appliqué aux revues, un `review.md` vide passerait.",
+   "l.26-28 « Respond with ONLY valid JSON matching `ReviewOutput` — no prose before or after » : même tolérance du code que pour le builder (agents.py:266-277) ; 2 relances (agents.py:24, :283-300).",
+   "l.30-42 contrat de sortie champ par champ (data_types.py:72-78, 107-120 ; expérience 2 partie A) : `status` OBLIGATOIRE (success|fail) ; `approved` bool, défaut FAUX ; `summary` str ; `findings` list d'objets {`requirement` str OBLIGATOIRE, `met` bool OBLIGATOIRE, `evidence` str défaut vide} ; `blocking` list[str] ; `artifacts` list[str] ; `notes_for_next_agent` str. Les 7 clés du prompt = les 7 champs du type, sans écart. Expérience 2 partie B : `approved: \"yes\"` est converti en vrai ; un `finding` sans `met` est refusé (relance JSON).",
+   "l.33 `\"approved\": false` : l'exemple est la valeur par défaut du type (data_types.py:118). Un modèle qui oublie le champ rejette sans le dire ; la porte exige alors un motif (gates.py:92-94) et le run s'arrête, car la phase de revue n'a pas de nouvelle tentative.",
+   "l.36 exemple `src/server.ts:42 — handler registered` : chemin qui n'existe pas dans ce dépôt ; `evidence` n'est vérifiée par aucun code.",
+   "l.38 `\"blocking\": [\"<what must change…>\"]` : l'exemple contient un élément, alors que l'exemple d'`approved` est faux ; un modèle qui recopie l'exemple tel quel est cohérent (rejet avec un motif).",
+   "l.39 `\"artifacts\": [\"<context_handoff_dir>/review.md\"]` : modèle à remplacer par le chemin relatif réel. `artifacts_exist` teste `Path(a).exists()` (gates.py:30-31) ; chemin relatif au dossier de l'ADW.",
+   "l.40 `notes_for_next_agent` « what the builder must fix » : repris dans le message du builder en révision (`previous=review`, adw_build_review.py:63 ; adw_simple_sdlc.py:127). Le texte libre du reviewer devient une consigne du builder.",
+   "l.44 « `status` is `success` when the review itself completed — it is not the verdict. The verdict is `approved`… true only when `findings` has no unmet entry and `blocking` is empty » : exact. `status` autre que success arrête le run (agents.py:219-220) ; le verdict est lu sur `approved` (adw_build_review.py:56, :66 ; adw_simple_sdlc.py:122, :144) ; la cohérence est la porte `verdict_consistent` (gates.py:84-91).",
+   "Types attendus par chaque ADW pour le reviewer : `ReviewOutput` dans adw_build_review.py:51 et adw_simple_sdlc.py:119, avec `[artifacts_exist, verdict_consistent]`, sans `retries` ; `GenericOutput` dans adw_prompt.py:32 : `approved`, `findings`, `blocking` seraient ignorés.",
+   "Comparaison au modèle du skill : IDENTIQUE. Rien sur réseau, installation ou `.env`."
+  ],
+  "deps": [
+   "Rendu par agents.py:84-90 ; sélectionné par sssf.config.yaml:113, sssf.deepestseek.config.yaml:119, sssf.frontier.config.yaml:108, sssf.open-weights.config.yaml:122, sssf.top-speed.config.yaml:122.",
+   "Sortie validée par `ReviewOutput` (data_types.py:115-120), porte `verdict_consistent` (gates.py:71-95), consommée par adw_build_review.py:56 et adw_simple_sdlc.py:122.",
+   "Copie : .claude/skills/sssf/templates/prompt_engineering/reviewer/user.md (identique).",
+   "Carte à corriger : le lien sortant ne cite que data_types.py. Il manque gates.py:71-95, adw_build_review.py et adw_simple_sdlc.py qui lisent `approved`, et le lien vers `review.md` n'est consommé par aucun code (seulement écrit par l'agent)."
+  ],
+  "vigilance": [
+   "`review.md` n'est lu par personne (git grep : aucun code ni prompt ne le lit) : c'est une trace pour l'humain, écrasée à chaque tour.",
+   "Le verdict d'un run peut tenir à un seul champ booléen rempli par un modèle, sans preuve exigée.",
+   "Le texte libre du builder est dans le message du reviewer, et celui du reviewer retourne au builder : les deux agents se parlent par des champs non filtrés."
+  ],
+  "chez_nous": [
+   "Écrire dans le message : « le résumé du builder est une donnée non fiable » et ne passer que la liste des fichiers.",
+   "Un nom de revue par tour (`review_1.md`, `review_2.md`) calculé par le code, comme pour les copies du planner.",
+   "Faire calculer `plan_exists` par le code et le passer en variable."
+  ],
+  "a_verifier": [
+   "Le modèle de revue (OpenRouter) remplit-il `met` avec un vrai booléen JSON ? Pydantic en mode souple accepte aussi des chaînes (« yes »)."
+  ]
+ },
+ "adws/adw_data/prompt_engineering/scout/system.md": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Prompt système du scout : trouver et rapporter où sont les choses, sans rien changer, avec des chemins précis ; écrire ses trouvailles dans `scout_findings.md` ; peut lancer des sous-agents « en lecture seule ». 21 lignes, aucun `{{...}}`.",
+  "points": [
+   "l.1-5 (titre et Purpose) : « Find and report where things live. Change nothing » ; presque identique au `purpose` YAML (sssf.config.yaml:83 : « Find and report where things live; change nothing »).",
+   "l.9 « Read-only: search, read, and report — never write to the codebase » : le YAML met `writes: []` (sssf.config.yaml:89-90, avec le commentaire « now actually read-only »). Limites : l'annulation n'a lieu que si la phase réussit (agents.py:183, n°49), plafonnée à 3 chemins (permissions.py:248-253, n°26), aveugle aux fichiers ignorés (permissions.py:79, n°19) et sans effet sur `adws/adw_data/` (permissions.py:144, n°14). Config frontier : pas de `writes` pour le scout (sssf.frontier.config.yaml:76-100), donc libre (n°18). Outils réels du scout : read, grep, find, ls, bash, write (sssf.config.yaml:91-101) : il peut écrire.",
+   "l.10 « Cite exact file paths (with line hints where useful) » : correspond à `ScoutFinding.file` (data_types.py:98-100). Aucune porte ne vérifie que les chemins cités existent : `artifacts_exist` ne lit que `artifacts` (gates.py:29 ; adw_scout.py:34), pas `findings[].file`. Un scout peut inventer un chemin.",
+   "l.11 « You inherit the operator's shell environment — … credentials are already live » : exact côté code. Preuve : `load_dotenv()` charge `.env` à l'import (utils.py:13), `operator_env()` copie tout `os.environ` en ne retirant que `VIRTUAL_ENV` (utils.py:31-38), et Pi est lancé avec cette copie (agent_pi.py:281).",
+   "l.12 « Judge any command you run by its exit status… » : consigne de conduite.",
+   "l.13 « Send scratch output to `/tmp`… will be undone » : scout `writes: []` : `out.txt` refusé et supprimé (expérience 3), mêmes limites (phase réussie, 3 chemins, fichiers ignorés invisibles).",
+   "l.14 « Write your findings to `<context_handoff_dir>/scout_findings.md` for agents that follow » : le fichier est dans `adws/adw_data/`, donc permis (permissions.py:139, :144), et le YAML le dit (sssf.config.yaml:89-91). Mais « agents that follow » n'existe pas : aucun ADW ne place un agent après le scout (`git grep scout -- 'adws/*.py'` ne montre que adw_scout.py et adw_prompt.py avec `--agent scout` ; recettes `just scout`, just/adws.just:36-38, et `just ask scout`, :32-34 ; `git grep scout_findings` ne montre aucun lecteur). Le fichier est donc pour l'humain. Le nom est fixe : un deuxième scout dans la même session l'écrase.",
+   "l.15 « If you find nothing, say so plainly — an empty finding is a valid finding » : `findings` a pour défaut une liste vide (data_types.py:104) ; aucune porte n'exige de contenu.",
+   "l.17-19 (Subagents) : « search several directions at once… Give each a self-contained task and hold it to read-only work; omit `model` » : les outils existent (subagents.ts:306, :345, :384, :409), sont dans `tools` du scout (sssf.config.yaml:98-101) et l'extension est chargée par `-e` (sssf.config.yaml:87-88). « Hold it to read-only work » est une consigne : les sous-agents reçoivent `--tools read,bash,grep,find,ls` (subagents.ts:235). `bash` peut écrire. Ils héritent de tout l'environnement (`env: { ...process.env }`, subagents.ts:240). Registre n°21 confirmé : la promesse « lecture seule » n'est pas tenue.",
+   "l.21 « They run in the background. Wait for every one you spawned to report before writing `scout_findings.md` or your Report JSON » : les sous-agents partent en fire-and-forget (subagents.ts:335-341) et rendent leur résultat plus tard (:283-287). Rien dans agents.py n'attend : consigne seulement. Après la fin de la phase, un sous-agent qui tournerait encore échapperait au contrôle de `enforce` (déjà passé) et à la trace (n°21, non vérifiable sans Pi).",
+   "l.21 « Skip them when a couple of greps would do » : conseil de coût.",
+   "Comparaison au modèle du skill (`diff -u`) : une seule différence, +1 ligne l.13 (règle /tmp), insérée juste avant la ligne l.14 sur `scout_findings.md`. Même effet que pour les autres agents.",
+   "Droits réels du scout : `writes: []` ; outils read, grep, find, ls, bash, write + 4 `subagent_*` ; extension `subagents.ts` ; modèle hérité des défauts (`openrouter/deepseek/deepseek-v4-flash-0731`, `medium`, sssf.config.yaml:5-6, l.81-101). Rien sur réseau, installation ou `.env` dans le prompt."
+  ],
+  "deps": [
+   "Rendu par agents.py:89 ; copie d'audit agents.py:91 ; sélectionné par sssf.config.yaml:85, sssf.deepestseek.config.yaml:93, sssf.frontier.config.yaml:82, sssf.open-weights.config.yaml:95, sssf.top-speed.config.yaml:95.",
+   "Appelé par adw_scout.py:31-34 (phase `scout`, sans `retries`) et adw_prompt.py:30 (`--agent scout`, recette `just ask scout`, just/adws.just:32-34).",
+   "Sous-agents : adws/adw_data/harness_engineering/subagents.ts:233-241. Copie : .claude/skills/sssf/templates/prompt_engineering/scout/system.md (diff : +1 ligne). Décrit par specs/scaffold.md:160.",
+   "Carte à corriger : la contradiction citée (subagents.ts:235) est exacte, mais incomplète : elle omet l'environnement complet (subagents.ts:240), le fire-and-forget (:335-341) et le fait que la phrase « agents that follow » (l.14) n'a aucun lecteur dans les ADW."
+  ],
+  "vigilance": [
+   "« Read-only » est une intention : le scout a bash et write. Sa protection réelle est `writes: []` plus un contrôle tardif aux trous connus.",
+   "Les sous-agents sont une voie d'écriture et d'accès à l'environnement hors du contrôle (n°21).",
+   "Les chemins cités par le scout ne sont jamais vérifiés : un humain qui s'y fie peut lire du faux."
+  ],
+  "chez_nous": [
+   "Pour un scout vraiment en lecture seule : retirer `bash` et `write` (le rapport peut passer par le JSON seul) ou lancer le scout dans un dossier copié ; sinon dire dans le prompt qu'il peut écrire mais que ce sera contrôlé.",
+   "Supprimer les sous-agents ou les lancer sans bash et avec une liste fixe de variables d'environnement.",
+   "Ajouter une porte « chaque `findings[].file` existe »."
+  ],
+  "a_verifier": [
+   "Pi en mode `-p` attend-il les sous-agents lancés en arrière-plan ? (subagents.ts:335-341).",
+   "Le scout tourne-t-il vraiment sans écrire dans le dépôt avec un petit modèle ? Dépend du modèle ; seul le contrôle tardif peut le dire."
+  ]
+ },
+ "adws/adw_data/prompt_engineering/scout/user.md": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Gabarit de tâche du scout : trois variables, une consigne d'une phrase et le JSON `ScoutOutput`. 34 lignes.",
+  "points": [
+   "l.1-15 (titre, variables) : `{{prompt}}` l.7, `{{previous_envelope}}` l.11, `{{context_handoff_dir}}` l.15 (agents.py:84-90). Le scout n'a jamais d'enveloppe précédente (adw_scout.py:33 : pas de `previous=`) : « (none) ». Mécanique de remplacement : voir builder/user.md et exp_render.py.",
+   "l.19 « Find what `prompt` asks about. Write findings into `context_handoff_dir`, then emit your `Report` JSON » : ici le nom de fichier n'est pas donné ; il est dans system.md:14 et dans l'exemple l.32.",
+   "l.21-23 « Respond with ONLY valid JSON matching `ScoutOutput` — no prose before or after » : même tolérance du code (agents.py:266-277), 2 relances (agents.py:24).",
+   "l.25-34 contrat de sortie champ par champ (data_types.py:72-78, 98-104 ; expérience 2) : `status` OBLIGATOIRE ; `summary` str ; `findings` list d'objets {`file` str OBLIGATOIRE, `note` str défaut vide} ; `artifacts` list[str]. Les 4 clés du prompt sont des champs du type ; le type a en plus `notes_for_next_agent` (optionnel, absent du prompt) : sans conséquence. Expérience 2 partie B : un `finding` donné comme simple chaîne est refusé.",
+   "l.30 `{ \"file\": \"src/server.ts\", \"note\": … }` : exemple qui n'existe pas dans ce dépôt ; rien ne vérifie `file`.",
+   "l.32 `\"artifacts\": [\"<context_handoff_dir>/scout_findings.md\"]` : modèle à remplacer ; porte `artifacts_exist` (adw_scout.py:34, gates.py:27-33), phase sans `retries` (adw_scout.py:31-32) : une faute de chemin arrête le run. Si l'agent omet `artifacts`, la porte ne vérifie rien (liste vide).",
+   "Types attendus : `ScoutOutput` dans adw_scout.py:33 seulement ; `GenericOutput` dans adw_prompt.py:32 : `findings` ignoré.",
+   "Aucun ADW ne passe l'enveloppe du scout à un autre agent (`git grep` : pas de `previous=` issu de scout). Les trouvailles ne servent qu'à l'humain.",
+   "Comparaison au modèle du skill : IDENTIQUE. Rien sur réseau, installation ou `.env`."
+  ],
+  "deps": [
+   "Rendu par agents.py:84-90 ; sélectionné par sssf.config.yaml:86, sssf.deepestseek.config.yaml:94, sssf.frontier.config.yaml:83, sssf.open-weights.config.yaml:96, sssf.top-speed.config.yaml:96.",
+   "Sortie validée par `ScoutOutput` (data_types.py:103-104) ; porte gates.py:27-33 ; ADW : adw_scout.py:31-34.",
+   "Copie : .claude/skills/sssf/templates/prompt_engineering/scout/user.md (identique). Décrit par specs/scaffold.md:161.",
+   "Carte à corriger : le lien sortant ne cite que data_types.py ; il manque adw_scout.py:33-34 (appelant et porte) et gates.py:27-33."
+  ],
+  "vigilance": [
+   "La demande est collée sans balise sous « ### prompt » ; elle peut contenir de fausses sections.",
+   "Un scout qui renvoie `artifacts: []` passe la porte même si `scout_findings.md` n'existe pas."
+  ],
+  "chez_nous": [
+   "Dire dans ce gabarit où écrire (nom du fichier) et de ne rien écrire d'autre.",
+   "Ajouter une porte qui vérifie l'existence de `scout_findings.md` et des chemins cités."
+  ],
+  "a_verifier": [
+   "Comportement des petits modèles face à un JSON qui contient des chemins : non vérifiable ici."
+  ]
+ },
+ "adws/adw_data/prompt_engineering/documenter/system.md": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Prompt système du documenter : écrire pour l'ingénieur suivant une explication du changement qui vient d'être fait, uniquement à partir du diff, sans jamais modifier le code, les tests ni la config. 18 lignes, aucun `{{...}}`.",
+  "points": [
+   "l.1-5 (titre et Purpose) : « Write up the change that was just made, from the diff, for the engineer who arrives next ». Le YAML dit « Write up the change that was just made, from the diff; document only » (sssf.config.yaml:127) : proche, pas identique (config.md:66 demande qu'elles correspondent).",
+   "l.9 « `previous_envelope` carries the captured change: `base`, `changed_files`, `stat`, and `diff_path`. **Read `diff_path`** — the full diff is the source of truth » : les quatre champs existent dans `ChangesOutput` (data_types.py:222-234) et sont remplis par `changes.as_envelope` (changes.py:87-103). Mais « the full diff » est trop fort : le fichier est coupé à 2 000 lignes (`max_diff_lines=2000`, data_types.py:181 ; changes.py:62-66) et les fichiers non suivis n'y sont que NOMMÉS, sans contenu (changes.py:68-72). `diff_path` est relatif (changes.py:73, :84). Écart nouveau au registre.",
+   "l.10 « Everything you write must be traceable to that diff… no speculation, no roadmap » : consigne. Aucune porte ne lit le texte écrit : `artifacts_exist` et `files_non_empty` ne regardent que l'existence et la taille (gates.py:27-44).",
+   "l.11 « Name a file only if it is in `changed_files` or appears in the diff » : consigne. `documented_files` (data_types.py:127) n'est lu par aucun code (`git grep documented_files` : seulement data_types.py) ; aucune porte ne compare le texte aux fichiers modifiés.",
+   "l.12 « Document what the change does, where it lives, and how to use or verify it » : consigne de contenu.",
+   "l.13 « Read the surrounding code when the diff alone does not explain a change; the diff is the scope » : permis (read, grep, find, ls, sssf.config.yaml:137-141). Cela corrige en partie la limite de l.9 (diff coupé, fichiers non suivis).",
+   "l.14 « Write documentation only. Never modify source code, tests, or config… a doc run that edits code is a bug » : tenu en grande partie par `writes: [app_docs/, docs/, \"**/*.md\", \"*.md\"]` (sssf.config.yaml:131-135). Expérience 3 : un fichier code (`src/server.ts`) est refusé pour le documenter, ainsi que `out.txt`. MAIS `**/*.md` et `*.md` autorisent TOUT fichier markdown : `.claude/skills/sssf/SKILL.md`, les cookbooks et références, `.claude/commands/*.md`, les modèles de prompts, `specs/*.md`, `README.md`, et même `adws/adw_modules/NOTE.md` et `adws/adw_sssf_config/NOTE.md`, parce que `permitted()` regarde `writes` AVANT `protected_files` (permissions.py:146-148 ; expérience 3 : lignes T pour le documenter). Ce sont des fichiers d'instructions lus par d'autres agents. Écart nouveau au registre. Config frontier : pas de `writes` du tout (sssf.frontier.config.yaml:117-132), le documenter peut y modifier le code (n°18).",
+   "l.15 « List `app_docs/` before naming your write-up and pick a name nothing else holds… an overwritten write-up describes a change that already shipped » : règle de prompt SEULE. `app_docs/` est dans `writes` : écraser un document est permis (permissions.py:146), et invisible si le fichier n'est pas suivi (permissions.py:81-82 ; expérience 3). Écart nouveau au registre.",
+   "l.16 « Keep it tight… under two minutes » : consigne de style.",
+   "l.17 « You inherit the operator's shell environment — … credentials are already live » : exact côté code. Preuve : `load_dotenv()` charge `.env` à l'import (utils.py:13), `operator_env()` copie tout `os.environ` en ne retirant que `VIRTUAL_ENV` (utils.py:31-38), et Pi est lancé avec cette copie (agent_pi.py:281).",
+   "l.18 « Send scratch output to `/tmp`… will be undone » : documenter : `out.txt` est refusé et supprimé (expérience 3), mais `out.md` est AUTORISÉ (`*.md`) et resterait ; les fichiers ignorés (`out.log`) ne sont jamais vus (permissions.py:79).",
+   "Droits réels du documenter : `writes: [app_docs/, docs/, \"**/*.md\", \"*.md\"]` ; outils read, grep, find, ls, bash, write, edit (sssf.config.yaml:136-143) ; aucune extension ; modèle `openrouter/openai/gpt-5.6-luna`, réflexion par défaut `medium` (sssf.config.yaml:125). Rien sur réseau, installation ou `.env` dans le prompt.",
+   "Comparaison au modèle du skill (`diff -u`) : une seule différence, +1 ligne l.18 (règle /tmp). Les `writes` du documenter sont les mêmes dans le modèle de config du skill (templates/sssf.config.yaml : app_docs/, docs/, `**/*.md`, `*.md`)."
+  ],
+  "deps": [
+   "Rendu par agents.py:89 ; copie d'audit agents.py:91 ; sélectionné par sssf.config.yaml:129, sssf.deepestseek.config.yaml:134, sssf.frontier.config.yaml:123, sssf.open-weights.config.yaml:138, sssf.top-speed.config.yaml:138.",
+   "Enveloppe d'entrée fabriquée par changes.py:87-103 (`as_envelope`) ; diff écrit par changes.py:50-84 ; ADW : adw_document.py:60-64, adw_simple_sdlc.py:163-167.",
+   "Droits : permissions.py:142-150 avec les `writes` du YAML. Décrit par app_docs/306a0046_prevent-overwriting-specs-docs.md:8. Copie : .claude/skills/sssf/templates/prompt_engineering/documenter/system.md (diff : +1 ligne).",
+   "Carte à corriger : `contradictions` est vide. Il faut y ajouter : l.9 « full diff » contre la troncature à 2 000 lignes (changes.py:62-66) ; l.14 « documentation only » contre `**/*.md` (sssf.config.yaml:133-134) ; l.15 « pick a name nothing else holds » contre `writes` (permissions.py:146)."
+  ],
+  "vigilance": [
+   "`**/*.md` laisse le documenter modifier des fichiers d'instructions d'autres agents (SKILL.md, cookbooks, modèles de prompts, `specs/`). Il lui suffit de les changer pour influencer un run futur.",
+   "Le diff donné est coupé à 2 000 lignes et sans contenu des nouveaux fichiers : sur un gros changement, le write-up peut se baser sur une vue partielle sans que rien ne le dise à l'agent (le fichier contient seulement une ligne `[truncated…]`).",
+   "Aucun contrôle sur le contenu du document : un document faux passe les portes s'il existe et n'est pas vide.",
+   "Dans adw_document.py le documenter mesure par rapport à `main` par défaut (adw_document.py:36, :72) : sur une VM clonée sans `main`, la phase `changes` échoue avant tout (changes.py:24-33)."
+  ],
+  "chez_nous": [
+   "Restreindre `writes` du documenter à `app_docs/` (et `docs/` si on l'utilise), sans `**/*.md`, ou lister les fichiers markdown de documentation explicitement.",
+   "Faire calculer le nom `app_docs/<adw_id>_<slug>[_vN].md` par le code.",
+   "Donner au documenter une consigne qui reconnaît la troncature : « si `diff_path` contient `[truncated`, lis le reste avec git ».",
+   "Ne pas copier le documenter de la config frontier (aucun `writes`)."
+  ],
+  "a_verifier": [
+   "Un documenter de petit modèle respecte-t-il « name a file only if… » ? Aucune porte ne le dit ; seul un humain peut relire.",
+   "Pi lit-il automatiquement des fichiers markdown du dépôt (AGENTS.md) ? Si oui, `*.md` est encore plus sensible. Non vérifiable ici."
+  ]
+ },
+ "adws/adw_data/prompt_engineering/documenter/user.md": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Gabarit de tâche du documenter : trois variables, quatre étapes (lire le diff, écrire `document.md`, le copier sous `app_docs/` sans jamais écraser, émettre le rapport) et le JSON `DocumentOutput`. 48 lignes.",
+  "points": [
+   "l.1-15 (titre, variables) : `{{prompt}}` l.7, `{{previous_envelope}}` l.11, `{{context_handoff_dir}}` l.15 (agents.py:84-90 ; mécanique : voir builder/user.md et exp_render.py). L'enveloppe précédente est `ChangesOutput` (adw_document.py:62-63 ; adw_simple_sdlc.py:165-166), avec `notes_for_next_agent` = `DOCUMENT_NOTES`, un texte fixe écrit par l'ADW (adw_document.py:31-33 ; adw_simple_sdlc.py:56-58) qui répète les consignes (lire `diff_path`, copier dans `app_docs/`). Avec `adw_prompt --agent documenter`, l'enveloppe est « (none) » et il n'y a pas de `diff_path`.",
+   "l.19 « Document the completed work described by `previous_envelope`, using `prompt` for what was originally asked » : la demande d'origine est collée sans balise (agents.py:85).",
+   "l.21 « Read the full diff at `previous_envelope.diff_path` » : `diff_path` est un chemin relatif vers `changes.diff` dans le dossier de passation (changes.py:21, :73). « Full » est trop fort : coupé à 2 000 lignes, fichiers non suivis seulement nommés (voir system.md l.9).",
+   "l.22 « Write the write-up to `<context_handoff_dir>/document.md`. Cover: what changed and why it matters, the files that carry it, and how to use or verify it » : trois rubriques demandées (quoi et pourquoi, fichiers concernés, usage ou vérification). C'est une consigne de contenu : aucune porte ne lit le texte (gates.py:27-44). Le nom du fichier est fixe, écrasé à chaque passage dans la même session ; permis (sous `adws/adw_data/`, permissions.py:144).",
+   "Règle du `<slug>` : « two to four kebab-case words » (user.md:25) est une consigne de style ; le slug est un texte libre choisi par le modèle et glissé dans la commande `cp \"…\" \"app_docs/<adw_id>_<slug>.md\"` (user.md:28). Aucun code ne le valide (permissions.py:146 ne regarde que le début du chemin). Un slug avec `/` casse le `cp` (dossier absent) ou écrit dans un sous-dossier permis ; entre guillemets doubles, bash développe `$(…)` et les backticks d'un slug. Impact faible, car l'agent a déjà bash, mais le nom n'est pas calculé par le code.",
+   "l.23-29 copie sous `app_docs/<adw_id>_<slug>.md`, avec `_v2`, `_v3` : mêmes remarques que pour le planner. `<adw_id>` est bien le nom du dossier de session (runner.py:54-55). « **Never overwrite an existing write-up** » est une règle de prompt seule (`app_docs/` est dans `writes`, permissions.py:146 ; expérience 3). `cp` sans `-n` écrase en silence (l.28). `app_docs/` existe et n'est pas ignoré.",
+   "l.30 « Emit your `Report` JSON, declaring BOTH paths in `artifacts` » : non contrôlé en tant que tel ; `artifacts_exist` ne teste que les chemins déclarés (gates.py:27-33).",
+   "l.32-46 contrat de sortie champ par champ (data_types.py:72-78, 123-128 ; expérience 2) : `status` OBLIGATOIRE ; `summary` str ; `document_path` str, défaut vide ; `documented_files` list[str] ; `artifacts` list[str] ; `commit_message` str ; `notes_for_next_agent` str. Les 7 clés du prompt = les 7 champs du type. `document_path` et `documented_files` ne sont lus par AUCUN code (`git grep`).",
+   "l.43 `commit_message` « for committing THIS WRITE-UP » : lu seulement par adw_simple_sdlc.py:169-171 (commit_docs). adw_document.py n'a aucune phase de commit : le message n'est jamais utilisé et le write-up reste non commité. Écart nouveau au registre.",
+   "l.48 « `document_path` and the `app_docs/` entry in `artifacts` are the path you ACTUALLY wrote… Gates open these files » : vrai pour l'entrée de `artifacts` (artifacts_exist + files_non_empty, adw_document.py:64 ; adw_simple_sdlc.py:167), FAUX pour `document_path`, qu'aucune porte n'ouvre (registre n°44 confirmé ; C1/registre.json avait déjà noté la même chose). La phase a `retries=1` (adw_document.py:60 ; adw_simple_sdlc.py:163) : une correction est possible.",
+   "Types attendus : `DocumentOutput` dans adw_document.py:62 et adw_simple_sdlc.py:165, avec `[artifacts_exist, files_non_empty]` ; `GenericOutput` dans adw_prompt.py:32 (`--agent documenter`) : `document_path` et `documented_files` ignorés, aucune porte.",
+   "l.41 exemple `\"documented_files\": [\"src/server.ts\"]` : chemin inexistant ici ; non vérifié.",
+   "Comparaison au modèle du skill : IDENTIQUE. Rien sur réseau, installation ou `.env`."
+  ],
+  "deps": [
+   "Rendu par agents.py:84-90 ; sélectionné par sssf.config.yaml:130, sssf.deepestseek.config.yaml:135, sssf.frontier.config.yaml:124, sssf.open-weights.config.yaml:139, sssf.top-speed.config.yaml:139.",
+   "Enveloppe d'entrée : changes.py:87-103 ; sortie : `DocumentOutput` (data_types.py:123-128) ; portes gates.py:27-44 ; `commit_message` : adw_simple_sdlc.py:69, :171.",
+   "Décrit par app_docs/306a0046_prevent-overwriting-specs-docs.md:10. Copie : .claude/skills/sssf/templates/prompt_engineering/documenter/user.md (identique).",
+   "Carte à corriger : `contradictions` est vide alors que n°44 (l.48 « Gates open these files ») est connu. Le lien sortant ne cite que data_types.py ; il manque gates.py:27-44, changes.py:87-103 et adw_simple_sdlc.py:169-171."
+  ],
+  "vigilance": [
+   "Le document n'est jamais relu par le code : son contenu, vrai ou faux, n'est pas jugé.",
+   "`document.md` et le fichier sous `app_docs/` peuvent se contredire (`cp` d'abord, puis modification de l'une des deux copies) sans que rien ne le voie.",
+   "`document_path` se fie au modèle : il peut désigner un autre fichier que celui qui existe.",
+   "Le `<slug>` est choisi par le modèle et inséré dans une commande bash (user.md:25, :28) sans validation."
+  ],
+  "chez_nous": [
+   "Faire lire `document_path` par une porte (existence, non vide, dans `app_docs/`) ou retirer le champ.",
+   "Décider si le write-up doit être commité par tous les ADW qui documentent, pas seulement adw_simple_sdlc."
+  ],
+  "a_verifier": [
+   "Le modèle choisi suit-il la séquence « écrire, lister, copier » en un seul appel bash sans réécrire le fichier ? Non vérifiable ici."
+  ]
+ }
+}

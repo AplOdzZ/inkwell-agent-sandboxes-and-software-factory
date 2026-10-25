@@ -1,0 +1,52 @@
+[
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/server/db.ts",
+  "fate": "adapter",
+  "reason": "Le SQL est propre (tout est paramétré, connexion principale en lecture seule) mais il sert la trace sans filtre, sous-compte l'usage des phases échouées et garde un lecteur ouvert qui retient le WAL."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+  "fate": "adapter",
+  "reason": "Il écoute sur toutes les interfaces sans aucune authentification ni contrôle d'origine, renvoie les messages d'erreur bruts et suit les liens symboliques ; la logique des routes est saine."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/shared/types.ts",
+  "fate": "adapter",
+  "reason": "Les douze types d'événements et les colonnes sont exacts, mais des commentaires sont faux sur ce que fait le code : l.12 (« queued » pour des phases de manifest), l.85 (« span nesting »), l.144-149 (couleur null au lieu de la chaîne vide), l.4-6 (« one-for-one »)."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/package.json",
+  "fate": "adapter",
+  "reason": "Toutes les versions sont en ^ (quatre en ^majeur seul), pas de moyen d'imposer --ignore-scripts, la description « read-only » est fausse."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/bun.lock",
+  "fate": "garder",
+  "reason": "120 paquets exacts avec sha512 : c'est ce qui épingle vraiment les versions ; à n'installer qu'avec --frozen-lockfile, et esbuild est la seule dépendance qui peut lancer un script."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/vite.config.ts",
+  "fate": "garder",
+  "reason": "Petite config de développement sans risque propre ; les ports 4600 et 4601 y sont écrits."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/tsconfig.json",
+  "fate": "garder",
+  "reason": "Réglages stricts de types sans effet à l'exécution ; vue-tsc, seul vérificateur de types, n'est pas lancé par la construction des VM."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/.oxlintrc.json",
+  "fate": "verifier",
+  "reason": "Aucune porte n'utilise cette config ni le script `lint` du visualiseur ; quality.py lance oxlint 1.36.0 sur apps/inkwell avec ses propres options."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/index.html",
+  "fate": "garder",
+  "reason": "Treize lignes sans ressource externe dans le fichier ; les polices viennent de @fontsource (à confirmer après installation)."
+ },
+ {
+  "p": ".claude/skills/sssf/references/observability.md",
+  "fate": "adapter",
+  "reason": "Au moins neuf affirmations sont en retard sur le code (types d'événements, parent_id, queued, agent_end, poll_ms, recettes just) et un agent ou un humain qui la suit sera trompé."
+ }
+]

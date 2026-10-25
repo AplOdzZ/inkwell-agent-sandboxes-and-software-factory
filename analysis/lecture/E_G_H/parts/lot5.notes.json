@@ -1,0 +1,650 @@
+{
+ ".claude/skills/sssf/scripts/install.py": {
+  "status": "fait",
+  "niveau": 3,
+  "role": "Script de pose du modèle. Il copie le contenu de `templates/` du skill vers le dossier courant (adws/, prompts, extensions, config, .env.sample, justfile). Il saute tout fichier déjà présent, sauf avec `--force`. Puis il ajoute jusqu'à cinq lignes au `.gitignore`. Il ne lance aucun programme, ne télécharge rien, ne modifie le contenu d'aucun fichier (aucun remplacement de texte) et n'écrit que sous le dossier courant. Seul le chemin de destination change pour 4 groupes de fichiers, dont un seul NOM de fichier : `env.sample` devient `.env.sample`.",
+  "points": [
+   "l.1-4 : première ligne `#!/usr/bin/env -S uv run` et bloc PEP 723 `dependencies = []`. Le script se lance par `uv run` et ne demande aucun paquet. Sa seule dépendance est `uv` (et un Python que uv trouve ou va chercher : voir a_verifier).",
+   "l.5-14, docstring : promet « Idempotent » (l.5) et « Existing files are skipped unless --force » (l.13). Les deux promesses sont tenues (expérience : 2e passage = 0 fichier écrit, 43 sautés, `.gitignore` inchangé). La liste de ce qui est posé (l.10-12) oublie `harness_engineering/` et `justfile`, que le code pose pourtant (l.72-73, l.81). Elle dit « 4 starter agents » alors que `templates/prompt_engineering/` contient 5 dossiers : builder, documenter, planner, reviewer, scout. Carte confirmée ; ajouté au registre.",
+   "l.16-19, imports : `argparse`, `shutil`, `sys`, `pathlib`, rien d'autre. Pas de `subprocess`, `os.system`, `urllib`, `socket`. Un `grep` sur `subprocess|os.system|urllib|requests|curl|replace|rename|sed` ne trouve rien dans le fichier. Le script ne LANCE donc aucun programme et ne TÉLÉCHARGE rien.",
+   "l.21, `TEMPLATES = Path(__file__).resolve().parent.parent / \"templates\"` : les modèles sont lus à côté du script, après résolution des liens symboliques. Le skill peut donc vivre dans `~/.claude/skills/sssf` (cookbooks/install.md:11). C'est le seul chemin de lecture du script en dehors de `.gitignore`.",
+   "l.23-33, `GITIGNORE_ENTRIES` : cinq lignes, `adws/adw_data/sessions/`, `adws/adw_data/sssf.db*`, `.env`, `__pycache__/`, `*.pyc`. Le commentaire l.27-30 explique pourquoi : `git add -A` (git_helper.py:49) commiterait les `.pyc` (« 15 of them showed up »). Le cookbook (cookbooks/install.md:41) n'en cite que trois (« all three »). Ajouté au registre.",
+   "l.36-48, `stamp(src, dest, force, stamped, skipped)` : si `src` est un dossier, descend dans chaque enfant trié (l.37-41) et saute tout dossier nommé `__pycache__` (l.39-40). Si `src` est un fichier : `dest.exists()` sans `--force` => ajouté à `skipped`, rien d'écrit (l.43-45). Sinon crée les dossiers parents (l.46) et fait `shutil.copy2(src, dest)` (l.47) : copie des octets, du mode et des dates, sans aucun remplacement de texte. Un fichier identique et un fichier modifié sont traités pareil : aucune comparaison de contenu.",
+   "l.43 `dest.exists()` suit les liens symboliques. Un lien valide est « sauté » ; un lien CASSÉ vaut « n'existe pas », donc `copy2` écrit à travers lui, même sans `--force`. Avec `--force`, un lien valide est écrit à travers aussi. Expérience : le fichier visé HORS du dépôt est écrasé (avec `--force`) ou créé (lien cassé, sans `--force`). Ajouté au registre.",
+   "l.51-58, `ensure_gitignore(root, stamped)` : lit `.gitignore` s'il existe (l.53), calcule les entrées absentes par ÉGALITÉ EXACTE de ligne (l.54), puis les ajoute en fin de fichier précédées de `\\n# sssf runtime\\n` (l.56-57) et note « +N entries » (l.58). Un motif équivalent écrit autrement n'est pas reconnu : le `.gitignore` de ce dépôt contient `sssf.db*` et `*.py[cod]`, donc l'expérience ajoute deux lignes redondantes (`adws/adw_data/sssf.db*`, `*.pyc`). Inoffensif ; idempotent au 2e passage (vérifié).",
+   "l.61-64, `main` et arguments : un seul argument, `--force` (`store_true`, l.63). Pas de `--dry-run`, pas de `--backup`, pas de `--yes`, pas de dossier cible. `description=__doc__` réutilise la docstring.",
+   "l.66-67 : `root = Path.cwd()`. La cible est le dossier COURANT, pas la racine du dépôt git. Rien ne vérifie que c'est un dépôt git (alors que les ADW qui commitent en ont besoin : git_helper.py:45-48), ni que ce n'est pas le dépôt du skill lui-même.",
+   "l.69 : `templates/adws` -> `adws/`. 28 fichiers : 12 ADW (`adw_*.py`) et 16 fichiers dans `adw_modules/` (dont `__init__.py`). Le chemin de destination est le même que celui du modèle.",
+   "l.70-73 : `templates/prompt_engineering` -> `adws/adw_data/prompt_engineering` (10 fichiers, 5 agents x `system.md` + `user.md`) ; `templates/harness_engineering` -> `adws/adw_data/harness_engineering` (2 fichiers : `subagents.ts`, `themeMap.ts`). Le dossier de destination ne porte pas le même nom que dans le modèle : c'est un déplacement, pas un renommage de fichier.",
+   "l.74-77 : `templates/sssf.config.yaml` -> `adws/adw_sssf_config/sssf.config.yaml` ; `templates/env.sample` -> `.env.sample` (avec le point). Un seul fichier change de NOM à la copie : `env.sample` devient `.env.sample` ; le `.yaml` ne change que de dossier. Aucun `.env` n'est créé.",
+   "l.78-81 : le justfile du modèle -> `justfile` à la racine. Le commentaire (l.78-80) promet que « several cookbooks plus the run banner tell you to use them ». « Skipped like any other file if the repo already has a justfile » : vrai. Ici le `justfile` d'Inkwell (5 modules) existe, donc il est sauté ; avec `--force` il est remplacé par le justfile de 89 lignes et `just/*.just` reste là, sans plus aucun lien depuis la racine.",
+   "l.82 : `ensure_gitignore` est appelé en dernier, sans condition, même si tout a été sauté.",
+   "l.84-89, bilan : imprime le dossier, le NOMBRE de fichiers posés et la liste des fichiers posés (l.86-87). Pour les fichiers sautés il n'imprime QUE le nombre (l.88-89), jamais leurs noms. cookbooks/install.md:34 dit « reports what it skipped, so a second run doubles as a drift check » : il n'y a ni liste ni comparaison. Ajouté au registre.",
+   "l.90-96, « next steps » : affichés sans condition. `cp .env.sample .env`, `just demo`, `just sessions`, `just obs`, puis la forme brute `uv run adws/adw_prompt.py \"say hello\" --agent scout`. `demo`, `sessions` et `obs` n'existent QUE dans le justfile du modèle (templates/justfile:29, 67, 88). Quand le `justfile` existant a été sauté, ces trois lignes sont fausses (dans Inkwell : pas de recette `demo` ni `sessions` à la racine, et `just obs` ne fait que lister le module, just/obs.just:10-12). Ajouté au registre.",
+   "l.97 `return 0` et l.100-101 : le code de sortie est 0 même si tout a été sauté (alors que make_config.py:27 rend 1 quand la cible existe). Un appelant ne peut pas distinguer « posé » de « rien fait ». Seul un argument inconnu sort avec le code 2 (`parse_args`, l.64 ; essayé avec argparse).",
+   "RENOMMAGE (écart n°23) : aucune ligne de ce fichier ne renomme un identifiant ni ne modifie le contenu d'un fichier (le seul nom de fichier qui change est `env.sample` -> `.env.sample`, l.77). La seule écriture est `shutil.copy2` (l.47). Preuve par l'expérience : après une pose dans un dossier vide, `diff -r templates/adws adws` ne montre aucune différence de contenu ; `run_quality` est toujours dans `quality.py` (2 occurrences) et dans `adw_quality.py` (1) et `adw_plan_build_test_quality.py` (2). Le renommage `run_tests` -> `run_inkwell_tests` et `run_quality` -> `run_inkwell_quality` est une réécriture propre à Inkwell de `adws/adw_modules/quality.py` (l.198 et l.223) ; son auteur (humain ou agent) n'est PAS établi (un seul commit dans l'historique, 92f1701 ; le commit 8ed94eb cité par gotchas.md:108 est absent du dépôt). Preuve décisive : `adw_build_test.py`, `adw_plan_build_test.py` et `adw_simple_sdlc.py` ne diffèrent du modèle que de 4 lignes (`git diff --numstat` : 1, 1 et 2 lignes ; run_tests -> run_inkwell_tests), soit les « four call sites across three files » de gotchas.md:108 (l'AttributeError est décrite en gotchas.md:99-103), alors que `quality.py` diffère de 85 lignes ajoutées et 79 retirées. Un renommage fait à la pose aurait changé fonction et appelants ensemble. Les deux ADW restés cassés (`adw_quality.py:33`, `adw_plan_build_test_quality.py:58`) n'ont pas été touchés par cette correction. Registre n°23 confirmé ; sa CAUSE (« l'installation l'a renommé », rapport C2-C5_D) est à corriger : ce n'est pas install.py.",
+   "CE QUI EST COPIÉ (expérience sur la liste `git ls-files .claude/skills/sssf/templates`, 43 fichiers) : les 43 sont posés lors d'une pose dans un dossier vide, plus le `.gitignore` = 44 écritures. Aucun fichier du modèle n'est jamais ignoré (sauf un `__pycache__`, non suivi par git). Quatre correspondances changent de chemin : `prompt_engineering/` -> `adws/adw_data/prompt_engineering/`, `harness_engineering/` -> `adws/adw_data/harness_engineering/`, `sssf.config.yaml` -> `adws/adw_sssf_config/sssf.config.yaml`, `env.sample` -> `.env.sample`. Ne sont JAMAIS posés (et ne sont pas des modèles) : `SKILL.md`, `cookbooks/`, `references/`, `scripts/` et `apps/visualizer/`. Le visualiseur n'est donc pas copié : la recette `obs` du justfile posé suppose qu'il est déjà à `.claude/skills/sssf/apps/visualizer`.",
+   "ÉCART ADWS/ ET MODÈLE (`diff -rq adws .claude/skills/sssf/templates/adws`) : 7 fichiers de contenu diffèrent : `adw_build_test.py`, `adw_plan_build_test.py`, `adw_simple_sdlc.py`, `adw_modules/agent_pi.py`, `adw_modules/agents.py`, `adw_modules/permissions.py`, `adw_modules/quality.py`. S'y ajoutent `adws/adw_data/` et `adws/adw_sssf_config/` (présents seulement chez Inkwell, car le modèle les range ailleurs). Les 5 `system.md` de prompts (`builder`, `documenter`, `planner`, `reviewer`, `scout`) et `sssf.config.yaml` (modèles `google/`, `fireworks/`, `openai/` aux l.5, 41, 107, 125 contre `openrouter/...` chez Inkwell) diffèrent aussi. Les 3 ADW de la liste utilisent `run_inkwell_tests` (`adw_build_test.py:56`), pas `run_tests`.",
+   "RELANCE SANS `--force` sur une installation existante (expérience : copie des fichiers suivis d'Inkwell, `adws/`, `justfile`, `.env.sample`, `.gitignore`) : 43 fichiers sautés, 0 écrit. Seul le `.gitignore` reçoit 2 lignes (voir plus haut). Config, prompts modifiés, `adw_data/` (sessions, `sssf.db`) et `.env` sont intacts. Les rosters en plus (`sssf.deepestseek`, `frontier`, `open-weights`, `top-speed`) ne sont pas dans le modèle : jamais touchés. Revers : un fichier du modèle devenu plus récent n'est PAS mis à jour, et un fichier NOUVEAU du modèle est posé à côté d'anciens fichiers. On peut donc obtenir un mélange de versions (un module neuf qui attend un module ancien).",
+   "RELANCE AVEC `--force` (même expérience) : les 43 fichiers sont réécrits. 15 d'entre eux avaient un contenu différent et sont ÉCRASÉS sans sauvegarde ni message : 7 fichiers Python (`adw_build_test.py`, `adw_plan_build_test.py`, `adw_simple_sdlc.py`, `agent_pi.py`, `agents.py`, `permissions.py`, `quality.py`), 5 `system.md`, `sssf.config.yaml`, `justfile` (les 5 modules `mod` disparaissent de la racine), `.env.sample`. Restent intacts : `adws/adw_data/sessions/`, `adws/adw_data/sssf.db`, `.env`, les 4 autres rosters, tout fichier absent du modèle (`just/`, `sandbox_mount/`, `apps/`). Pas de `.bak`, pas de demande de confirmation. cookbooks/install.md:34 prévient (« overwrites ALL existing stamped files »), mais ne cite pas `justfile`, `.env.sample` ni `harness_engineering/`.",
+   "CONSÉQUENCE D'UN `--force` DANS CE DÉPÔT : `quality.py` redevient celui du modèle, dont chaque bloc est un `echo` qui rend 0 (templates quality.py `_placeholder`) : la phase de test passerait au vert sans rien tester. `permissions.py` perd `preserve` et le seuil de 3 (registre n°27). La config repasse à des fournisseurs directs (registre n°13). Les 3 ADW reviennent à `quality.run_tests`, qui existe à nouveau dans le `quality.py` du modèle : l'AttributeError de gotchas.md:101 disparaîtrait, mais les tests ne testeraient plus rien.",
+   "CAS LIMITES (l.43-47, l.53-57, l.64). (1) Si la destination est un DOSSIER alors que la source est un fichier : `exists()` est vrai, donc sauté sans `--force` ; avec `--force`, `shutil.copy2` copie DANS ce dossier (essayé : `justfile/justfile`), sans erreur ni message. Si la source est un dossier et la destination un fichier, `mkdir` échoue (non essayé). (2) `.gitignore` est lu (l.53) et écrit (l.56) avec l'encodage par défaut de la plateforme, sans `encoding=` : un `.gitignore` non lisible dans cet encodage ferait lever une exception avant l'ajout, après que tous les fichiers ont été posés (l.82 est le dernier appel). (3) Un argument inconnu fait quitter argparse avec le code 2, avant toute écriture (l.64). Faible impact.",
+   "Aucune écriture HORS du dépôt par le script lui-même : toutes les destinations sont sous `root = Path.cwd()` (l.66-81) et `<root>/.gitignore`. Exception : l'écriture à travers un lien symbolique (point l.43). `uv` écrira dans son propre cache (`~/.cache/uv`, à vérifier)."
+  ],
+  "deps": [
+   "Lit : `.claude/skills/sssf/templates/` en entier (l.21, l.69-81) et `<cwd>/.gitignore` (l.53). Écrit sous le dossier courant : `adws/`, `adws/adw_data/prompt_engineering/`, `adws/adw_data/harness_engineering/`, `adws/adw_sssf_config/sssf.config.yaml`, `.env.sample`, `justfile`, `.gitignore` (carte confirmée sur ces 7 sorties).",
+   "Carte à corriger : les liens entrants sont incomplets. La carte ne cite que `cookbooks/install.md` et `references/config.md:5`. `git grep install.py` ajoute `cookbooks/install.md:11, 15, 34, 41` (plusieurs lignes), `templates/justfile:1` (« Stamped by install.py ») et `specs/scaffold.md:48, 102`.",
+   "Carte à nuancer : les liens sortants `ecrit` vers `adws/`, `justfile`, `.env.sample` portent la note « le chemin existe parce que ce dépôt a déjà été installé ». On ne peut pas dire si le script a été lancé ici (un seul commit dans l'historique ; specs/scaffold.md:102 écrit que ce dépôt est « the first target » de /install). Établi : `adws/` a été modifié après la pose (7 fichiers de contenu différents du modèle, voir points), donc n'est plus la sortie brute du script.",
+   "Carte confirmée : `lance`, `reseau`, `variables_env`, `secrets` vides (grep sur le fichier). Carte confirmée : la contradiction « 4 starter agents » (install.py:11) contre 5 dossiers.",
+   "Carte à corriger : `fonctions_cles` donne `main` l.61-97 ; exact. Mais la fiche ne dit pas que `main` ne lit aucun argument autre que `--force`, ni que le code de sortie est toujours 0.",
+   "Liens vers l'écart n°23 (`adws/adw_quality.py:33`, `adw_plan_build_test_quality.py:58`) : install.py n'y touche pas ; le lien causal « install.py -> renommage » qu'on pourrait tirer de la carte n'existe pas."
+  ],
+  "vigilance": [
+   "`--force` écrase sans sauvegarde jusqu'à 15 fichiers adaptés dans CE dépôt (liste dans les points). À ne jamais lancer ici. Rien dans le script ne protège les fichiers modifiés par l'opérateur.",
+   "`Path.cwd()` sans contrôle : lancé depuis un mauvais dossier (home, sous-dossier), le script pose un `adws/` complet à cet endroit, ou y complète un `adws/` existant.",
+   "Un fichier identique et un fichier modifié sont tous deux « skipped » : un second passage ne dit pas si l'installation a dérivé du modèle. Le cookbook prétend le contraire.",
+   "Le script ne pose rien de secret et ne crée pas `.env` : cohérent avec « jamais de vrai secret dans l'atelier ». Mais `.env.sample` du modèle liste trois clés de fournisseurs directs (templates/env.sample:21-23 : `OPENROUTER_API_KEY`, `FIREWORKS_API_KEY`, `OPENAI_API_KEY`) : trois clés dont deux de fournisseurs directs (FIREWORKS, OPENAI), contraire à « OpenRouter seul fournisseur » (env.sample:9 décrit `google/` comme servi « via openrouter »).",
+   "Après pose, `quality.py` du modèle contient des commandes `echo` qui réussissent : tant qu'on ne les remplace pas, tout ADW avec une phase de test est vert sans test (templates quality.py, docstring `REPLACE THE PLACEHOLDER COMMANDS`).",
+   "Les modèles posés contiennent déjà tout le code que les agents exécuteront ensuite : il n'y a pas de téléchargement à relire, mais le contenu de `templates/` doit être relu une fois, car chaque fichier posé devient du code lancé avec la clé de la VM."
+  ],
+  "chez_nous": [
+   "Pour Inkwell, ne pas relancer ce script : le dépôt est déjà installé et adapté. Si on veut un jour poser l'usine dans un NOUVEAU dépôt, partir de la copie `adws/` d'Inkwell (version la plus récente, voir rapport N3_lot1) et non du modèle du skill, en retard sur 7 fichiers.",
+   "Pistes possibles (sans trancher) : un mode `--dry-run` qui liste ce qui serait écrit, la liste des fichiers sautés avec leur état (identique ou différent), une sauvegarde `.bak` avant tout écrasement, un refus si le dossier courant n'est pas la racine git, un refus d'écrire à travers un lien symbolique.",
+   "Si on garde une étape d'installation : épingler les versions de `uv`, `bun`, `just` dans un fichier lu par l'étape, et ne rien télécharger sans relecture (voir `.claude/commands/install.md`)."
+  ],
+  "a_verifier": [
+   "`uv run` sur un script sans dépendance : télécharge-t-il un Python s'il n'en trouve pas, et que met-il dans `~/.cache/uv` ? Non testé (interdit de lancer le script ; `uv` n'a pas été exécuté).",
+   "Comportement de `shutil.copy2` sur d'autres systèmes de fichiers (droits, dates) : testé ici seulement sous Linux avec Python 3.13.17.",
+   "Si une installation par le skill en portée utilisateur (`~/.claude/skills/sssf`) pose bien un `justfile` dont la recette `obs` marche (elle suppose le visualiseur dans `.claude/skills/sssf/apps/visualizer` du PROJET)."
+  ]
+ },
+ "just/adws.just": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Module `adw` : une recette par workflow ADW. Chacune lance `uv run adws/adw_<x>.py --config <roster> \"$@\"`, où `<roster>` vient de `SSSF_CONFIG` ou du fichier par défaut. C'est la même commande sur l'hôte et dans la VM, à condition de lancer `just --shell bash --shell-arg -c adw ...` dans la VM.",
+  "points": [
+   "l.5-7 `set working-directory := '..'` : sans cette ligne les chemins `adws/...` seraient introuvables (le module part du dossier `just/`). Bien posée ; les 12 ADW existent tous (`git ls-files adws/adw_*.py` : 12).",
+   "l.11 `config := env_var_or_default(\"SSSF_CONFIG\", \"adws/adw_sssf_config/sssf.config.yaml\")` : la variable doit être redéclarée dans le module. Elle est insérée SANS guillemets dans chaque commande (`--config {{config}}`) : un chemin avec espace casserait. Un `--config` donné en argument vient APRÈS et gagne (argparse garde le dernier ; execute.just le dit).",
+   "l.12-13 `set positional-arguments`, `set dotenv-load` : `.env` est chargé et exporté à `uv run`, donc à l'ADW, à Pi et à ses outils (en plus de `load_dotenv`, utils.py:13). Contient la clé de provisioning s'il s'agit de l'hôte.",
+   "l.15-19, commentaire : « No `set shell` on purpose ... In the sandbox, invoke as: `just --shell bash --shell-arg -c adw <recipe>` ». Cohérent avec `execute.just:91`. Seule `ask` a besoin de bash (`${@:2}`, l.33) ; les autres recettes passent sous `sh`.",
+   "l.22-23 `default` : `@just --justfile {{source_file()}} --list`. Liste les recettes du module ; sans elle, `just adw` lancerait la première recette (`prompt`).",
+   "l.28-29 `prompt *ARGS` : `uv run adws/adw_prompt.py --config {{config}} \"$@\"`. Un agent, un prompt ; l'agent par défaut est `builder` (adw_prompt.py:40 `--agent default=\"builder\"`). Le builder peut écrire dans le dépôt (pas de `writes`, voir registre n°14/n°60). Aucune phase de commit.",
+   "l.32-33 `ask AGENT *ARGS` : même ADW, `--agent {{AGENT}}`, puis `\"${@:2}\"` (tous les arguments sauf le premier). `${@:2}` est une syntaxe bash : le commentaire l.19 dit que `sh` (dash) ne la comprend pas. À vérifier avec just.",
+   "l.36-37 `scout *ARGS` : `adw_scout.py`, lecture seule d'après son commentaire. Les écritures du scout sont bloquées par `permissions.py` (`writes: []`), pas par cette recette.",
+   "l.40-41 `plan *ARGS` : `adw_plan.py`. Planner seul, sans commit.",
+   "l.44-45 `build *ARGS` : `adw_build.py`. Builder seul, sans plan, sans commit.",
+   "l.48-49 `plan-build *ARGS` : `adw_plan_build.py`. Planner puis builder puis un commit (`git_helper.commit_all`, adw_plan_build.py:44).",
+   "l.52-53 `build-test *ARGS` : `adw_build_test.py`. Builder, test par code, boucle de correction bornée par `MAX_FIX_LOOPS = 3` (adw_build_test.py:29). Appelle `quality.run_inkwell_tests` (adw_build_test.py:56) : existe.",
+   "l.56-57 `build-review *ARGS` : `adw_build_review.py`. Builder puis relecteur avec boucle de révision.",
+   "l.60-61 `quality *ARGS` : `adw_quality.py`, présenté comme « deterministic only: lint, typecheck, build ». Il appelle `quality.run_quality` (adw_quality.py:33), fonction qui n'existe plus (`quality.py` d'Inkwell : `run_inkwell_quality`, l.223). Le lancement crée une session puis plante par `AttributeError`. Registre n°23 confirmé.",
+   "l.64-65 `document *ARGS` : `adw_document.py`. Rédige la doc depuis `git diff` contre `main` ; `--base REF` existe (adw_document.py:72, défaut `main`).",
+   "l.68-69 `sdlc *ARGS` : le commentaire l.67 dit « the full chain: plan -> build -> deterministic test/fix », et la recette lance `adw_plan_build_test.py`. Registre n°76 confirmé : ce n'est PAS le `sdlc` complet. Phases réelles : request, plan, build, test_i, fix_i, commit (adw_plan_build_test.py:37-71), sans relecteur ni documenteur. Le vrai enchaînement long est `simple-sdlc` (l.76-77). Or `sbx lifecycle execute` a pour défaut `ADW=\"sdlc\"` (execute.just:48) et se présente comme « full SDLC » (execute.just:47, run/mod.just:10) : chaque VM lancée sans choix exécute donc `adw_plan_build_test.py`.",
+   "l.72-73 `plan-build-test-quality *ARGS` : `adw_plan_build_test_quality.py`. Appelle `quality.run_quality` (adw_plan_build_test_quality.py:58) dans la phase `verify_i`, qui suit immédiatement le builder : le plantage a lieu après avoir payé planner et builder, avec le travail non commité. Registre n°23 confirmé ; l'effet de coût est plus lourd que pour `quality`.",
+   "l.76-77 `simple-sdlc *ARGS` : `adw_simple_sdlc.py`. Plan, build, test, relecture, documentation, trois commits séparés. Appelle `run_inkwell_tests` (adw_simple_sdlc.py:101, 137).",
+   "Résumé des 14 recettes : `default`, `prompt`, `ask`, `scout`, `plan`, `build`, `plan-build`, `build-test`, `build-review`, `quality`, `document`, `sdlc`, `plan-build-test-quality`, `simple-sdlc`. 12 ADW pour 12 recettes (plus `ask` qui est `prompt` avec un agent choisi). Aucune recette n'a de paramètre à valeur par défaut ; seule la variable `config` en a un (`SSSF_CONFIG` ou le roster par défaut). Aucune ne passe de clé en argument. Tous les arguments passent par `\"$@\"`, donc le prompt de l'ingénieur figure dans la ligne de commande de l'ADW, enregistrée en clair dans la trace (`session.py:46-47`, table `processes.command`, 500 caractères).",
+   "ÉCRITURES ET RÉSEAU : l'ADW écrit sous `adws/adw_data/` (sessions, `sssf.db`) et lance Pi, qui parle à OpenRouter. `uv run` résout `pydantic`, `python-dotenv`, `pyyaml`, `rich` SANS version à chaque environnement neuf (en-têtes `# dependencies = [...]`). Aucune écriture hors du dépôt par le module lui-même."
+  ],
+  "deps": [
+   "Lance les 12 `adws/adw_*.py` (carte confirmée, l.29, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77). Lit `SSSF_CONFIG` (l.11) et `.env` (l.13). Lance aussi `just --list` sur lui-même (l.23).",
+   "Entrants confirmés : `justfile:44` (`mod`), `sandbox/lifecycle/execute.just:91` (`just --shell bash --shell-arg -c adw {{ADW}} ...`), `sandbox/manage/mod.just` (`just --list adw`, contrôle `doctor`).",
+   "Carte à corriger : le lien `justfile -> adws.just` est typé « importe » : c'est `mod`. La fiche dit « Exécute à l'identique sur l'hôte ou dans la VM » : vrai à condition d'ajouter `--shell bash --shell-arg -c` dans la VM (zsh absent), et sans `ask` sous `sh`.",
+   "Carte à corriger : la fiche ne signale pas que deux des 14 recettes (`quality`, `plan-build-test-quality`) pointent vers des ADW qui plantent (registre n°23)."
+  ],
+  "vigilance": [
+   "Deux recettes mènent à un plantage sûr : `quality` (immédiat) et `plan-build-test-quality` (après plan et build). Ne pas les lancer tant que n°23 n'est pas traité.",
+   "`sdlc` n'est pas ce que son nom dit ; pas de relecture ni de documentation. Défaut de la VM aussi.",
+   "Le prompt de l'ingénieur passe en argument de commande : visible dans `ps` et recopié dans `processes.command`.",
+   "Paquets Python non épinglés, résolus au premier lancement par `uv run` : contraire à « versions épinglées ».",
+   "`config` (l.11) et `AGENT` de `ask` (l.33, `--agent {{AGENT}}`) sont insérés sans guillemets dans la commande. Un nom avec un espace ou un `;` casserait la commande ou ajouterait des arguments (risque limité : les valeurs viennent de l'opérateur ou de l'orchestrateur)."
+  ],
+  "chez_nous": [
+   "Pour les VM : appeler directement le workflow voulu (`simple-sdlc` ou une version corrigée) plutôt que `sdlc` par défaut ; décision à prendre (voir questions du rapport C2-C5_D).",
+   "Épingler les paquets Python des ADW (pydantic, python-dotenv, pyyaml, rich) dans un seul endroit et vérifier leur version avant le lancement.",
+   "Ne garder que les recettes dont les ADW fonctionnent ; réparer ou retirer `quality` et `plan-build-test-quality`."
+  ],
+  "a_verifier": [
+   "`${@:2}` sous le `sh` par défaut de just : plante-t-il vraiment sous dash ? (le commentaire l.19 l'affirme.) Non testé : just absent.",
+   "Effet de `--shell bash --shell-arg -c` placé avant `adw` sur un MODULE qui n'a pas de `set shell` : l'ordre des arguments et la portée sont décrits par le dépôt (execute.just:91), non essayés.",
+   "Versions de `pydantic`, `python-dotenv`, `pyyaml`, `rich` effectivement résolues par uv (aucune contrainte dans les en-têtes)."
+  ]
+ },
+ "justfile": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Racine just d'Inkwell. Elle ne contient qu'une recette (`default`, qui liste les autres) et monte cinq modules : `inkwell`, `local`, `adw`, `sbx`, `obs`. Chaque module est un fichier `just/*.just` qui déclare lui-même ses réglages. `dotenv-load`, le `shell` zsh et `export` ne concernent que `default` ; la variable `config` ne sert à rien, pas même à `default`.",
+  "points": [
+   "l.1 `set dotenv-load` : charge `.env` pour les recettes de CE fichier, donc pour `default` seulement. Les modules ne reçoivent rien du parent (commentaire l.32-35 ; adws.just:9-13 les redéclare). Ils le redéclarent presque tous : `adw` (adws.just:13), `inkwell` (inkwell.just:12), tous les sous-modules `sbx` (sandbox/mod.just:25, lifecycle/mod.just:14, manage/mod.just:13, run/mod.just:22, orch/mod.just:21). PAS `obs` (obs.just:7-8) ni `local` (local.just:15-17). Comportement de just à vérifier (just n'est pas installé ici).",
+   "l.2 `set positional-arguments` : sans effet ici, `default` n'a aucun argument.",
+   "l.4-15, `set shell := [\"zsh\", \"-ic\"]` : zsh INTERACTIF pour les recettes du fichier racine (seule `default`). Un zsh interactif lit le profil de l'opérateur (`~/.zshrc`) : du code de l'opérateur s'exécute à chaque appel. zsh n'est pas dans l'image des VM : sur la VM, `just` sans argument échoue (gotchas.md:38 ; adws.just:15-19 ; provision.sh:61). Les cookbooks imposent `just --shell bash --shell-arg -c ...` (execute.just:91).",
+   "l.11-14, commentaire : « `kill` below runs as a bash script ». Il n'y a aucune recette `kill` dans ce fichier ; elle est dans `just/obs.just:53-54`. Contradiction de la carte confirmée ; ajouté au registre.",
+   "l.18 `export SHELL_SESSIONS_DISABLE := \"1\"` : exporte une variable macOS (silence le message « Saving session... ») vers les recettes racine. Répété dans local.just:19. Sans effet sous Linux.",
+   "l.20-22, `config := env_var_or_default(\"SSSF_CONFIG\", \"adws/adw_sssf_config/sssf.config.yaml\")` : définie mais utilisée par aucune recette de ce fichier (`grep '{{config}}' justfile` : aucune ligne). Le commentaire l.21 dit « the observability recipes below read the same roster/db » : il n'y a pas de recettes d'observabilité dans ce fichier, et `obs.just` écrit le chemin de la base en dur (obs.just:36, 40, 44, 48) sans lire `SSSF_CONFIG`. Contradiction de la carte confirmée ; ajouté au registre.",
+   "l.24-35, commentaire sur les deux couches : « `mod sbx` ... the exe.dev account and the OpenRouter provisioning key never leave the host ». Tenu pour la mise en place d'une VM : `fill.just:150` n'écrit sur la VM que la clé d'exécution. Nuance (rapport C1) : en local, `just adw ...` charge `.env` (adws.just:13) et `utils.py:13` aussi, donc la clé de provisioning de `.env` est dans l'environnement des ADW et de Pi sur l'hôte.",
+   "l.37-38 `mod inkwell 'just/inkwell.just'` : module `inkwell`. Recettes : `default`, `run PORT=\"4501\"`, `dev PORT=\"4501\"`, `test` (voir inkwell.just).",
+   "l.40-41 `mod local 'just/local.just'` : module `local`. Recettes : `default`, `cc`, `pi`, `ipi` (voir local.just).",
+   "l.43-44 `mod adw 'just/adws.just'` : module `adw`. 14 recettes (voir adws.just). Les ADW sont lancés par `uv run adws/adw_*.py --config {{config}}`.",
+   "l.46-47 `mod sbx 'just/sandbox/mod.just'` : module `sbx`. `mount RUN_ID *FLAGS` (sandbox/mount.just:11, enchaîne create, fill, setup, observe). `lifecycle` : `create RUN_ID *FLAGS` (create.just:17, plafond LIMIT=\"50.00\" dollars l.22), `fill RUN_ID *SHA` (fill.just:10), `setup RUN_ID CONFIG=\"\"` (setup.just:27), `execute RUN_ID PROMPT CONFIG=\"\" ADW=\"sdlc\" *EXTRA` (execute.just:48), `observe RUN_ID` (observe.just:18), `teardown RUN_ID *FLAGS` (teardown.just:22). `manage` : `list`, `harvest RUN_ID`, `reap *FLAGS`, `doctor` (manage/*.just). `run` : `cmd RUN_ID +CMD`, `agent RUN_ID PROMPT` (run/mod.just:30, 47). `orch` : `cc`, `pi` (orch/mod.just:28, 32).",
+   "l.49-50 `mod obs 'just/obs.just'` : module `obs`. Recettes : `default`, `rosters`, `sessions`, `phases ADW_ID`, `tail ADW_ID`, `procs ADW_ID`, `kill ADW_ID`, `ui` (voir obs.just). Registre n°1 confirmé : 5 espaces de noms, `mod` aux l.38, 41, 44, 47, 50. La carte écrit « importe » : c'est `mod`, pas `import` ; seul `sandbox/mod.just:32` fait un vrai `import 'mount.just'`.",
+   "l.52-54 `default`: `@just --list`. Le seul code du fichier. Il passe par `zsh -ic` (l.15).",
+   "l.56, commentaire de fin : « raw ADW runs live in the module: just adw ». Exact (adws.just).",
+   "ENVIRONNEMENT : `.env` n'est lu que là où `set dotenv-load` figure. `adw`, `inkwell` et tous les sous-modules `sbx` le chargent ; `obs` et `local` non. `.env.sample:15` et `:24` prévoient la clé de provisioning et la clé d'inférence dans `.env` : une fois remplies, elles sont dans l'environnement de `just inkwell run` (le serveur Inkwell la reçoit sans en avoir besoin) et de `just adw ...` (donc de Pi et de ses outils). Aucun `set export` global : seul `export SHELL_SESSIONS_DISABLE` (l.18) est exporté explicitement.",
+   "SECRETS EN ARGUMENT DE COMMANDE : aucun dans `justfile`, `adws.just`, `obs.just`, `inkwell.just`, `local.just` (grep `--api-key|KEY=|_KEY|OPENROUTER` : aucune ligne). Les clés passent par l'environnement. Dans `sbx`, la clé de provisioning est dans l'argument de `curl -H \"Authorization: Bearer $OPENROUTER_PROVISIONING_KEY\"` (create.just:134 ; teardown.just:89, 151, 185 ; reap.just:43, 113, 122), donc visible dans `ps` de l'hôte pendant l'appel. La clé d'exécution l'est dans `curl ... Bearer $RUNTIME_KEY` (teardown.just:83, hôte) et `Bearer ${KEY}` (setup.just:163-164, 185-186, 249, VM). fill.just:147-150 évite `ps` pour l'écriture de `.env` (`printf | ssh cat`), mais pas ces `curl`. `run agent` passe `ANTHROPIC_API_KEY=implicit` dans la ligne ssh (run/mod.just:86) : valeur factice.",
+   "ÉCRITURES HORS DU DÉPÔT par les recettes atteignables d'ici : sur l'hôte, `just inkwell test` écrit un `inkwell-test-*.db` dans le dossier temporaire du système (server.test.ts:7, supprimé en `afterAll`) ; `just obs ui` écrit dans le cache de bun ; `sbx create` crée un fichier temporaire (`mktemp`, create.just:132). Sur la VM : `/tmp/PROVISION_READY` (setup.just:64-82), `/tmp/harvest.bundle` (harvest.just:71), `~/inkwell-app.log` et `~/visualizer.log` (observe.just:83, 113). Dans le dépôt : `.sandbox/runs/*.key` (create.just:130), ignoré par `.gitignore` (`.sandbox/`, `*.key`).",
+   "TÉLÉCHARGE / INSTALLE : `just obs ui` fait `bun install` puis `bunx vite` (obs.just:73) ; chaque ADW lancé par `uv run` résout ses paquets Python non épinglés au premier lancement (en-tête `dependencies = [\"pydantic\", \"python-dotenv\", \"pyyaml\", \"rich\"]`, aucun numéro de version, adws/adw_*.py:3). `sbx` : `curl` vers openrouter.ai (create, setup, teardown, reap) ; la VM installe bun et just par `curl | bash` (provision.sh:38, 66). Aucun `npm`, `pip` ni `brew` dans les recettes.",
+   "SERVICES LANCÉS : `just inkwell run`/`dev` en AVANT-PLAN sur le port 4501 (inkwell.just:19-30) ; `just obs ui` serveur sur 4600 en ARRIÈRE-PLAN (obs.just:73, jamais arrêté) et vite en avant-plan sur 4601 (vite.config.ts : `port: 4601`). `sbx observe` lance l'application et le visualiseur en arrière-plan sur la VM avec `nohup` (observe.just:83, 113) et expose le port de l'application en PUBLIC (`ssh exe.dev share set-public`, observe.just:129-131)."
+  ],
+  "deps": [
+   "Monte `just/inkwell.just`, `just/local.just`, `just/adws.just`, `just/sandbox/mod.just`, `just/obs.just` par `mod` (l.38-50). Lu : `.env` (l.1).",
+   "Carte à corriger : les liens `justfile -> just/*.just` sont typés « importe ». C'est `mod`, qui isole les réglages, pas `import`.",
+   "Carte à corriger : la fiche dit « force un zsh interactif comme shell des recettes » et « dotenv-load injecte tout .env ... dans l'environnement des recettes ». Cela ne vaut que pour la recette `default`. Les modules ont leurs propres réglages (ils ne reçoivent rien du parent, d'après les commentaires du dépôt : justfile:32, adws.just:9-10, sandbox/mod.just:12-15).",
+   "Carte confirmée : contradictions justfile:13 (`kill` below) et justfile:20-22 (`config` still needed at root) ; preuves : aucune recette `kill` dans le fichier, `{{config}}` jamais utilisé.",
+   "Entrants complétés par `git grep` : `README.md:248`, `TREE.md:19`, `.claude/commands/prime.md:19`, `.claude/commands/install.md:47, 78`, `cookbooks/install.md:25`, `sandbox/lifecycle/execute.just:77` (commentaire sur zsh)."
+  ],
+  "vigilance": [
+   "Le justfile racine ne porte presque rien : tout est dans les modules. Lire un module sans ouvrir son `set` donne un faux sentiment (par exemple croire que `obs` charge `.env`, ou que `local` utilise le zsh du parent : `local.just:15` le redéclare).",
+   "Les réglages racine inutiles (`dotenv-load`, `positional-arguments`, `config`, `export`) donnent l'impression d'un environnement global qui n'existe pas. Si on les enlève ou les déplace, rien ne change pour `adw` ni `sbx` (à vérifier avec just).",
+   "Le zsh interactif lit `~/.zshrc` : du code arbitraire de l'opérateur s'exécute avant chaque recette racine et chaque recette `local`. Sur nos VM, cela ne doit pas arriver.",
+   "`.env` d'un hôte contenant la clé de provisioning : elle atteint Pi et les outils des agents lancés par `just adw` en local. Sur la VM, `app/.env` ne contient que la clé d'exécution (fill.just:150)."
+  ],
+  "chez_nous": [
+   "Pour nos VM : un justfile racine sans `set shell` zsh, avec bash explicite, pour que `just` sans argument marche partout. On y met un `set dotenv-load` seulement dans les modules qui en ont besoin.",
+   "Liste fixe de variables d'environnement pour les agents (décision 1) : ne pas dépendre de `dotenv-load` pour ce que voit Pi ; la filtrer dans le code qui lance Pi (hors de ce fichier).",
+   "Les `curl -H \"Authorization: Bearer $KEY\"` de `sbx` pourraient lire l'en-tête sur l'entrée standard (`-H @-` ou `--config -`) pour que la clé ne figure pas dans `ps` (piste, à vérifier avec curl)."
+  ],
+  "a_verifier": [
+   "just n'est pas installé ici (`which just` vide) : je n'ai rien exécuté. Tout ce qui touche à la sémantique de just (portée de `dotenv-load`, héritage des réglages par les modules, effet de `--shell` en ligne de commande sur un module, `just --list a b c`) vient des commentaires du dépôt (justfile:32-35, adws.just:9-19, just_command_model.md:55-65), pas d'un essai.",
+   "zsh et sqlite3 ne sont pas installés ici non plus ; ils ne sont requis que par les recettes, non lancées."
+  ]
+ },
+ "just/obs.just": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Module `obs` : lit la base de traces `adws/adw_data/sssf.db` avec `sqlite3` (sessions, phases, événements, processus), liste les rosters, arrête les processus d'un run et lance le visualiseur (`ui`). Tous les chemins sont en dur ; le module ne charge pas `.env`.",
+  "points": [
+   "l.1-8 : en-tête et réglages. `set working-directory := '..'` et `set positional-arguments` ; PAS de `dotenv-load` ni de `set shell`. Le commentaire l.5-6 dit que le module doit marcher dans une VM : c'est le cas, il n'a besoin ni de zsh ni de `.env`.",
+   "l.10-12 `default` : `@just --list obs`.",
+   "l.17-32 `rosters` (shebang bash) : pour chaque `adws/adw_sssf_config/*.yaml`, un `awk` retient le modèle par défaut (`/^  model:/` avant `agents:`), chaque `- name:` et son `model:` (4 espaces). Expérience : le même `awk` donne, sur les 5 YAML d'Inkwell, exactement les modèles que lit `yaml.safe_load` (planner, builder, scout, reviewer, documenter, `(inherited)` pour l'héritage). Limite : il ne lit que ce dossier, pas un roster passé par `--config` ailleurs ; il ignore `defaults.model` si la clé est ailleurs que sur deux espaces.",
+   "l.34-36 `sessions` : `sqlite3 adws/adw_data/sssf.db \"select adw_id, status, substr(request,1,60), total_tokens, round(total_cost,4) from sessions order by started_at desc limit 10;\"`. Lecture seule en pratique, mais `sqlite3` crée la base si elle n'existe pas (à vérifier).",
+   "l.38-40 `phases ADW_ID` : phases d'un run (`seq, name, kind, owner, status, attempt`). `{{ADW_ID}}` est inséré tel quel entre apostrophes dans la requête, elle-même entre guillemets du shell : une valeur contenant `'` ou `\"` ou `$(...)` sort de la requête ou du shell. Les ADW générés produisent des ids hexadécimaux (`new_id`, utils.py:41) ; seul un id passé à la main par `--adw-id` pose problème.",
+   "l.42-44 `tail ADW_ID` : 25 derniers événements (`rowid, type, name, started_at`) par `rowid` décroissant. Même insertion directe de `{{ADW_ID}}`.",
+   "l.46-48 `procs ADW_ID` : processus vivants (`ended_at is null`) avec `kind, name, pid, command, started_at`. La colonne `command` est un libellé écrit par le tracer, pas la vraie ligne de commande : « pi <agent> <modèle> » pour Pi (agents.py:130-132) ; l'argv de l'ADW pour l'ADW (session.py:46-47).",
+   "l.50, commentaire : « Verifies each pid still looks like the thing we recorded; pids get recycled. » Promesse non tenue : voir `kill`.",
+   "l.52-66 `kill ADW_ID` (shebang bash, `set -uo pipefail`) : l.56 lit les lignes `kind||' '||pid` vivantes, agents d'abord (`order by case kind when 'agent' then 0 else 1 end, id desc`). l.57 : s'il n'y en a pas, « no live processes recorded » et sortie 0. l.58-66 : pour chaque pid, `ps -p \"$pid\" -o command=` (l.60) ; vide => « already gone » (l.61) ; sinon `case \"$cmd\" in *pi*|*adw_*|*python*) kill \"$pid\" ...` (l.62-63) ; le reste => « pid reused, NOT killing » (l.64). REGISTRE n°72 CONFIRMÉ : la requête ne sélectionne pas la colonne `command` (l.56) ; le test compare la ligne `ps` courante à trois motifs fixes, pas à la commande enregistrée. Expérience (copie du `case` sur 14 lignes fictives) : sont tuées `ping`, `pipewire`, `spice-vdagent`, `/home/u/pipeline/run.sh`, `cat /etc/passwd # python` ; sont refusées `node`, `bash`, `sleep`, `git`, `ssh`, `bun`. Nuance : même un vrai contrôle ne marcherait pas par égalité de texte, car la commande enregistrée (« pi planner openrouter/... ») n'est pas la ligne de commande réelle de Pi (agent_pi.py:253-265). Autres limites : seulement SIGTERM, aucune attente ni SIGKILL, et l'ADW lui-même est tué en dernier ; si Pi tourne sous `node` sans « pi » dans sa ligne, le vrai agent serait refusé (à vérifier).",
+   "l.68-69, commentaire : le chemin de la base est passé en explicite parce que le serveur tourne depuis le dossier de l'application. Exact, voir `ui`.",
+   "l.71-73 `ui` : `cd .claude/skills/sssf/apps/visualizer && bun install && (SSSF_DB={{invocation_directory()}}/adws/adw_data/sssf.db bun run server/index.ts &) && bunx vite`. TÉLÉCHARGE : `bun install` sans `--frozen-lockfile` ni `--ignore-scripts` (il n'y a ni `bunfig.toml` ni `.npmrc` dans le dépôt, `git ls-files`). LANCE deux services : le serveur de l'API en ARRIÈRE-PLAN (sous-shell avec `&`), sur le port 4600 (server/index.ts:18), et vite en AVANT-PLAN sur le port 4601 (vite.config.ts : `port: 4601`). Le serveur n'est jamais arrêté : `Ctrl-C` sur vite laisse le serveur tourner. Le serveur appelle `Bun.serve({port})` sans `hostname` (server/index.ts:113-114) ; les auteurs notent que « bun binds 0.0.0.0 by default » (observe.just:54) : l'API (prompts, sorties d'outils, chemins) serait donc ouverte à tout le réseau sans authentification, avec une écriture (`POST /api/sessions/:adw_id/archive`). `invocation_directory()` est le dossier d'où on a lancé `just`, alors que le modèle utilise `justfile_directory()` (templates/justfile:88) : lancé depuis un sous-dossier, le chemin de la base serait faux et le serveur s'arrêterait en silence dans l'arrière-plan. La carte annonce `reseau: []` : à corriger, `bun install` interroge le registre npm.",
+   "BILAN OBS : 8 recettes (`default`, `rosters`, `sessions`, `phases`, `tail`, `procs`, `kill`, `ui`). Aucune clé en argument, aucune variable secrète lue. Écrit hors dépôt : le cache de bun (`bun install`). Les 4 requêtes `sqlite3` et `rosters` sont en lecture ; `kill` envoie un signal ; `ui` installe et sert."
+  ],
+  "deps": [
+   "Lit `adws/adw_data/sssf.db` (l.36, 40, 44, 48, 56), `adws/adw_sssf_config/*.yaml` (l.20) ; lance `sqlite3`, `ps`, `kill`, `bun`, `bunx` ; exporte `SSSF_DB` au serveur du visualiseur (l.73). Colonnes lues confirmées dans `tracer.py` (tables sessions, phases, events, processes).",
+   "Entrants confirmés par `git grep` : `justfile:50`, `.claude/commands/install.md:32` (cite `just obs ui`), `.claude/commands/prime.md:27`, `cookbooks/run_adw.md:31, 109-111`, `references/observability.md:130`, `adws/adw_modules/console.py:65` (qui recommande à tort `just phases`, registre n°48).",
+   "Carte à corriger : `reseau: []` est faux pour `ui` (`bun install` télécharge ; `bunx vite` peut télécharger). La fiche ne mentionne pas le port 4601 de vite ni que le serveur reste en arrière-plan.",
+   "Carte à corriger : `kill` « si la commande ps contient pi, adw_ ou python » est exact, mais la fiche ne dit pas que cela contredit la promesse du commentaire l.50 (registre n°72)."
+  ],
+  "vigilance": [
+   "`kill` ne vérifie pas ce qu'il promet (n°72) : il peut viser un autre processus de la VM ou refuser le bon. Risque limité sur une VM jetable.",
+   "`ui` laisse un serveur ouvert sur le réseau sans authentification et sans arrêt automatique. À ne pas lancer sur une machine où traînent des clés ; la trace contient les prompts et peut contenir des clés (registre C1, pas de masquage).",
+   "`{{ADW_ID}}` est inséré tel quel dans le shell et le SQL de quatre recettes. Un orchestrateur qui passerait un id venant d'un agent ouvrirait une injection (non exploitable avec les ids hexadécimaux produits par le code).",
+   "`bun install` sans épinglage de version ni blocage des scripts : contraire à nos règles `ignore-scripts` et versions épinglées. Le fichier `bun.lock` du visualiseur est suivi, mais `bun install` peut le mettre à jour."
+  ],
+  "chez_nous": [
+   "Remplacer `kill` par une version qui compare à la vraie ligne de commande lancée (ou mieux : tue le groupe de processus lancé par l'ADW, SIGKILL après un délai). Piste ; dépend de ce que fait Pi.",
+   "Lancer le visualiseur avec `hostname` explicite sur 127.0.0.1 et sans arrière-plan caché ; installer ses paquets une fois, avec `--frozen-lockfile --ignore-scripts`, hors de la recette.",
+   "Remplacer `invocation_directory()` par `justfile_directory()` ; passer `ADW_ID` en paramètre SQL et non par insertion de texte."
+  ],
+  "a_verifier": [
+   "`bun` et `just` ne sont pas installés ici : rien lancé. Que fait `bun install` sans `--ignore-scripts` pour les scripts de dépendances (liste de confiance par défaut de bun, scripts de `esbuild`) ?",
+   "`Bun.serve` sans `hostname` : écoute-t-il toutes les interfaces ? (Les auteurs l'écrivent, observe.just:54 ; non testé.)",
+   "`sqlite3 <fichier absent> \"select ...\"` crée-t-il un fichier vide ? `sqlite3` absent ici.",
+   "Ligne de commande réelle de Pi vue par `ps` : contient-elle « pi » ? (Pi non installé.)"
+  ]
+ },
+ "just/inkwell.just": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Module `inkwell` : démarre l'application Inkwell avec bun (`run`, `dev` avec rechargement) et lance sa suite de tests (`test`).",
+  "points": [
+   "l.6-12 : en-tête et réglages `working-directory '..'`, `positional-arguments`, `dotenv-load`. Le commentaire l.8-9 dit « Recipes run bash (not the root's interactive zsh) ». Vrai pour `run` et `dev` (shebang `#!/usr/bin/env bash`, l.20 et l.27) ; FAUX pour `test` (l.33-34), qui n'a pas de shebang et part sous le shell par défaut de just (`sh`). Carte confirmée ; ajouté au registre.",
+   "l.14-16 `default` : `@just --list inkwell`.",
+   "l.18-23 `run PORT=\"4501\"` : affiche l'adresse puis `PORT={{PORT}} bun run apps/inkwell/server.ts`, en AVANT-PLAN. Le serveur écoute sur le port donné (server.ts:8, 328) sans `hostname` (donc toutes les interfaces si bun suit son défaut) et ouvre `apps/inkwell/inkwell.db` (server.ts:26), ignoré par git (`.gitignore` : `apps/inkwell/inkwell.db*`). `INKWELL_DB` peut changer ce chemin.",
+   "l.25-30 `dev PORT=\"4501\"` : idem avec `bun --watch run ...` (rechargement à chaque sauvegarde).",
+   "l.32-34 `test` : `bun test apps/inkwell/server.test.ts`. Les 30 tests (grep : 30 `test(`) démarrent un serveur sur un port libre (`Bun.serve({port: 0})`, server.test.ts:17) et une base temporaire dans le dossier temporaire du système (`tmpdir()`, l.7), supprimée en fin de run (l.20-25). C'est la commande de la phase de test des ADW (quality.py : `bun test apps/inkwell/server.test.ts`).",
+   "Environnement : `dotenv-load` charge `.env` : le serveur et les tests reçoivent donc toutes les clés de `.env`, dont la clé de provisioning, sans en avoir besoin. Aucune clé en argument."
+  ],
+  "deps": [
+   "Lance `apps/inkwell/server.ts` (l.23, 30) et `apps/inkwell/server.test.ts` (l.34) ; lit `.env` (l.12). Carte confirmée (3 liens sortants).",
+   "Entrants : `justfile:38` (mod), `.claude/commands/install.md:32, 79, 88-89`, `quality.py` d'Inkwell (même commande, indépendamment).",
+   "Carte à corriger : la fiche cite `INKWELL_DB` comme « lue » ligne 18 ; c'est seulement le texte du commentaire, rien ne le lit dans ce fichier (le serveur le lit, server.ts:26)."
+  ],
+  "vigilance": [
+   "Le serveur d'application n'a pas d'authentification et la VM peut l'exposer en public (observe.just:129-131). C'est l'application d'exemple, pas l'usine ; à garder en tête pour ce qu'on y met.",
+   "`.env` complet dans l'environnement de l'application et des tests."
+  ],
+  "chez_nous": [
+   "Garder `test` comme porte de test (commande connue, sans agent). Charger `.env` n'y est pas utile : la retirer de ce module réduirait ce que voit le code produit par les agents."
+  ],
+  "a_verifier": [
+   "Le shell par défaut de just (`sh -cu`) pour `test` : sans conséquence ici, la commande est simple.",
+   "bun non lancé : le comportement réel de `Bun.serve` sans `hostname` n'est pas testé."
+  ]
+ },
+ "just/local.just": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Module `local` : démarre un agent orchestrateur (`claude`, `pi` ou `ipi`) sur CETTE machine, avec la consigne « Read and Execute .claude/skills/sssf/SKILL.md ». Il se présente comme prévu pour tourner à l'intérieur d'une VM.",
+  "points": [
+   "l.1-9, commentaire : « Meant to run inside a sandbox: there this is exactly how you boot an orchestrator onto that sandbox's own factory. » Voir l.15 : la recette exige zsh.",
+   "l.11-17 : réglages `set shell := [\"zsh\", \"-ic\"]` (l.15), `working-directory '..'`, `positional-arguments`. Pas de `dotenv-load` : `.env` n'est pas lu par ce module. L'environnement de la recette est celui du processus `just` qui l'a lancé.",
+   "l.15 vs adws.just:15-17 et provision.sh:61 : zsh n'est pas dans l'image des VM. Le dépôt dit lui-même qu'il faut `--shell bash --shell-arg -c` (gotchas.md:38). `local.just` est donc annoncé pour la VM mais exige un shell absent de la VM, sauf surcharge en ligne de commande (effet sur un module à vérifier).",
+   "l.19 `export SHELL_SESSIONS_DISABLE := \"1\"` : réglage macOS, copie de justfile:18.",
+   "l.21-23 `default` : `@just --list local`.",
+   "l.25-27 `cc` : `claude --dangerously-skip-permissions \"Read and Execute .claude/skills/sssf/SKILL.md\"`. Lance Claude Code interactif avec TOUTES les demandes de permission désactivées. Il utilise le compte `claude` de la machine (abonnement ou clé Anthropic de l'opérateur).",
+   "l.29-31 `pi` : `pi \"Read and Execute .claude/skills/sssf/SKILL.md\"`. Même consigne avec Pi, avec l'environnement de l'appelant.",
+   "l.33-35 `ipi` : `ipi \"...\" --no-skills`. `ipi` est une FONCTION zsh de l'opérateur (commentaire l.12-14), absente du dépôt : le code exécuté dépend de `~/.zshrc`.",
+   "Aucune clé en argument, aucun fichier écrit par le module, aucun téléchargement."
+  ],
+  "deps": [
+   "Lit `.claude/skills/sssf/SKILL.md` (l.27, 31, 35) ; lance `claude`, `pi`, `ipi`. Carte confirmée.",
+   "Entrants confirmés : `justfile:41`, `.claude/commands/install.md:51`, `references/phases.md:73` (qui place `just local cc/pi/ipi` « inside a sandbox »), `TREE.md:34-35`.",
+   "Carte à corriger : `contradictions: []`. Il y en a une : prévu pour la VM (l.8-9) mais `shell` zsh (l.15) alors que zsh n'est pas dans l'image. La fiche doit aussi signaler l'absence de `dotenv-load`, contrairement à `adw`."
+  ],
+  "vigilance": [
+   "`--dangerously-skip-permissions` : aucun garde-fou par recette ni par permissions de Claude Code. Notre règle « jamais l'abonnement Claude pour ce qui tourne seul » est visée si cette recette est lancée sans personne devant.",
+   "Le zsh interactif exécute `~/.zshrc` de l'opérateur avant la commande.",
+   "`ipi` n'est pas dans le dépôt : on ne sait pas ce qu'il lance."
+  ],
+  "chez_nous": [
+   "Sur nos VM, l'orchestrateur est Pi avec la seule clé OpenRouter de la VM (décisions 1 et 7). Garder `pi` ; ne pas lancer `cc` ni `ipi` sur une VM. Prévoir un shell bash dans ce module."
+  ],
+  "a_verifier": [
+   "Si la surcharge `just --shell bash --shell-arg -c local pi` l'emporte sur le `set shell` d'un module (non testable, just absent).",
+   "Ce que Pi 1.3.0 fait de la consigne « Read and Execute ... » et des fichiers `.pi/` du dossier courant."
+  ]
+ },
+ ".claude/skills/sssf/templates/justfile": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Justfile de départ que `install.py` pose à la racine d'un dépôt cible. 89 lignes, aucun module : 13 recettes à plat (`demo`, `prompt`, `scout`, `plan`, `plan-build`, `sdlc`, `simple-sdlc`, `sessions`, `phases`, `tail`, `procs`, `obs`, `default`). Lu ici par ses différences avec le `justfile` d'Inkwell (`diff -u justfile templates/justfile`).",
+  "points": [
+   "l.1-5 : en-tête. « Stamped by install.py, then yours to edit. Deliberately small ... see the example branch for the fuller set (orchestrator agents, kill, rosters, ipi) ». La « example branch » est une branche du dépôt amont, absente de ce dépôt. C'est pourquoi `just rosters` et `just kill` n'existent pas dans le modèle (cookbooks/run_adw.md:31, 111 les citent).",
+   "l.7-9 : `set dotenv-load` et `set positional-arguments`, sans `set shell` zsh. Différence avec Inkwell (justfile:15) : ici le shell est celui de just par défaut, donc la recette marche sans zsh.",
+   "l.11-14 : `config := env_var_or_default(\"SSSF_CONFIG\", ...)` et `db := \"adws/adw_data/sssf.db\"`. Différence : ici `config` ET `db` sont utilisés par les recettes (aucun module). Le `db` est en dur : `observability.db` de la config n'est pas lu.",
+   "l.16-18 `default` : `@just --list`.",
+   "l.20-34 `demo` : deux ADW en lecture seule (`adw_prompt.py --agent scout`, `adw_scout.py`) ; « costs a few cents and changes nothing in your repo ». Inexistante chez Inkwell. Les `echo` avec `\\n` (l.32, 34) se comportent différemment selon le shell (à vérifier).",
+   "l.36-61, recettes `prompt`, `scout`, `plan`, `plan-build`, `sdlc`, `simple-sdlc` : à plat, même commande `uv run adws/adw_<x>.py --config {{config}} \"$@\"`. `sdlc` -> `adw_plan_build_test.py` (l.57) : même écart n°76 que chez Inkwell. Absentes du modèle : `ask`, `build`, `build-test`, `build-review`, `quality`, `document`, `plan-build-test-quality` (les ADW sont pourtant posés par install.py, mais sans recette).",
+   "l.63-80, `sessions`, `phases`, `tail`, `procs` : les mêmes requêtes `sqlite3` que `obs.just`, à plat et avec `@` (silencieuses). Absentes : `rosters`, `kill`.",
+   "l.82-89 `obs` : `cd .claude/skills/sssf/apps/visualizer && bun install && (SSSF_DB={{justfile_directory()}}/{{db}} bun run server/index.ts &) && bunx vite`. Même schéma que `obs ui` d'Inkwell : `bun install` non épinglé, serveur laissé en arrière-plan, vite sur 4601 (commentaire l.87 « http://localhost:4601 (api on :4600) »). Différence : `justfile_directory()` (robuste) au lieu de `invocation_directory()`. Dépend du dossier `.claude/skills/sssf/apps/visualizer` DU PROJET, que `install.py` ne copie pas ; si le skill est installé en portée utilisateur (cookbooks/install.md:11), `just obs` échoue. Ajouté au registre.",
+   "Recettes du modèle qui pointent vers des fichiers absents du modèle : seulement `obs` (visualiseur). Les six ADW des recettes (`adw_prompt`, `adw_scout`, `adw_plan`, `adw_plan_build`, `adw_plan_build_test`, `adw_simple_sdlc`) sont dans `templates/adws/`.",
+   "Aucun secret en argument. Rien ne télécharge sauf `obs` (`bun install`) et les `uv run`. Écritures hors dépôt : cache de bun et d'uv."
+  ],
+  "deps": [
+   "Copie vers `justfile` (install.py:81). Entrants : `cookbooks/install.md:25`, `install.py:81, 92-94` (`just demo`, `just sessions`, `just obs`).",
+   "Carte à corriger : la fiche ne donne que la liste des recettes (`fonctions_cles: null`, `lance: null`). Voir points : recettes, ADW lancés, `bun install`, dépendance au chemin du visualiseur, absence de `rosters`/`kill`.",
+   "Carte à corriger : `copie_de: \"justfile\"` (et le lien `copie` vers `justfile`) est trompeur. Le modèle n'est pas une copie du justfile d'Inkwell (89 lignes contre 56, aucun module, recettes à plat) ; c'est `install.py:81` qui copie le modèle VERS `justfile`."
+  ],
+  "vigilance": [
+   "Le justfile du modèle suppose le skill dans le projet. Posé par un skill utilisateur, `just obs` plante.",
+   "`obs` : même exposition réseau et mêmes téléchargements que chez Inkwell.",
+   "Les recettes `sessions/phases/tail/procs` écrivent `{{ADW_ID}}` dans le SQL comme chez Inkwell."
+  ],
+  "chez_nous": [
+   "Si on garde l'étape d'installation : le justfile posé doit venir d'Inkwell (modules, `kill`, `rosters`), pas du modèle, et ses cookbooks doivent citer les mêmes noms de recettes."
+  ],
+  "a_verifier": [
+   "`just` absent : le rendu de `echo \"\\n2/2 ...\"` (l.32 et l.34) sous `sh` et sous `bash` n'est pas testé."
+  ]
+ },
+ ".claude/skills/sssf/scripts/make_adw.py": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Génère `adws/adw_<name>.py` : un workflow d'une phase d'agent par nom donné, chaînées par `previous=`. Le gabarit est écrit en texte dans le script ; aucun modèle n'est lu. Il ne crée ni entrée de config ni prompt.",
+  "points": [
+   "l.1-4 : script `uv run` sans dépendance. Il n'importe que `argparse`, `sys`, `pathlib` (l.15-17) : rien n'est lancé ni téléchargé.",
+   "l.5-13, docstring : « Each named agent becomes one agent phase, chained by envelope. Starter agents map to their concrete output types; unknown agents get GenericOutput ». Exact (l.88). Il ne crée PAS de dossier de prompts ni d'entrée de config (cookbooks/create_adw.md:48 le dit) ; `specs/scaffold.md:50` écrit au contraire « generate a new ADW script + its agents' prompt dirs » : à croiser (hors de mon périmètre).",
+   "l.19-21 `OUTPUT_TYPES` : planner->PlanOutput, builder->BuildOutput, scout->ScoutOutput, reviewer->ReviewOutput, documenter->DocumentOutput. Les cinq classes existent dans `adws/adw_modules/data_types.py` (vérifié par lecture de l'arbre syntaxique du fichier : 5/5, plus `GenericOutput`).",
+   "l.23-65, `HEADER` : le squelette. En-tête PEP 723 `dependencies = [\"pydantic\", \"python-dotenv\", \"pyyaml\"]` (l.25) SANS `rich`, alors que `adws/adw_modules/console.py:11-14` importe `rich` au niveau du module et que les 12 ADW du dépôt déclarent `rich` (adws/adw_*.py:3). Un ADW généré, lancé par `uv run`, n'aurait pas `rich` dans son environnement : il échouerait à l'import de `adw_modules` (session -> runner -> console). Contradiction de la carte confirmée ; ajouté au registre. Effet de uv non essayé.",
+   "l.38-39 imports du squelette : `from adw_modules import agents, gates, session, utils` et `AgentCall, PhaseParams` plus les types de sortie triés. Tous existent. `agents.load_config`, `agents.validate`, `session.ensure`, `utils.resolve_prompt`, `gates.artifacts_exist` aussi (grep `^def` dans les modules).",
+   "l.44-51 `main` du squelette : charge la config, `agents.validate(cfg, REQUIRED_AGENTS)`, `session.ensure`, phase `request` de type `engineer` avec `ph.log(input=prompt)`. Identique à `adw_scout.py:22-29`. Bon.",
+   "l.55 `return 0 if run.succeeded else 1` : REGISTRE n°24 CONFIRMÉ. `Run` (runner.py:42-142) n'a plus d'attribut `succeeded` : elle a `finish(accepted, reason)` (l.114-142), dont la docstring l.122 dit qu'elle REMPLACE une propriété `succeeded`. `grep succeeded` sur `adws/` : seulement ce commentaire. Le squelette lève donc `AttributeError` une fois toutes les phases passées (et payées). Conséquence plus lourde que la ligne du registre : `finish()` n'est jamais appelé, donc `tracer.session_finish` non plus (appelé seulement par runner.py:99, 140 et session.py:31). La session reste `running` dans `sssf.db` (tracer.py:140-143) et la ligne de processus de l'ADW reste ouverte (`ended_at` NULL, tracer.py:160-164) : `just obs procs` la montrera vivante, `just obs kill` la traitera comme un pid réutilisable. Les 12 ADW du dépôt finissent tous par `run.finish()` (adw_scout.py:36).",
+   "l.67-73, `PHASE` : par agent, `PhaseParams(name, kind=\"agent\", owner=agent, description=\"Run <agent> over the request and hand its envelope on\")`, puis `ph.call(AgentCall(output_type, prompt=prompt, previous=previous, gates=[gates.artifacts_exist]))`. La description passe le contrôle `_description_must_be_earned` (data_types.py:31-53 : elle ne se contente pas de répéter le nom) mais ne dit rien ; le `# TODO` l.67 le rappelle. Le prompt brut de l'ingénieur est envoyé tel quel à CHAQUE agent. Un seul garde (`artifacts_exist`) pour tous : un builder sans `diff_matches_claims`, un relecteur sans `verdict_consistent`, un planner sans `files_non_empty` (ce que cookbooks/create_adw.md:15-19 recommande). Pas de `retries`, pas de phase de commit, pas de boucle de correction.",
+   "l.76-81 arguments : `--name` et `--agents` obligatoires, `--force`. l.83-86 : refuse une liste d'agents vide (code 1).",
+   "l.88-94 : `types` via `OUTPUT_TYPES.get(a, \"GenericOutput\")` ; un agent répété donne la phase `builder_2` (l.93). Un nom d'agent absent de la config (ex. `tester`) est accepté ici et refusé plus tard par `agents.validate` (agents.py:44-49). Expérience (copie de la logique de génération, les constantes de texte étant lues par `ast` sans exécuter le fichier) : un ADW `review_docs` (scout, builder) et un ADW de 7 agents ont été générés ; `python3 -m py_compile` réussit pour les deux ; tous les noms importés de `data_types` existent ; `run.succeeded` est présent et `run.finish` absent.",
+   "l.96-103 : `HEADER.format(...)` : titre, chaîne, imports, `REQUIRED_AGENTS = repr(sorted(set(agent_names)))`, phases. Le résultat compile mais ne s'exécuterait pas jusqu'au bout (rich absent, `run.succeeded`).",
+   "l.105-111 : cible `Path.cwd()/adws/adw_<name>.py`, refus si le fichier existe sans `--force` (code 1), création du dossier, écriture. `--name` n'est pas validé (le texte dit « snake_case »). Expérience : avec `--name \"/../../../x\"` le chemin devient `adws/adw_/../../../x.py` et le fichier est écrit UN niveau au-dessus du dossier courant (le dossier parent) ; chaque `..` de plus remonte d'un cran, avec `/../../x` il atterrit dans le dossier courant mais hors de `adws/`. Ajouté au registre (faible impact : l'argument vient de l'opérateur ou de l'orchestrateur).",
+   "l.112-114 : messages finaux. « run: uv run adws/adw_<name>.py \"your request\" » invite à lancer un fichier qui plante en fin de passage."
+  ],
+  "deps": [
+   "Écrit `adws/adw_<name>.py` (carte confirmée, l.110). Entrants : `cookbooks/create_adw.md:45`, `specs/scaffold.md:50` ; carte à compléter avec le second.",
+   "Carte confirmée : les deux contradictions (`run.succeeded` l.55 ; `rich` absent l.25), avec preuves ci-dessus. La carte écrit que l'ADW généré « risque d'échouer » : c'est certain pour `run.succeeded` (attribut absent).",
+   "Carte à corriger : `fonctions_cles` ne cite que `main` (l.76-115) ; le gabarit `HEADER`/`PHASE` (l.23-73) est la partie qui compte et n'a aucune fiche.",
+   "Lié à l'écart n°23 par le même défaut : du code et des modèles qui appellent des noms qui n'existent plus (`run_quality`, `run_tests`, `succeeded`)."
+  ],
+  "vigilance": [
+   "Ne pas lancer un ADW généré tel quel : dépendances incomplètes et fin de script cassée, sessions laissées `running`.",
+   "Les ADW générés n'ont qu'une garde (`artifacts_exist`) et aucune boucle : ils ne reproduisent pas la rigueur des ADW écrits à la main.",
+   "`--name` non validé : peut écrire hors de `adws/`."
+  ],
+  "chez_nous": [
+   "Si on garde un générateur : le faire écrire `run.finish()`, la liste complète des dépendances (épinglées), les bonnes portes par type d'agent, et valider `--name` (lettres, chiffres, `_`).",
+   "Ou ne pas garder ce script : nos ADW sont écrits et relus à la main (règle « rien d'installé sans relecture »)."
+  ],
+  "a_verifier": [
+   "`uv run` sur un ADW avec ces dépendances : confirme-t-il l'échec d'import de `rich` ? (uv non lancé ; interdit de lancer le code du dépôt.)",
+   "La session `running` laissée après `AttributeError` : déduite de la lecture du tracer, non observée."
+  ]
+ },
+ ".claude/skills/sssf/scripts/make_config.py": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Copie `templates/sssf.config.yaml` vers `adws/adw_sssf_config/sssf.config.yaml` dans le dossier courant. Ne génère aucune clé : c'est une copie d'octets.",
+  "points": [
+   "l.1-9 : script `uv run` sans dépendance ; la docstring parle de « generate ... with great defaults », alors qu'il s'agit d'une copie du modèle.",
+   "l.11-16 : `TEMPLATE = Path(__file__).resolve().parent.parent / \"templates\" / \"sssf.config.yaml\"`. Le modèle livré (templates/sssf.config.yaml:5, 41, 107, 125) nomme des fournisseurs directs : `google/gemini-3.6-flash`, `fireworks/accounts/fireworks/models/kimi-k3`, `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`. Notre roster est tout en `openrouter/...` (adws/adw_sssf_config/sssf.config.yaml). Registre n°13 confirmé.",
+   "l.19-24 : `dest = Path.cwd() / \"adws\" / \"adw_sssf_config\" / \"sssf.config.yaml\"`.",
+   "l.25-27 : si la cible existe et pas de `--force`, affiche « already exists » et rend 1 (alors que `install.py` rend 0 quand il saute).",
+   "l.28-31 : crée les dossiers, `shutil.copy2(TEMPLATE, dest)`, affiche. Avec `--force` : écrase le roster d'Inkwell sans sauvegarde (même schéma que `install.py`).",
+   "Clés du YAML copié, comparées à `data_types.py` : le modèle ET le YAML d'Inkwell n'ont aucune clé inconnue (haut niveau : defaults, observability, agents ; defaults : coding_agent, model, thinking, harness_engineering, tools, protected_files, data_dir ; agents : champs d'`AgentConfig`). Expérience avec PyYAML et lecture de l'arbre syntaxique de `data_types.py`. Dans les deux fichiers, seul l'agent `builder` n'a pas de `writes` (donc libre d'écrire, registre n°60).",
+   "Aucun réseau, aucun lancement, aucune écriture hors de `adws/adw_sssf_config/`."
+  ],
+  "deps": [
+   "Lit `templates/sssf.config.yaml` (l.16), écrit `adws/adw_sssf_config/sssf.config.yaml` (l.29). Carte confirmée.",
+   "Entrants : `cookbooks/create_config.md:8, 11`, `references/config.md:5` (carte confirmée).",
+   "Carte à corriger : la fiche dit « sans écraser sauf --force » : exact, mais le code de sortie est 1 (pas 0). La fiche ne rappelle pas que le modèle copié est celui des fournisseurs directs."
+  ],
+  "vigilance": [
+   "`--force` remplacerait notre roster par le modèle (fournisseurs hors OpenRouter, trois clés à poser).",
+   "Le nom « great defaults » pousse à croire que le modèle est prêt à servir ; il demande `OPENROUTER_API_KEY`, `FIREWORKS_API_KEY`, `OPENAI_API_KEY` (templates/env.sample:21-23)."
+  ],
+  "chez_nous": [
+   "Ne pas utiliser ce script. Partir de notre `sssf.config.yaml` OpenRouter, avec `writes` obligatoire pour chaque agent et aucun modèle par défaut (décisions 2 et 5)."
+  ],
+  "a_verifier": [
+   "Rien de plus : script court et sans réseau, lu en entier."
+  ]
+ },
+ ".claude/commands/install.md": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Commande `/install` de Claude Code : une procédure pour un AGENT. Il vérifie la boîte à outils (git, bun, uv, just, python3, ssh), crée `.env`, installe les paquets de l'app et du visualiseur, vérifie rosters, modèles et skills, lance `just inkwell test` et `just sbx manage doctor`, puis rend un tableau d'état. Ce n'est PAS `scripts/install.py` : c'est la mise en route du dépôt Inkwell, pas la pose de l'usine.",
+  "points": [
+   "l.1-3 : en-tête (description avec lien vers le dépôt amont). Registre n°5 confirmé : `.claude/commands/install.md` et `prime.md` existent (git ls-files), pas sous `skills/`.",
+   "l.9 : le but annoncé est de « set up this repo ... without starting any servers ». l.11-16 : deux publics (lancer la boucle ou seulement lire) ; bloquer sur git et bun, avertir pour le reste.",
+   "l.20-24, variables : `ENV_FILE`, `APP_DIR: apps/inkwell`, `VIZ_DIR: .claude/skills/sssf/apps/visualizer`, `CONFIG_DIR: adws/adw_sssf_config/ (five model rosters)`. Les trois chemins existent ; le dossier contient bien 5 YAML.",
+   "l.26-33, instructions : tout vérifier par `command -v` ; « Auto-install what has a clean CDN installer (bun, just); ask before anything heavier » (l.30) ; ne jamais lire ni afficher une clé (l.31) ; ne démarrer aucun serveur (l.32), sauf `just inkwell test` qui se termine (le test lance un serveur sur un port libre le temps du test : server.test.ts:17) ; ne jamais lancer `just sbx mount` (l.33).",
+   "l.41-53, étape 1 : TÉLÉCHARGEMENTS EXÉCUTÉS. `curl -fsSL https://bun.sh/install | bash` (l.42), `curl -LsSf https://astral.sh/uv/install.sh | sh` (l.46), `curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin` (l.47). Aucune version épinglée (pas de numéro dans les URL ni d'option `--tag`), aucune vérification d'empreinte, chaque script est téléchargé puis exécuté d'un seul geste. just s'installe dans `~/.local/bin`, HORS du dépôt ; bun et uv écrivent dans le dossier personnel (à vérifier, y compris le profil du shell). `claude` et `pi` : liens seulement (l.53). Fait à noter : cela contredit « rien d'installé sans relecture » et « versions épinglées ». La même chose se produit sur chaque VM (provision.sh:38, 66). Ajouté au registre (périmé pour nous).",
+   "l.55-61, étape 2 : copie `.env.sample` vers `.env` (l.57), vérifie sans afficher que `OPENROUTER_PROVISIONING_KEY` est non vide (l.58), cite `OPENROUTER_API_KEY` et `ANTHROPIC_API_KEY` (l.60-61). La carte indique `openrouter.ai` comme hôte réseau (l.58) : c'est seulement un lien à lire, la commande n'appelle pas ce site.",
+   "l.63-66, étape 3 : `cd apps/inkwell && bun install` (porte, l.65) : `apps/inkwell/package.json` n'a aucune dépendance (5 lignes, 3 champs : name, private, type), donc rien à télécharger. quality.py d'Inkwell dit que l'app « intentionally has no local package toolchain » (quality.py:3-5). `cd .claude/skills/sssf/apps/visualizer && bun install` (l.66, optionnel) : télécharge vue, vite, lucide-vue-next, etc. (ranges `^`, `bun.lock` suivi par git) sans `--frozen-lockfile` ni `--ignore-scripts`. Ni `bunfig.toml` ni `.npmrc` dans le dépôt.",
+   "l.68-73, étape 4 : `.env` présent ; rosters `adws/adw_sssf_config/*.yaml` (« expect five: default, deepestseek, frontier, open-weights, top-speed » : exact) ; `sandbox_mount/guest/models.json.tmpl` avec bloc `cost` à quatre champs (contrôlé aussi par `doctor`, manage/mod.just:33) ; les deux `SKILL.md` existent.",
+   "l.75-80, étape 5 : versions ; `just --list inkwell adw sbx obs local` (l.78) : plusieurs noms à la suite après `--list` ; le dépôt écrit `just --list sbx::run` pour un sous-module (run/mod.just:26), ce qui laisse penser que la forme de l.78 n'affiche pas cinq listes (à vérifier avec just). `just inkwell test` « 30 tests » : exact (30 `test(` dans server.test.ts). `just sbx manage doctor` : « six-check ... ends with `sbx doctor: OK` » : exact (6 `chk`, manage/mod.just:29-34 ; message l.35). Le `doctor` contacte `exe.dev` par ssh (l.29).",
+   "l.82-94, étape 6 : rapport et commandes suivantes (`claude`, `just inkwell run`, `just inkwell test`, `just sbx manage doctor`, `just sbx mount my-task`) : tous ces noms de recettes existent (justfile:38-50 ; mount.just:11). Registre n°1 concerne TREE.md ; ici la commande liste bien cinq espaces (l.47, l.78).",
+   "Aucune écriture hors du dépôt sauf par les installeurs (`~/.local/bin`, dossiers de bun et d'uv). Aucune clé en argument."
+  ],
+  "deps": [
+   "Carte confirmée sur l'essentiel (lance : curl x3, bun install, just inkwell test, doctor, cp .env.sample). Carte à corriger : `lance` donne `just sbx manage doctor` à la ligne 2 : c'est l.80 (et 72, 90). `reseau` : `openrouter.ai` l.58 n'est qu'un lien ; les vrais accès réseau sont `bun.sh`, `astral.sh`, `just.systems`, le registre npm via `bun install` (l.65-66) et `exe.dev` via `doctor`.",
+   "Entrants : `README.md:35`. Complété par `git grep` : `.claude/commands/prime.md` ne le cite pas ; `TREE.md` non plus (le commentaire n°5 du registre sur TREE.md:115 concerne prime.md).",
+   "Dépend de : `.env.sample`, `just/inkwell.just`, `just/obs.just`, `just/local.just`, `just/sandbox/manage/mod.just`, `sandbox_mount/guest/models.json.tmpl`, `.claude/skills/*/SKILL.md` : tous existent."
+  ],
+  "vigilance": [
+   "Trois `curl | bash` non épinglés, déclenchés par un agent (« Auto-install », l.30) : exactement ce que nos règles interdisent sans relecture. Un agent lancé avec cette commande sur une VM pourrait installer du code non relu.",
+   "Cette commande lit/écrit `.env` : si elle tourne dans une VM, `.env` contient la clé d'exécution ; la consigne « jamais afficher les clés » repose sur l'obéissance de l'agent, pas sur un filtre.",
+   "`bun install` du visualiseur sans blocage des scripts de dépendances."
+  ],
+  "chez_nous": [
+   "Notre version : versions d'outils épinglées dans un fichier, installeurs téléchargés puis relus (et empreinte vérifiée) avant exécution, `bun install --frozen-lockfile --ignore-scripts`. Piste, non tranchée.",
+   "Garder l'idée du tableau d'état et de la séparation « lire et observer » / « lancer la boucle »."
+  ],
+  "a_verifier": [
+   "Que fait chaque installeur (profil du shell, dossiers) ? Non lancé, interdit.",
+   "`just --list inkwell adw sbx obs local` (l.78) : accepte-t-il plusieurs noms de modules ? just absent.",
+   "`bun install` dans `apps/inkwell` sans dépendances : crée-t-il un `bun.lock` non suivi qui serait commité par `git add -A` ?"
+  ]
+ },
+ ".claude/commands/prime.md": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Commande `/prime` : une feuille de route de lecture pour un agent neuf. Elle l'oriente dans trois couches (l'application Inkwell, l'usine SSSF, le système de montage de VM) en 9 étapes, puis lui demande de résumer et d'attendre.",
+  "points": [
+   "l.1-3 : en-tête. Registre n°5 confirmé : le fichier est dans `.claude/commands/`.",
+   "l.5-7 : but. Trois couches ; « the point is the loop that ships it without a human in the middle ».",
+   "l.11, étape 1 : « `just` (four namespaces, nothing else), then `just --list sbx`, `adw`, `obs`, `local` ». Le justfile en déclare cinq (justfile:38-50) ; `inkwell` est oublié ici et dans le résumé (l.29 « the four namespaces »). Carte confirmée ; ajouté au registre. Elle dit aussi `ls sandbox_mount/host sandbox_mount/guest just/sandbox` : les trois dossiers existent.",
+   "l.13-15, étape 2 : `TREE.md` (« the five things that will bite you » : section présente, TREE.md:136), `README.md`, `specs/sandbox-mount-system.html` (existe ; 65 cases `data-ck`, dont 47 cochées).",
+   "l.17, étape 3 : `ai_docs/exedev_sandbox_mounting.md` existe. Les chiffres cités (5 641 fichiers, ~1 s) n'ont pas été recontrôlés.",
+   "l.19, étape 4 : `justfile` et `just/sandbox/mod.just` existent ; « host-only » est une règle de clés, pas de fichiers : cohérent avec mod.just:6-10.",
+   "l.21, étape 5 : `just/sandbox/create.just` n'existe pas ; le fichier est `just/sandbox/lifecycle/create.just`. Carte confirmée ; ajouté au registre. `sandbox_mount/host/run_record.py` et `sandbox_mount/guest/provision.sh` existent. provision.sh installe bun, just, les modèles de Pi, les paquets, la construction du visualiseur, la base de traces (9 étapes), pas seulement « bun, just and the trace db ».",
+   "l.23, étape 6 : `.claude/skills/sssf-sandbox-orchestrator/SKILL.md`, `references/gotchas.md`, `cookbooks/just_command_model.md` existent (git ls-files).",
+   "l.25, étape 7 : « Every model is `openrouter/<id>` » : exact pour les 5 YAML d'Inkwell (grep des `model:`). « $50 default » : create.just:22 (`LIMIT=\"50.00\"`). « four-field cost block » : manage/mod.just:33.",
+   "l.27, étape 8 : `just sbx manage doctor`, `just sbx manage list`, `ssh exe.dev ls --json`, `just obs sessions` : tous existent. Ces commandes contactent exe.dev. « teardown ... the one phase not yet exercised » : non vérifiable ici.",
+   "l.29, étape 9 : résumé final et attente ; reprend « the four namespaces »."
+  ],
+  "deps": [
+   "Carte confirmée : les deux contradictions (quatre espaces ; `create.just` mal situé). Carte à corriger : `lance` indique `just --list sbx / adw / obs / local` ligne 11 : exact, il manque `inkwell` (même erreur que le texte).",
+   "Entrants : `README.md:35`, `TREE.md:115` (qui place `prime.md` sous `skills/`, registre n°5).",
+   "Complété : le fichier cite `cookbooks/just_command_model.md` sans chemin complet (il est sous `sssf-sandbox-orchestrator`) ; le lien de la carte vers ce fichier est bon."
+  ],
+  "vigilance": [
+   "Une feuille de lecture fausse sur le nombre d'espaces de noms et sur un chemin envoie l'agent chercher un fichier absent.",
+   "Les étapes 8 contactent exe.dev (`ssh exe.dev ls --json`) : sur un hôte sans compte, elles échouent ; sur une VM, elles n'ont pas de sens."
+  ],
+  "chez_nous": [
+   "À garder comme modèle de « feuille d'orientation » pour un agent neuf, avec nos 5 espaces de noms réels et nos chemins ; la version pour une VM ne doit pas citer exe.dev."
+  ],
+  "a_verifier": [
+   "Les chiffres mesurés cités (5 641 fichiers vides, gain de 1 s d'une image Docker) viennent de `ai_docs/` : non recontrôlés ici."
+  ]
+ },
+ ".claude/skills/sssf/cookbooks/create_adw.md": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Procédure pour composer un nouvel ADW : choisir les agents, les portes et les règles de propriété des phases, puis générer avec `make_adw.py` ou écrire à la main. Contient un squelette « canonique » complet.",
+  "points": [
+   "l.5-21, étape 1, question 1 : « The starter six » (l.9). Les rosters ont CINQ agents (planner, builder, scout, reviewer, documenter), et le tableau l.13-19 en liste cinq plus « no tester » et « any agent ». Ajouté au registre.",
+   "l.13-19, tableau : types de sortie et portes typiques. Contrôlés dans les ADW : planner = `artifacts_exist, files_non_empty` (adw_plan_build.py:34) ; builder = `diff_matches_claims` (:39) ; reviewer = `verdict_consistent` (adw_build_review.py:54). `(no tester)` : exact, aucun roster n'a de testeur.",
+   "l.21-23 : un nouvel agent exige entrée de config, prompts et type de sortie (voir update_config.md). La phrase sur la suite de tests et le relecteur est une consigne de méthode.",
+   "l.25-27, question 2 : « `quality.run_tests(run)` -> `quality.as_envelope(result, \"tests\")` ». Dans ce dépôt, `run_tests` n'existe pas : la fonction est `run_inkwell_tests` (adws/adw_modules/quality.py:198). Seul le modèle du skill (templates/.../quality.py:177) a `run_tests`. Un agent qui suit la consigne écrit un appel qui plante (cf. gotchas.md:101-103). Ajouté au registre. `changes.capture(run, ChangeCapture(base=\"main\"))` et `changes.as_envelope(...)` existent (changes.py:52, 87).",
+   "l.29-31 : boucles bornées (update_adw.md) et portes disponibles : `artifacts_exist`, `files_non_empty`, `json_parses`, `diff_matches_claims`, `tests_pass(\"cmd\")` : les cinq existent dans gates.py. `tests_pass` n'est utilisée par aucun ADW (registre C2).",
+   "l.33-40, étape 2 : règles de propriété. `owner` d'une phase `agent` = nom d'agent de la config ; la phase `request` est de type `engineer` ; noms de phase uniques ; `description` obligatoire et refusée si elle répète le nom (data_types.py:31-53 : exact) ; `retries=N` = tours de correction de portes dans la même session (exact).",
+   "l.42-48, étape 3 : `make_adw.py --name review_docs --agents scout,builder`. « Writes adws/adw_review_docs.py: one agent phase per name, chained by previous= » : exact. N'avertit pas que le fichier généré plante en fin de passage (`run.succeeded`) et qu'il manque `rich` aux dépendances (voir make_adw.py ; n°24 + registre).",
+   "l.50-100, squelette canonique : dépendances avec `rich` (l.57) comme les vrais ADW ; ADW `Plan Build` avec phase `build` en `retries=1` (l.84) alors que adws/adw_plan_build.py:36-37 n'a pas de `retries` (cf. registre C2 sur les retries) ; se termine par `run.finish()` (l.94). Le squelette de la doc et le résultat de `make_adw.py` ne sont donc pas le même programme.",
+   "l.102-114, règles non négociables : `REQUIRED_AGENTS` + `validate` (exact), type de sortie concret, `previous=`, phase `engineer` en premier, règle des quatre paramètres (data_types.py:3-5), « stay thin », commit = phase de code avec repli (l.114 : `commit_all` « raises a clear error when the cwd isn't a git repo or nothing changed » : exact, git_helper.py:45-51).",
+   "l.116-120, avant de livrer : « `uv run adws/adw_<name>.py ...` — watch it go green end to end ». Faux pour un ADW produit par `make_adw.py`. Le contrôle de la trace par `sqlite3` est correct (colonnes de `phases`)."
+  ],
+  "deps": [
+   "Lit/décrit : `adws/adw_modules/{agents,changes,data_types,gates,git_helper,quality,runner,session}.py`, `make_adw.py:45`, `adw_simple_sdlc.py:114`. Entrants : `SKILL.md:50`, `how_to_prompt_for_the_eng.md:83`, `sssf_overview.md:81`, `references/handoff.md:55`.",
+   "Carte confirmée : contradictions l.27 (`run_tests`) et l.48 (make_adw : `rich`, `run.succeeded`). Carte à corriger : `fonctions_cles` vide, ce qui est normal ; mais le fichier a un squelette de code (l.50-100) qui devrait être comparé à `adw_plan_build.py` (écarts : `retries=1`, description de la phase `commit`).",
+   "Registre n°34 / n°1 : non concernés ici."
+  ],
+  "vigilance": [
+   "L'agent qui lit ce cookbook reçoit un appel de fonction faux (`run_tests`) et un générateur cassé, sans avertissement.",
+   "Le tableau de portes laisse croire que chaque porte vérifie ce qu'elle nomme (`diff_matches_claims` ne regarde pas le diff : registre n°28)."
+  ],
+  "chez_nous": [
+   "Réécrire pour nos noms réels (`run_inkwell_tests`) ou, mieux, ne pas citer de fonction par son nom ; ajouter `writes` à la liste de ce qu'un nouvel agent doit déclarer (décision 2)."
+  ],
+  "a_verifier": [
+   "`changes.capture` écrit-il bien `context_handoff/changes.diff` (l.27) ? Non rouvert ici (voir rapport C2-C5_D)."
+  ]
+ },
+ ".claude/skills/sssf/cookbooks/create_config.md": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Explique comment obtenir `sssf.config.yaml` avec `make_config.py` et décrit un schéma réduit (defaults, observability, agents), la règle « un agent, un prompt, un but » et les vérifications après génération.",
+  "points": [
+   "l.5-11 : `make_config.py` écrit `adws/adw_sssf_config/sssf.config.yaml` « with the starter agents ... wired to the prompt files /sssf install stamped ». Exact (copie du modèle). « refuses to overwrite an existing config unless you pass --force » : exact (make_config.py:25-27).",
+   "l.13-15 : « One agent, one prompt, one purpose ». Principe de conception, non vérifiable par le code.",
+   "l.19-25, schéma, `defaults` : `coding_agent: pi # v1: pi only` (exact : agents.py:61 refuse tout autre) ; `model: google/gemini-3.6-flash` (valeur du modèle du skill et défaut du code, data_types.py:307, 327 ; Inkwell met `openrouter/deepseek/deepseek-v4-flash-0731`) ; `harness_engineering: [] # pi extension names` : le code passe chaque entrée à `pi -e` comme CHEMIN de fichier (agent_pi.py:263-264 ; la config d'Inkwell met `adws/adw_data/harness_engineering/subagents.ts`). Ajouté au registre ; `data_dir ... {data_dir}/sessions/{adw_id}/{agent_name}/` : exact (agents.py:81, runner.py:54).",
+   "l.27-29, `observability` : `poll_ms: 500 # visualizer live-poll cadence` : registre n°41 confirmé, `poll_ms` n'est lu par rien (500 ms en dur dans le visualiseur).",
+   "l.31-51, agents : `planner` et `scout` d'exemple avec `tools: [read, bash]` « optional allowlist ». Aucun exemple de `writes` ni de `protected_files`, qui sont pourtant les seuls champs qui limitent ce qu'un agent peut modifier (data_types.py:314-322). Aucun des 9 cookbooks ne mentionne la clé de config `writes` : les 5 occurrences du mot (create_adw.md:27 et :114, create_config.md:28, install.md:34, update_modules.md:30) sont le verbe « écrire ». Seul references/config.md la documente.",
+   "l.53 : « Pi's builtin tools are `read`, `bash`, `edit`, `write` — a read-only recon agent gets `[read, bash]` ». Faux sur deux points : (1) update_config.md:32 et references/config.md:110 en listent SEPT ; (2) `bash` permet d'écrire n'importe où, la limite réelle est `writes: []` appliqué par permissions.py (data_types.py:315-317, et la config d'Inkwell le dit : sssf.config.yaml:113-114, « the claim the tool list only implied, now enforced »). Ajouté au registre.",
+   "l.55-59, après génération : « agents.validate() fails the run at startup if either [prompt] is missing » : exact (agents.py:63-67). « a bad entry fails fast, before anything spawns » : vrai pour les prompts manquants et un `coding_agent` autre que pi ; faux pour une clé mal orthographiée (ignorée en silence : registre n°29/n°42) ou pour `tools` vide.",
+   "l.61 : renvoi à `references/config.md` et `update_config.md`."
+  ],
+  "deps": [
+   "Carte confirmée : contradictions l.53 (outils) et l.24 (« pi extension names »). Carte à corriger : le fichier n'indique pas que `validate` vérifie aussi que le modèle se résout (agents.py:68-71, via `pi --list-models`), ni que la clé inconnue passe.",
+   "Entrants : `SKILL.md:52`, `sssf_overview.md:83`. Sortants : `make_config.py:8`, `update_config.md:11`, `references/config.md:61`."
+  ],
+  "vigilance": [
+   "Le schéma montre `tools` comme moyen de faire un agent « en lecture seule » : un lecteur qui le suit obtient un agent qui peut écrire par `bash`.",
+   "Le modèle par défaut du schéma est celui d'un fournisseur direct (hors OpenRouter)."
+  ],
+  "chez_nous": [
+   "Réécrire le schéma avec `writes` obligatoire pour chaque agent, sans modèle par défaut (décisions 2 et 5), et expliquer que `tools` n'est pas une barrière."
+  ],
+  "a_verifier": [
+   "Liste exacte des outils intégrés de Pi 1.3.0 (quatre ou sept) : Pi n'est pas installé ici."
+  ]
+ },
+ ".claude/skills/sssf/cookbooks/install.md": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Mode d'emploi de `/sssf install` : lancer `install.py` depuis la racine du dépôt cible, ce qui est posé, ce qui se passe à la relance, la liste de contrôle après pose et un test de fumée.",
+  "points": [
+   "l.5-11 : commande `uv run .claude/skills/sssf/scripts/install.py`, « Run from the target repo root », chemin alternatif `~/.claude/skills/sssf/...` si le skill est en portée utilisateur. Le script prend bien `Path.cwd()` (install.py:66).",
+   "l.13-26, tableau « What gets stamped » : contrôlé ligne à ligne contre install.py et `git ls-files templates` : config (l.19), `.env.sample` (l.20), 12 ADW (l.21 « twelve starter ADWs » : exact), `adw_modules/` (l.22), 5 dossiers de prompts (l.23 : exact), `harness_engineering/` (l.24), `justfile` (l.25, « just demo, the workflows, the trace reads, just obs » : exact POUR LE MODÈLE, templates/justfile:29, 56, 67-80, 88). Dans Inkwell le justfile est différent : pas de `demo` (carte confirmée). Les 43 fichiers du modèle sont posés ; la liste n'oublie rien d'important.",
+   "l.28-30 : `prompt_engineering` / `harness_engineering` reflètent les deux clés de config (data_types.py:311-312) ; `subagents.ts` « wired to the planner and scout in the starter roster » : exact (templates/sssf.config.yaml:48-49, 87-88). Contredit update_config.md:68 (« starter roster ships with none »).",
+   "l.32-34, idempotence : « Re-running is safe ... skips every file that already exists ». Exact (expérience). « and reports what it skipped, so a second run doubles as a drift check » : faux, `install.py` n'affiche que le NOMBRE de fichiers sautés (install.py:88-89) et ne compare rien. Ajouté au registre. « `--force` overwrites ALL existing stamped files, including `sssf.config.yaml` and `prompt_engineering/` » : exact ; ajouter `justfile`, `.env.sample`, `harness_engineering/`, et tous les `adw_modules/` (15 fichiers d'Inkwell différents du modèle seraient perdus, sans sauvegarde).",
+   "l.36-39, liste après pose : (1) `cp .env.sample .env` puis `OPENROUTER_API_KEY` ; (2) `pi --version` et `PI_PATH` ; (3) « the config's default `gemini-3.6-flash` must be a registered id in `~/.pi/agent/models.json` ». Registre n°70 confirmé : le modèle est résolu contre `pi --list-models` (agent_pi.py:47-48, 74), pas seulement models.json. Carte à corriger : elle oppose cette phrase à la config d'Inkwell (deepseek) ; or la phrase décrit la config POSÉE par le script, dont le défaut est bien `google/gemini-3.6-flash` (templates/sssf.config.yaml:5). L'écart est avec le code (n°70) et avec notre règle OpenRouter (n°13), pas avec la config d'Inkwell.",
+   "l.41, gitignore : « install.py appends `adws/adw_data/sessions/`, `adws/adw_data/sssf.db*`, and `.env` ... all three ». Le script en ajoute CINQ : il y a aussi `__pycache__/` et `*.pyc` (install.py:23-33). Ajouté au registre.",
+   "l.42, dépôt git : « `git_helper.commit_all` ... raises if the cwd is not a git repository » : exact (git_helper.py:45-48). `adw_document.py` mesure par `git diff` contre `main` : exact (adw_document.py:72).",
+   "l.43-48, test de fumée : `just demo` (n'existe que dans le justfile du modèle) ; forme brute `uv run adws/adw_prompt.py \"reply ...\"` : l'agent par défaut est `builder` (adw_prompt.py:40), qui peut écrire dans le dépôt, alors que la phrase l.43 parle de workflows « read-only » (le `just demo` du modèle utilise `--agent scout`, templates/justfile:31).",
+   "l.50-56 : contrôle de la trace par `sqlite3 adws/adw_data/sssf.db ...` : colonnes `adw_id, status, started_at` de `sessions` : exactes."
+  ],
+  "deps": [
+   "Décrit `scripts/install.py` (lignes 8, 11, 15, 34, 41), `templates/*`, `.gitignore`, `~/.pi/agent/models.json`. Entrants : `SKILL.md:49`, `sssf_overview.md:80`, `ai_docs/exedev_sandbox_mounting.md:237`, `app_docs/306a0046_prevent-overwriting-specs-docs.md:7`.",
+   "Carte à corriger : la contradiction `install.md:25` / `justfile:50` est juste ; mais la contradiction `install.md:40` / `templates/sssf.config.yaml:5` est mal posée (voir le point l.36-39).",
+   "Ce cookbook n'est pas `.claude/commands/install.md`, qui est une autre procédure (mise en route d'Inkwell) ; les deux se nomment `install`."
+  ],
+  "vigilance": [
+   "Le cookbook présente `--force` comme le moyen de « rafraîchir » : dans ce dépôt, cela détruirait les adaptations d'Inkwell.",
+   "La promesse de « drift check » donne une fausse assurance : un fichier modifié et un fichier à jour sont rapportés pareil."
+  ],
+  "chez_nous": [
+   "Si on garde une procédure d'installation : liste des fichiers sautés avec état (identique, différent), sauvegarde avant écrasement, et ne pas appeler « test de fumée » un `adw_prompt` avec le builder."
+  ],
+  "a_verifier": [
+   "Résolution du modèle par Pi 1.3.0 (`pi --list-models`) : Pi absent."
+  ]
+ },
+ ".claude/skills/sssf/cookbooks/run_adw.md": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Procédure pour lancer un ADW et le suivre sans jamais faire le travail : lire `how_to_prompt_for_the_eng.md`, choisir la chaîne et le roster, observer la base de traces, traiter un run bloqué, rendre compte.",
+  "points": [
+   "l.5-7, étape 0 : renvoie à `how_to_prompt_for_the_eng.md` (existe). l.9-11 : posture « tu lances et tu observes, tu ne répares pas ».",
+   "l.13-22, lancement : `uv run adws/<chain>.py \"...\" [--adw-id ID] [--config CHEMIN]` ; « Launch in the background so you can poll » (l.24) ; l'`adw_id` est affiché au démarrage (session.py:49, `console.session_started`).",
+   "l.26-44, `just rosters` (l.31) : n'existe pas à la racine d'Inkwell ; c'est `just obs rosters` (just/obs.just:18). Registre n°34 confirmé. Le modèle du skill n'a pas non plus `rosters` ni `kill` (templates/justfile:5). L'exemple de sortie (l.36-42) montre des fournisseurs directs (`fireworks/...`, `google/...`, `anthropic/claude-opus-5`) alors que nos rosters sont `openrouter/...` ; la forme correspond au `awk` d'obs.just (expérience : même résultat que `yaml.safe_load` sur les 5 YAML).",
+   "l.46-60, choix du roster : « Each config's header comment lists the names it answers to, so `head -3` settles it » : exact pour les 4 rosters nommés (ligne 2 « Known as: ... »), pas pour le roster par défaut. `SSSF_CONFIG=... just <recipe>` (l.59) : `<recipe>` doit être `adw <x>` chez Inkwell (adws.just:11).",
+   "l.62-67, pièges : « Switching rosters mid-session breaks resumption ... agent_map.json records the model » : exact (agents.py:233-238). `--adw-id` « optional on every ADW » : les 12 ADW ont `--adw-id` (12 `add_argument(\"--adw-id\"...)`).",
+   "l.69-100, observer : requêtes `sqlite3` sur `phases`, `events`, `gate_results (attempt, gate, passed, checks_json)`, `sessions`, `events type='tool_call'` : colonnes toutes présentes dans tracer.py:38-69. « every line it prints is written to the db as a `log` event » : exact (console.py, rapport C1).",
+   "l.102, « Files are the raw record » : registre n°69 confirmé. Sur une VM, `raw_output.jsonl`, `envelope.json`, `prompts/` disparaissent avec elle (teardown ne rapporte que specs, app_docs, `sssf.db`, `run.log` : teardown.just:109).",
+   "l.104-116, run bloqué : `just phases`, `just procs`, `just kill` (l.109-111) : à la racine ces recettes n'existent pas ; elles sont dans `obs` (obs.just:39, 47, 53). Registre n°34 confirmé. l.114 : « `just kill` verifies each pid still matches the command that was recorded before signalling » : registre n°72 confirmé (obs.just:56, 62-63 : motifs fixes, pas la commande enregistrée). l.116 : « A killed run marks itself `fail` and closes its process rows » : exact pour un `kill` de l'ADW (session.py:30-32) ; l'agent Pi, lui, n'est pas arrêté par ce gestionnaire (registre C2-C5_D, signaux).",
+   "l.118-120, rapport : « every phase defaults to `fail` » : exact (data_types.py:63, runner.py:89).",
+   "l.122 : « the visualizer app ... (`just obs`, or tmux sessions viz-api :4600 + viz-ui :4601) ». Chez Inkwell `just obs` ne lance rien : il liste le module (obs.just:10-12) ; le visualiseur se lance par `just obs ui` (obs.just:71-73). Aucune session tmux `viz-api` / `viz-ui` n'est créée nulle part (`git grep viz-api` : cette seule ligne ; déjà au registre du lot 3). Ports 4600 / 4601 : exacts (server/index.ts:18, vite.config.ts). La partie `just obs` est ajoutée au registre de ce lot."
+  ],
+  "deps": [
+   "Carte confirmée sur l'unique contradiction (l.31 : recettes à la racine). Carte à compléter : l.109-111 (`phases`, `procs`, `kill`), l.114 (n°72) et l.122 (`just obs`, tmux).",
+   "Sortants : `how_to_prompt_for_the_eng.md:7`, `references/observability.md:98`, `just/obs.just`, `agents.py:65`, `adws/adw_sssf_config/*.yaml`. Entrants : `SKILL.md:55`, `how_to_prompt_for_the_eng.md:92`, `sssf_overview.md:86`."
+  ],
+  "vigilance": [
+   "Un orchestrateur qui suit ce cookbook écrit `just kill` / `just phases` et obtient « Justfile does not contain recipe » ; il peut alors tenter `kill -9` à la main.",
+   "Toute l'observation décrite repose sur `sssf.db` et sur des fichiers qui disparaissent avec la VM."
+  ],
+  "chez_nous": [
+   "Remplacer par nos vraies commandes (`just obs phases ID`, etc.) et par une copie rapatriée de la trace et des prompts avant `teardown` (décision 3)."
+  ],
+  "a_verifier": [
+   "Si `just` accepte `just kill` comme alias vers un module (non : aucune recette de ce nom ; just absent pour l'essayer)."
+  ]
+ },
+ ".claude/skills/sssf/cookbooks/update_adw.md": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Explique comment modifier un ADW existant : ajouter ou retirer une phase, ajouter des portes, ajouter une boucle de correction bornée, et la différence entre les trois sortes de nouvelle tentative.",
+  "points": [
+   "l.5-15, ajouter une phase : si la phase nomme un agent absent de `REQUIRED_AGENTS`, l'ajouter, « otherwise validation passes and the run dies mid-flight » : cohérent avec agents.py:52-76 (valide seulement les noms passés ; N3_lot1 : `adw_quality.py` passe une liste vide).",
+   "l.17 : `description` obligatoire et refusée si elle répète le nom : exact (data_types.py:31-53).",
+   "l.19-28, phase de commit : `commit_message or f\"sssf({run.adw_id}): {build.summary}\"` : identique à adw_plan_build.py:43. « `commit_all` raises if the cwd is not a git repo or nothing changed » : exact (git_helper.py:45-51). « `adw_simple_sdlc.py` commits each product with its own author's message » : exact (3 commits).",
+   "l.30-32 : retirer une phase : consigne de méthode.",
+   "l.34-45, portes : `gate(envelope, run) -> GateReport` (exact, gates.py:3 ; mais data_types.py:294 et SKILL.md:65 disent encore `list[str]`, registre n°50). « the harness does not restart the agent — it sends the violation list back into the same session, bounded by that phase's retries » : exact (agents.py:152-172, 233-238). « Every gate result is traced to `gate_results` » : exact. l.45 « declared artifacts exist and are non-empty, declared JSON parses, declared changes appear in the diff, declared test commands pass » : `artifacts_exist` ne vérifie pas le contenu (c'est `files_non_empty`), `diff_matches_claims` ne regarde pas le diff (registre n°28), `tests_pass` n'est appelée par aucun ADW.",
+   "l.47-72, boucle de correction : modèle `adw_build_test.py` (MAX_FIX_LOOPS = 3, l.29 ; `retries=1` sur `fix_i`, l.62 : exact). l.58 `quality.run_tests(run)` : n'existe pas dans le `quality.py` d'Inkwell (fonction `run_inkwell_tests`, adw_build_test.py:56). Ajouté au registre avec create_adw.md:27. l.70-71 : `run.finish(accepted=test is not None and test.passed, reason=...)` : identique à adw_build_test.py:69-70.",
+   "l.74-78 : explication de `finish(accepted=)` : exacte (runner.py:114-142).",
+   "l.80 : « the stamped blocks are `echo` placeholders that announce themselves » : vrai pour le modèle (templates quality.py `_placeholder`), faux pour Inkwell, dont `quality.py` a de vraies commandes (`bun x oxlint`, `bun build`, `bun test`). Les placeholders RÉUSSISSENT (`echo` rend 0) : « announce themselves » signifie que le texte s'affiche, pas que l'étape échoue.",
+   "l.82-86, trois distinctions : `JSON_FIX_ATTEMPTS` « (2 by default) » : exact (agents.py:24). « Code-phase re-execution is not implemented in v1 » : exact (runner.py). « A failing suite does not fail that phase; it fails the run » : exact (runner.py:114-142).",
+   "l.88-90 : « keep scripts thin » : consigne."
+  ],
+  "deps": [
+   "Carte confirmée : contradiction l.58 / l.80 (`run_tests`, placeholders). Sortants : `update_modules.md:45`, `adw_build_test.py`, `agents.py:84`, `gates.py:45`, `git_helper.py:25`, `quality.py:80`. Entrants : `SKILL.md:51`, `create_adw.md:29`, `sssf_overview.md:82`.",
+   "Carte à compléter : l.45 (portes qui ne vérifient pas ce que la doc leur prête)."
+  ],
+  "vigilance": [
+   "L'appel `quality.run_tests` copié depuis cette doc plante en fin de chaîne, après avoir payé planner et builder (gotchas.md:101-103 : environ 0,96 $ perdus).",
+   "Les `echo` du modèle laissent passer toute la chaîne sans tester."
+  ],
+  "chez_nous": [
+   "Adapter les exemples à nos noms réels ; ajouter qu'une porte qui ne renvoie pas un `GateReport` est refusée (décision à prendre sur l'écart n°50)."
+  ],
+  "a_verifier": [
+   "Rien de plus : doc courte, confrontée au code d'Inkwell."
+  ]
+ },
+ ".claude/skills/sssf/cookbooks/update_config.md": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Explique comment retoucher le roster de `sssf.config.yaml` : modèle et niveau de réflexion, couleur, outils, extensions du harnais, ajout d'un agent en trois étapes.",
+  "points": [
+   "l.5-17, modèle et réflexion : écrire le modèle `provider/model-id` ; « an ambiguous pattern raises in `agents.validate()` » (l.15). `validate` appelle `agent_pi.resolve_model` (agents.py:68-71), qui peut accepter un motif par sous-chaîne chez un autre fournisseur (registre n°67). Niveaux de réflexion `off|minimal|low|medium|high|xhigh|max` : exact (data_types.py:308), mais le champ est un texte libre non contrôlé (n°43). l.17 : « only bites when the model is registered with reasoning: true in ~/.pi/agent/models.json » : dépend de Pi (à vérifier).",
+   "l.19 : « A model change means a fresh session. agent_map.json records the model ... » : exact (agents.py:233-238).",
+   "l.21-27, couleur : « the starter roster ships violet/cyan/amber/green » (l.25). Les couleurs du roster sont violet (#a78bfa), cyan (#22d3ee), ambre (#fbbf24), rose (#fb7185), fuchsia (#e879f9) : pas de vert (sssf.config.yaml:43, 65, 82, 109, 126). Ajouté au registre.",
+   "l.29-60, outils : « Pi's seven builtins » (l.32) contredit create_config.md:53 (quatre). « An empty list is not 'all tools'; it is a tool-less agent, and it will stall » (l.51) : registre n°39 étendu à ce fichier. Le code n'ajoute `--tools` que si la liste n'est pas vide (agent_pi.py:261-262) : `tools: []` donne les outils par défaut de Pi, pas aucun outil. l.56 : « withholding `edit` makes that structural instead of merely prompted » : faux, `bash` et `write` restent (la config d'Inkwell le sait : sssf.config.yaml:112-116, `writes: []` fait le travail). Ajouté au registre avec create_config.md:53.",
+   "l.59 : « Extension tools count against the allowlist ... the tool is just never offered » : comportement de Pi, non vérifiable ici ; la config du modèle suit la règle (templates/sssf.config.yaml:10).",
+   "l.61-70, extensions : « Entries are pi extension file paths, passed through as `pi -e <path>`, applied to that agent only » (exact, agent_pi.py:263-264 ; registre n°68 : pas de `--no-extensions`). « The starter roster ships with none » (l.68) : faux. Le roster livré, comme celui d'Inkwell, met `subagents.ts` sur le planner et le scout (templates/sssf.config.yaml:48-49, 87-88 ; adws/adw_sssf_config/sssf.config.yaml aux mêmes lignes) ; cookbooks/install.md:30 le dit. Ajouté au registre.",
+   "l.87-97, nouvel agent : trois étapes (prompts, entrée de config, type de sortie). « skipping any one fails agents.validate() at ADW startup » (l.89) : `validate` contrôle les prompts, `coding_agent` et la résolution du modèle, PAS l'existence d'un type de sortie (c'est du code Python) ; il ne contrôle pas non plus `writes`. Les marqueurs de gabarit `{{prompt}}`, `{{previous_envelope}}`, `{{context_handoff_dir}}` (l.91) correspondent à prompts.py. Rien n'impose `writes` : un agent ajouté ainsi peut tout modifier hors fichiers protégés (registre n°29/n°42).",
+   "l.97-103, règles : « ADW scripts name agents, never models » : respecté par les ADW du dépôt."
+  ],
+  "deps": [
+   "Carte confirmée : contradictions l.68 (extensions) et l.26 (couleurs ; la ligne exacte est l.25 dans le fichier). Carte à compléter : l.32 (sept outils), l.51 (liste vide, n°39), l.56 (« structural »).",
+   "Sortants : `references/config.md:15`, `update_modules.md:93`, `agent_map.json`, `~/.pi/agent/models.json`. Entrants : `SKILL.md:53`, `create_adw.md:21`, `create_config.md:11`, `sssf_overview.md:84`.",
+   "Registre n°70 (models.json) : pas dans ce fichier à la ligne que cite le registre n°68 (update_config.md:68) ; cette ligne dit « ships with none »."
+  ],
+  "vigilance": [
+   "Le lecteur apprend que retirer `edit` rend un agent en lecture seule et que `tools: []` rend un agent sans outils : les deux sont faux dans le code.",
+   "Rien ici n'impose `writes`."
+  ],
+  "chez_nous": [
+   "Réécrire avec `writes` d'abord, `tools` comme confort ; refuser `tools: []` au chargement (décision 2)."
+  ],
+  "a_verifier": [
+   "Ce que Pi 1.3.0 fait de `--tools` avec un nom inconnu ou une extension qui enregistre un outil, et la liste des outils intégrés (quatre ou sept).",
+   "Le niveau de réflexion `max` est-il accepté par Pi 1.3.0 ?"
+  ]
+ },
+ ".claude/skills/sssf/cookbooks/update_modules.md": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Explique comment étendre `adws/adw_modules/` : un tableau du rôle de chaque module, la règle « jamais de `print()` », la règle des quatre paramètres, l'ajout d'un type de sortie (la « triade synchronisée ») et l'ajout d'une porte.",
+  "points": [
+   "l.5-7 : toute la logique de bas niveau va dans `adw_modules/`, les `adw_*.py` restent minces. Consigne.",
+   "l.11-26, tableau des modules : `data_types.py` (exact) ; `agents.py` : « load_config, validate, resolving an entry » (l.14) : registre n°52 confirmé, `agents.py` porte aussi `execute` (agents.py:78-221 : lancement de Pi, relances, portes, contrôle des droits, persistance) ; `agent_pi.py` « model resolved against ~/.pi/agent/models.json » (l.16) : registre n°70 confirmé, c'est `pi --list-models` (agent_pi.py:47-48, 74) ; `session.py` « maintain agent_map.json, create session dirs » (l.21) : registre n°52 confirmé, `agent_map.json` est lu et écrit par `runner.py:56-63` ; `agent_cc.py` stub (exact) ; `changes.py` (exact) ; `tracer.py` (JSONL et `sssf.db` : exact) ; `git_helper.py` (exact) ; `permissions.py` (qui décide de ce qu'un agent peut modifier) et `quality.py` sont ABSENTS du tableau.",
+   "l.23-24 : `console.py` est listé DEUX fois avec deux descriptions (« plain sequential lines, no spinners » puis « the rich stdout reporter »). Carte confirmée ; le module importe `rich` (console.py:11-14). Ajouté au registre.",
+   "l.26 : `utils.py` = « safe subprocess env, logging, resolve_prompt ». `operator_env` renvoie une copie COMPLÈTE de `os.environ` dont seule `VIRTUAL_ENV` est retirée (utils.py:31-38) : il n'y a rien de « safe » ; et `.env` y est chargé dès l'import (utils.py:13). Ajouté au registre.",
+   "l.28-30, « Never print() » : « Each console method prints a rich line and writes it to sssf.db as a `log` event with payload `{message, level}` » : cohérent avec console.py (rapport C1).",
+   "l.32-44, quatre paramètres : règle de conception (data_types.py:3-5). L'exemple `ReviewParams` est illustratif.",
+   "l.46-62, type de sortie et « synced triad » : le type, le `## Report` du `user.md`, les `output_type=` des appels. Cohérent avec les prompts (`ReviewOutput`, etc.). L'exemple `ReviewOutput(approved: bool, blocking: list[str] = [])` (l.51-54) est plus court que la vraie classe (data_types.py:115-120 : `approved` a un défaut, il y a `findings`).",
+   "l.64-84, porte : `gate(envelope, run) -> GateReport`, `report.check(item, ok, note)` : exact (data_types.py:264-282). L'exemple `tests_declared_passed` (l.71-79) lit `envelope.failures` avec `f.test` et `f.error` : le seul type qui a `failures` et `passed` est `VerifyOutput`, dont `failures` est une liste de TEXTES (data_types.py:246-247) ; l'exemple supposerait un type qui n'existe pas.",
+   "l.86-96, règles des portes : enregistrer sans lever, tout vérifier, notes sur les contrôles réussis : cohérent avec `GateReport`. l.94 : « A gate that returns a plain list[str] of violations still works » : exact (agents.py:226-230), avec le piège du retour `None` qui PASSE (registre n°50).",
+   "l.98-100, avant de finir : « Run the smoke ADW — `uv run adws/adw_prompt.py \"ping\"` » : l'ADW existe ; agent par défaut `builder`, qui peut écrire dans le dépôt, et appelle un modèle payant."
+  ],
+  "deps": [
+   "Carte confirmée : doublon `console.py` (l.23-24). Registre n°52 et n°70 confirmés avec preuves ci-dessus. Carte à compléter : l.26 (`utils.py` « safe » faux).",
+   "Sortants : tous les modules cités (carte confirmée), `references/handoff.md:62` ; la ligne 100 du cookbook cite `adws/adw_prompt.py`. Entrants : `SKILL.md:54`, `create_adw.md:113`, `sssf_overview.md:85`, `update_adw.md:45`, `update_config.md:93`, `handoff.md:63`."
+  ],
+  "vigilance": [
+   "L'agent ou l'humain qui modifie la boucle de contrôle lit « agents.py = load_config, validate, resolve » et cherche au mauvais endroit (n°52).",
+   "Lire « safe subprocess env » fait croire que Pi et les commandes de qualité ne reçoivent pas les clés : ils les reçoivent toutes."
+  ],
+  "chez_nous": [
+   "Réécrire le tableau d'après le code réel : `agents.py` = toute la boucle, `permissions.py` ajouté, `utils.operator_env` = copie complète (à remplacer par la liste fixe, décision 1)."
+  ],
+  "a_verifier": [
+   "Rien de plus : toutes les affirmations contrôlables l'ont été dans le code d'Inkwell."
+  ]
+ }
+}

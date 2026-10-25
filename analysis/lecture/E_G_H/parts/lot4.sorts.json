@@ -1,0 +1,97 @@
+[
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue",
+  "fate": "adapter",
+  "reason": "Le rendu est sûr (cinq v-html, tous échappés, prouvé par expérience), mais les prompts sont rangés par agent et non par phase, les événements quality sont mal présentés et rien ne masque les secrets."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue",
+  "fate": "adapter",
+  "reason": "Bonne cascade, mais le sondage de 500 ms ne s'arrête jamais, des événements ou des portes peuvent manquer après une erreur réseau, et la couleur d'agent n'est pas validée."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/lib/markdown.ts",
+  "fate": "adapter",
+  "reason": "Aucune injection trouvée (40 cas piégés, 250 000 cas aléatoires, analyseur Python et non navigateur), mais le texte de la ligne qui ouvre un bloc de code disparaît et le motif des liens est quadratique, déclenché dès le chargement des prompts."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/lib/highlight.ts",
+  "fate": "garder",
+  "reason": "Échappe tout avant d'ajouter ses balises (vérifié) ; seul le motif quadratique sur une chaîne jamais fermée est à surveiller en cas de prompt hostile."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/lib/api.ts",
+  "fate": "garder",
+  "reason": "Aucune adresse externe, identifiants encodés ; seul `fetchHealth` est mort et le POST d'archivage n'a pas de jeton (affaire du serveur)."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts",
+  "fate": "adapter",
+  "reason": "Utile et sans HTML, mais `agentColor` laisse passer la chaîne vide et plusieurs types (log, gate_pass, phase_*) n'ont pas de couleur."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/App.vue",
+  "fate": "garder",
+  "reason": "Simple habillage et choix de la page ; le mot « live » est fixe mais sans conséquence."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue",
+  "fate": "adapter",
+  "reason": "Chaque carte recharge tout l'historique de sa session au montage et sonde à 500 ms tant que le run est en cours ; la perte d'événements après erreur et la couleur brute sont à corriger."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue",
+  "fate": "adapter",
+  "reason": "Sondage de 500 ms codé en dur qui ne s'arrête jamais (n°41) et plafond silencieux de 200 sessions."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/components/DetailSection.vue",
+  "fate": "garder",
+  "reason": "Section repliable de 76 lignes, sans risque."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/components/PhaseDots.vue",
+  "fate": "garder",
+  "reason": "Petit affichage de symboles, sans risque."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/components/StatChip.vue",
+  "fate": "adapter",
+  "reason": "Les aides « Read » et « Written » (l.32-38) promettent un compte exact alors que les chiffres sous-comptent les phases en échec (seuls les `agent_end` sont sommés)."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/components/StatusChip.vue",
+  "fate": "garder",
+  "reason": "Pastille d'état simple ; le texte est échappé."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/lib/format.ts",
+  "fate": "adapter",
+  "reason": "`axisTicks` n'a pas de borne et les arrondis de `fmtTokens` et `fmtDuration` sont faux aux seuils ; `prettyJson` est mort."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/lib/models.ts",
+  "fate": "garder",
+  "reason": "Seulement six icônes, aucun prix ni modèle en dur ; penser à afficher le fournisseur réel."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/lib/router.ts",
+  "fate": "adapter",
+  "reason": "Routeur par hash correct, mais un `%` mal formé dans l'adresse fait planter le chargement."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/lib/types.ts",
+  "fate": "garder",
+  "reason": "Simple ré-export de types, aucun code exécuté."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/main.ts",
+  "fate": "garder",
+  "reason": "Sept lignes, aucune requête externe dans le code ; la police est locale (à confirmer après installation)."
+ },
+ {
+  "p": ".claude/skills/sssf/apps/visualizer/src/style.css",
+  "fate": "garder",
+  "reason": "Aucune requête, aucun import ; les classes `.j-*` et `.md` servent aux v-html contrôlés."
+ }
+]

@@ -1,0 +1,1106 @@
+[
+ {
+  "chemin": "adws/adw_data/prompt_engineering/builder/system.md",
+  "fiche_carte": {
+   "chemin": "adws/adw_data/prompt_engineering/builder/system.md",
+   "type": "prompt",
+   "langage": "markdown",
+   "lignes": 14,
+   "role": "Prompt systeme du builder : implementer le plan, plus petit changement, verifier par code de sortie, scratch vers /tmp. Aucune variable {{}} ; les chemins ne sont pas substitues.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Comportement du seul agent a ecriture libre dans le depot."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": "adws/adw_data/prompt_engineering/builder/system.md:14",
+     "code": "adws/adw_modules/permissions.py:144",
+     "resume": "'Toute ecriture hors portee est annulee' : les chemins sous adws/adw_data/ (donc ces prompts) sont toujours permis et jamais annules."
+    }
+   ]
+  },
+  "liens_sortants": [],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/templates/prompt_engineering/builder/system.md",
+    "vers": "adws/adw_data/prompt_engineering/builder/system.md",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/prompt_engineering/builder/system.md:1",
+    "confiance": "haute",
+    "note": "different : +0 -1 lignes"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/builder/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.config.yaml:68",
+    "ligne_cle": 68,
+    "confiance": "haute",
+    "note": "agents.builder.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/builder/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:76",
+    "ligne_cle": 76,
+    "confiance": "haute",
+    "note": "agents.builder.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/builder/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:65",
+    "ligne_cle": 65,
+    "confiance": "haute",
+    "note": "agents.builder.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/builder/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:77",
+    "ligne_cle": 77,
+    "confiance": "haute",
+    "note": "agents.builder.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/builder/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:77",
+    "ligne_cle": 77,
+    "confiance": "haute",
+    "note": "agents.builder.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "specs/scaffold.md",
+    "vers": "adws/adw_data/prompt_engineering/builder/system.md",
+    "type": "decrit",
+    "preuve": "specs/scaffold.md:154",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "adws/adw_data/prompt_engineering/builder/user.md",
+  "fiche_carte": {
+   "chemin": "adws/adw_data/prompt_engineering/builder/user.md",
+   "type": "prompt",
+   "langage": "markdown",
+   "lignes": 34,
+   "role": "Gabarit de tache du builder. Variables attendues : {{prompt}}, {{previous_envelope}}, {{context_handoff_dir}}. Demande un JSON BuildOutput (status, summary, changed_files, artifacts, commit_message, notes_for_next_agent).",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Schema de rapport du builder (commit_message devient le message du commit)."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [
+    {
+     "cle": "{{prompt}}",
+     "ligne": 7
+    },
+    {
+     "cle": "{{previous_envelope}}",
+     "ligne": 11
+    },
+    {
+     "cle": "{{context_handoff_dir}}",
+     "ligne": 15
+    }
+   ],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": "adws/adw_data/prompt_engineering/builder/user.md",
+    "vers": "adws/adw_modules/data_types.py",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/builder/user.md:23",
+    "confiance": "haute",
+    "note": "BuildOutput"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/templates/prompt_engineering/builder/user.md",
+    "vers": "adws/adw_data/prompt_engineering/builder/user.md",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/prompt_engineering/builder/user.md:1",
+    "confiance": "haute",
+    "note": "identique (git diff --no-index --quiet)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/builder/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.config.yaml:69",
+    "ligne_cle": 69,
+    "confiance": "haute",
+    "note": "agents.builder.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/builder/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:77",
+    "ligne_cle": 77,
+    "confiance": "haute",
+    "note": "agents.builder.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/builder/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:66",
+    "ligne_cle": 66,
+    "confiance": "haute",
+    "note": "agents.builder.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/builder/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:78",
+    "ligne_cle": 78,
+    "confiance": "haute",
+    "note": "agents.builder.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/builder/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:78",
+    "ligne_cle": 78,
+    "confiance": "haute",
+    "note": "agents.builder.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "specs/scaffold.md",
+    "vers": "adws/adw_data/prompt_engineering/builder/user.md",
+    "type": "decrit",
+    "preuve": "specs/scaffold.md:155",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "adws/adw_data/prompt_engineering/planner/system.md",
+  "fiche_carte": {
+   "chemin": "adws/adw_data/prompt_engineering/planner/system.md",
+   "type": "prompt",
+   "langage": "markdown",
+   "lignes": 22,
+   "role": "Prompt systeme du planner : plan concret ecrit dans <context_handoff_dir>/plan.md et copie sous specs/, ne rien implementer ; section Subagents (fan-out de reconnaissance, attendre tous les rapports avant d'ecrire). Aucune variable {{}} : <context_handoff_dir> n'est pas substitue ici.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Forme du plan lu par le builder et le reviewer ; usage des sous-agents."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": "adws/adw_data/prompt_engineering/planner/system.md",
+    "vers": "adws/adw_data/harness_engineering/subagents.ts",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/planner/system.md:20",
+    "confiance": "haute",
+    "note": "cite les outils subagent_create/_continue/_list/_remove"
+   },
+   {
+    "de": "adws/adw_data/prompt_engineering/planner/system.md",
+    "vers": "specs/*.md",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/planner/system.md:10",
+    "confiance": "haute",
+    "motif": true
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/references/config.md",
+    "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/config.md:30",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/templates/prompt_engineering/planner/system.md",
+    "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/prompt_engineering/planner/system.md:1",
+    "confiance": "haute",
+    "note": "different : +0 -1 lignes"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.config.yaml:46",
+    "ligne_cle": 46,
+    "confiance": "haute",
+    "note": "agents.planner.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:54",
+    "ligne_cle": 54,
+    "confiance": "haute",
+    "note": "agents.planner.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:43",
+    "ligne_cle": 43,
+    "confiance": "haute",
+    "note": "agents.planner.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:54",
+    "ligne_cle": 54,
+    "confiance": "haute",
+    "note": "agents.planner.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:54",
+    "ligne_cle": 54,
+    "confiance": "haute",
+    "note": "agents.planner.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "app_docs/306a0046_prevent-overwriting-specs-docs.md",
+    "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+    "type": "decrit",
+    "preuve": "app_docs/306a0046_prevent-overwriting-specs-docs.md:12",
+    "confiance": "haute"
+   },
+   {
+    "de": "specs/scaffold.md",
+    "vers": "adws/adw_data/prompt_engineering/planner/system.md",
+    "type": "decrit",
+    "preuve": "specs/scaffold.md:148",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "adws/adw_data/prompt_engineering/planner/user.md",
+  "fiche_carte": {
+   "chemin": "adws/adw_data/prompt_engineering/planner/user.md",
+   "type": "prompt",
+   "langage": "markdown",
+   "lignes": 45,
+   "role": "Gabarit de tache du planner. Variables : {{prompt}}, {{previous_envelope}}, {{context_handoff_dir}}. Ecrit plan.md, copie vers specs/<adw_id>_<slug>.md (jamais d'ecrasement), rapport PlanOutput.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Nommage des specs et schema PlanOutput (commit_message = message du commit_plan)."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [
+    {
+     "cle": "{{prompt}}",
+     "ligne": 7
+    },
+    {
+     "cle": "{{previous_envelope}}",
+     "ligne": 11
+    },
+    {
+     "cle": "{{context_handoff_dir}}",
+     "ligne": 15
+    }
+   ],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": "adws/adw_data/prompt_engineering/planner/user.md",
+    "vers": "adws/adw_data/sessions/<adw_id>/context_handoff/plan.md",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/planner/user.md:21",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   },
+   {
+    "de": "adws/adw_data/prompt_engineering/planner/user.md",
+    "vers": "adws/adw_modules/data_types.py",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/planner/user.md:33",
+    "confiance": "haute",
+    "note": "PlanOutput"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/references/config.md",
+    "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/config.md:31",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/templates/prompt_engineering/planner/user.md",
+    "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/prompt_engineering/planner/user.md:1",
+    "confiance": "haute",
+    "note": "identique (git diff --no-index --quiet)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.config.yaml:47",
+    "ligne_cle": 47,
+    "confiance": "haute",
+    "note": "agents.planner.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:55",
+    "ligne_cle": 55,
+    "confiance": "haute",
+    "note": "agents.planner.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:44",
+    "ligne_cle": 44,
+    "confiance": "haute",
+    "note": "agents.planner.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:55",
+    "ligne_cle": 55,
+    "confiance": "haute",
+    "note": "agents.planner.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:55",
+    "ligne_cle": 55,
+    "confiance": "haute",
+    "note": "agents.planner.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "app_docs/306a0046_prevent-overwriting-specs-docs.md",
+    "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+    "type": "decrit",
+    "preuve": "app_docs/306a0046_prevent-overwriting-specs-docs.md:14",
+    "confiance": "haute"
+   },
+   {
+    "de": "specs/scaffold.md",
+    "vers": "adws/adw_data/prompt_engineering/planner/user.md",
+    "type": "decrit",
+    "preuve": "specs/scaffold.md:149",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "adws/adw_data/prompt_engineering/reviewer/system.md",
+  "fiche_carte": {
+   "chemin": "adws/adw_data/prompt_engineering/reviewer/system.md",
+   "type": "prompt",
+   "langage": "markdown",
+   "lignes": 17,
+   "role": "Prompt systeme du reviewer : la spec est <context_handoff_dir>/plan.md sinon le prompt ; juger le code sur disque, ne rien modifier, approved vrai seulement si tout est satisfait. Aucune variable {{}}.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Critere d'approbation qui decide si le run est accepte et si le code est commit."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": "adws/adw_data/prompt_engineering/reviewer/system.md",
+    "vers": "adws/adw_data/sessions/<adw_id>/context_handoff/plan.md",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/reviewer/system.md:9",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/templates/prompt_engineering/reviewer/system.md",
+    "vers": "adws/adw_data/prompt_engineering/reviewer/system.md",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/prompt_engineering/reviewer/system.md:1",
+    "confiance": "haute",
+    "note": "different : +0 -1 lignes"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/reviewer/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.config.yaml:112",
+    "ligne_cle": 112,
+    "confiance": "haute",
+    "note": "agents.reviewer.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/reviewer/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:118",
+    "ligne_cle": 118,
+    "confiance": "haute",
+    "note": "agents.reviewer.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/reviewer/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:107",
+    "ligne_cle": 107,
+    "confiance": "haute",
+    "note": "agents.reviewer.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/reviewer/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:121",
+    "ligne_cle": 121,
+    "confiance": "haute",
+    "note": "agents.reviewer.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/reviewer/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:121",
+    "ligne_cle": 121,
+    "confiance": "haute",
+    "note": "agents.reviewer.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "adws/adw_data/prompt_engineering/reviewer/user.md",
+  "fiche_carte": {
+   "chemin": "adws/adw_data/prompt_engineering/reviewer/user.md",
+   "type": "prompt",
+   "langage": "markdown",
+   "lignes": 44,
+   "role": "Gabarit de tache du reviewer. Variables : {{prompt}}, {{previous_envelope}}, {{context_handoff_dir}}. Ecrit review.md, rapport ReviewOutput (approved, findings, blocking).",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Schema ReviewOutput controle par la gate verdict_consistent."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [
+    {
+     "cle": "{{prompt}}",
+     "ligne": 7
+    },
+    {
+     "cle": "{{previous_envelope}}",
+     "ligne": 11
+    },
+    {
+     "cle": "{{context_handoff_dir}}",
+     "ligne": 15
+    }
+   ],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": "adws/adw_data/prompt_engineering/reviewer/user.md",
+    "vers": "adws/adw_data/sessions/<adw_id>/context_handoff/review.md",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/reviewer/user.md:24",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   },
+   {
+    "de": "adws/adw_data/prompt_engineering/reviewer/user.md",
+    "vers": "adws/adw_modules/data_types.py",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/reviewer/user.md:28",
+    "confiance": "haute",
+    "note": "ReviewOutput"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/templates/prompt_engineering/reviewer/user.md",
+    "vers": "adws/adw_data/prompt_engineering/reviewer/user.md",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/prompt_engineering/reviewer/user.md:1",
+    "confiance": "haute",
+    "note": "identique (git diff --no-index --quiet)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/reviewer/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.config.yaml:113",
+    "ligne_cle": 113,
+    "confiance": "haute",
+    "note": "agents.reviewer.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/reviewer/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:119",
+    "ligne_cle": 119,
+    "confiance": "haute",
+    "note": "agents.reviewer.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/reviewer/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:108",
+    "ligne_cle": 108,
+    "confiance": "haute",
+    "note": "agents.reviewer.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/reviewer/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:122",
+    "ligne_cle": 122,
+    "confiance": "haute",
+    "note": "agents.reviewer.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/reviewer/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:122",
+    "ligne_cle": 122,
+    "confiance": "haute",
+    "note": "agents.reviewer.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "adws/adw_data/prompt_engineering/scout/system.md",
+  "fiche_carte": {
+   "chemin": "adws/adw_data/prompt_engineering/scout/system.md",
+   "type": "prompt",
+   "langage": "markdown",
+   "lignes": 21,
+   "role": "Prompt systeme du scout : lecture seule, citer des chemins, ecrire scout_findings.md dans <context_handoff_dir>; section Subagents (lecture seule, attendre les rapports). Aucune variable {{}}.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Cadre la reconnaissance ; la lecture seule des sous-agents n'est qu'une consigne."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": "adws/adw_data/prompt_engineering/scout/system.md:19",
+     "code": "adws/adw_data/harness_engineering/subagents.ts:235",
+     "resume": "'Tenir les sous-agents en lecture seule' : le sous-agent recoit l'outil bash, rien dans le code ne l'empeche d'ecrire."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": "adws/adw_data/prompt_engineering/scout/system.md",
+    "vers": "adws/adw_data/harness_engineering/subagents.ts",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/scout/system.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_data/prompt_engineering/scout/system.md",
+    "vers": "adws/adw_data/sessions/<adw_id>/context_handoff/scout_findings.md",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/scout/system.md:14",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/templates/prompt_engineering/scout/system.md",
+    "vers": "adws/adw_data/prompt_engineering/scout/system.md",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/prompt_engineering/scout/system.md:1",
+    "confiance": "haute",
+    "note": "different : +0 -1 lignes"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/scout/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.config.yaml:85",
+    "ligne_cle": 85,
+    "confiance": "haute",
+    "note": "agents.scout.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/scout/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:93",
+    "ligne_cle": 93,
+    "confiance": "haute",
+    "note": "agents.scout.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/scout/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:82",
+    "ligne_cle": 82,
+    "confiance": "haute",
+    "note": "agents.scout.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/scout/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:95",
+    "ligne_cle": 95,
+    "confiance": "haute",
+    "note": "agents.scout.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/scout/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:95",
+    "ligne_cle": 95,
+    "confiance": "haute",
+    "note": "agents.scout.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "specs/scaffold.md",
+    "vers": "adws/adw_data/prompt_engineering/scout/system.md",
+    "type": "decrit",
+    "preuve": "specs/scaffold.md:160",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "adws/adw_data/prompt_engineering/scout/user.md",
+  "fiche_carte": {
+   "chemin": "adws/adw_data/prompt_engineering/scout/user.md",
+   "type": "prompt",
+   "langage": "markdown",
+   "lignes": 34,
+   "role": "Gabarit de tache du scout. Variables : {{prompt}}, {{previous_envelope}}, {{context_handoff_dir}}. Rapport ScoutOutput avec artifacts [scout_findings.md].",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Schema ScoutOutput."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [
+    {
+     "cle": "{{prompt}}",
+     "ligne": 7
+    },
+    {
+     "cle": "{{previous_envelope}}",
+     "ligne": 11
+    },
+    {
+     "cle": "{{context_handoff_dir}}",
+     "ligne": 15
+    }
+   ],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": "adws/adw_data/prompt_engineering/scout/user.md",
+    "vers": "adws/adw_modules/data_types.py",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/scout/user.md:23",
+    "confiance": "haute",
+    "note": "ScoutOutput"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/templates/prompt_engineering/scout/user.md",
+    "vers": "adws/adw_data/prompt_engineering/scout/user.md",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/prompt_engineering/scout/user.md:1",
+    "confiance": "haute",
+    "note": "identique (git diff --no-index --quiet)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/scout/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.config.yaml:86",
+    "ligne_cle": 86,
+    "confiance": "haute",
+    "note": "agents.scout.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/scout/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:94",
+    "ligne_cle": 94,
+    "confiance": "haute",
+    "note": "agents.scout.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/scout/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:83",
+    "ligne_cle": 83,
+    "confiance": "haute",
+    "note": "agents.scout.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/scout/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:96",
+    "ligne_cle": 96,
+    "confiance": "haute",
+    "note": "agents.scout.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/scout/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:96",
+    "ligne_cle": 96,
+    "confiance": "haute",
+    "note": "agents.scout.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "specs/scaffold.md",
+    "vers": "adws/adw_data/prompt_engineering/scout/user.md",
+    "type": "decrit",
+    "preuve": "specs/scaffold.md:161",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "adws/adw_data/prompt_engineering/documenter/system.md",
+  "fiche_carte": {
+   "chemin": "adws/adw_data/prompt_engineering/documenter/system.md",
+   "type": "prompt",
+   "langage": "markdown",
+   "lignes": 18,
+   "role": "Prompt systeme du documenter : documenter uniquement ce que montre le diff (diff_path), nommer seulement des fichiers de changed_files, ne jamais modifier code/tests/config, lister app_docs/ avant de nommer. Aucune variable {{}}.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Regles de redaction ; 'ne pas modifier le code' n'est qu'une consigne ici, la config (writes: app_docs/, docs/, **/*.md) la renforce."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": "adws/adw_data/prompt_engineering/documenter/system.md",
+    "vers": "adws/adw_modules/changes.py",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/documenter/system.md:9",
+    "confiance": "faible",
+    "pourquoi_faible": "Decrit l'enveloppe de capture (base, changed_files, stat, diff_path) produite par changes.as_envelope ; le fichier n'est pas nomme."
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/templates/prompt_engineering/documenter/system.md",
+    "vers": "adws/adw_data/prompt_engineering/documenter/system.md",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/prompt_engineering/documenter/system.md:1",
+    "confiance": "haute",
+    "note": "different : +0 -1 lignes"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/documenter/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.config.yaml:129",
+    "ligne_cle": 129,
+    "confiance": "haute",
+    "note": "agents.documenter.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/documenter/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:134",
+    "ligne_cle": 134,
+    "confiance": "haute",
+    "note": "agents.documenter.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/documenter/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:123",
+    "ligne_cle": 123,
+    "confiance": "haute",
+    "note": "agents.documenter.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/documenter/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:138",
+    "ligne_cle": 138,
+    "confiance": "haute",
+    "note": "agents.documenter.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/documenter/system.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:138",
+    "ligne_cle": 138,
+    "confiance": "haute",
+    "note": "agents.documenter.prompt_engineering.system sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "app_docs/306a0046_prevent-overwriting-specs-docs.md",
+    "vers": "adws/adw_data/prompt_engineering/documenter/system.md",
+    "type": "decrit",
+    "preuve": "app_docs/306a0046_prevent-overwriting-specs-docs.md:8",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "adws/adw_data/prompt_engineering/documenter/user.md",
+  "fiche_carte": {
+   "chemin": "adws/adw_data/prompt_engineering/documenter/user.md",
+   "type": "prompt",
+   "langage": "markdown",
+   "lignes": 48,
+   "role": "Gabarit de tache du documenter. Variables : {{prompt}}, {{previous_envelope}}, {{context_handoff_dir}}. Ecrit document.md puis le copie vers app_docs/<adw_id>_<slug>.md (suffixes _v2...), rapport DocumentOutput.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Nommage des write-ups et schema DocumentOutput (commit_message = message du commit_docs)."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [
+    {
+     "cle": "{{prompt}}",
+     "ligne": 7
+    },
+    {
+     "cle": "{{previous_envelope}}",
+     "ligne": 11
+    },
+    {
+     "cle": "{{context_handoff_dir}}",
+     "ligne": 15
+    }
+   ],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": "adws/adw_data/prompt_engineering/documenter/user.md",
+    "vers": "adws/adw_data/sessions/<adw_id>/context_handoff/document.md",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/documenter/user.md:22",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   },
+   {
+    "de": "adws/adw_data/prompt_engineering/documenter/user.md",
+    "vers": "adws/adw_modules/data_types.py",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/documenter/user.md:34",
+    "confiance": "haute",
+    "note": "DocumentOutput"
+   },
+   {
+    "de": "adws/adw_data/prompt_engineering/documenter/user.md",
+    "vers": "app_docs/*.md",
+    "type": "decrit",
+    "preuve": "adws/adw_data/prompt_engineering/documenter/user.md:23",
+    "confiance": "haute",
+    "motif": true
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/templates/prompt_engineering/documenter/user.md",
+    "vers": "adws/adw_data/prompt_engineering/documenter/user.md",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/prompt_engineering/documenter/user.md:1",
+    "confiance": "haute",
+    "note": "identique (git diff --no-index --quiet)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/documenter/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.config.yaml:130",
+    "ligne_cle": 130,
+    "confiance": "haute",
+    "note": "agents.documenter.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.deepestseek.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/documenter/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.deepestseek.config.yaml:135",
+    "ligne_cle": 135,
+    "confiance": "haute",
+    "note": "agents.documenter.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/documenter/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.frontier.config.yaml:124",
+    "ligne_cle": 124,
+    "confiance": "haute",
+    "note": "agents.documenter.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.open-weights.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/documenter/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.open-weights.config.yaml:139",
+    "ligne_cle": 139,
+    "confiance": "haute",
+    "note": "agents.documenter.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "adws/adw_sssf_config/sssf.top-speed.config.yaml",
+    "vers": "adws/adw_data/prompt_engineering/documenter/user.md",
+    "type": "configure",
+    "preuve": "adws/adw_sssf_config/sssf.top-speed.config.yaml:139",
+    "ligne_cle": 139,
+    "confiance": "haute",
+    "note": "agents.documenter.prompt_engineering.user sélectionne ce fichier de prompt (lu et rendu par adws/adw_modules/agents.py:89-90)"
+   },
+   {
+    "de": "app_docs/306a0046_prevent-overwriting-specs-docs.md",
+    "vers": "adws/adw_data/prompt_engineering/documenter/user.md",
+    "type": "decrit",
+    "preuve": "app_docs/306a0046_prevent-overwriting-specs-docs.md:10",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ }
+]

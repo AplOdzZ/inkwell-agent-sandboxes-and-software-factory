@@ -1,0 +1,21 @@
+# Déjà connu (à confirmer ou corriger avec preuve, ne pas redécouvrir ; ne pas mettre au registre)
+
+- n°1 : `justfile` a 5 espaces de noms (inkwell, local, adw, sbx, obs), l.38-50.
+- n°5 : `install.md` et `prime.md` sont dans `.claude/commands/`.
+- n°7 : le visualiseur est présent, malgré `SKILL.md` l.76.
+- n°14 : `permissions.py` l.125-150 exempte tout `adws/adw_data/`, prompts compris : un agent peut modifier les prompts.
+- n°21 : `scout/system.md` l.19 promet des sous-agents « en lecture seule » ; ils ont bash et tout l'environnement.
+- n°24 : `make_adw.py` l.55 génère `run.succeeded`, qui n'existe plus.
+- n°34 : `run_adw.md` et `how_to_prompt_for_the_eng.md` citent des recettes à la racine (`just teardown`, `just phases`...) qui sont dans `sbx` / `obs` ou n'existent pas.
+- n°37 : `observability.md` l.15 liste dix types d'événements ; il manque `thinking` et `agent_message`.
+- n°41 : `poll_ms` n'est lu par rien ; 500 ms en dur (`SessionCard.vue` l.65, `SessionTrace.vue` l.84).
+- n°44 : `documenter/user.md` l.48 promet que les portes ouvrent `document_path` ; aucune ne le fait.
+- n°47 : `handoff.md` l.88 dit que `{{context_handoff_dir}}` est absolu ; il est relatif.
+- n°52 : `update_modules.md` l.14, l.21 et `handoff.md` l.144 décrivent mal le rôle de `agents.py` et `session.py`.
+- n°60 : `builder/system.md` l.14 dit qu'une écriture comme `bun test > out.txt` sera annulée ; le builder n'a pas de `writes`, rien n'est annulé.
+- n°69 : `handoff.md` l.161, `observability.md` l.7, `run_adw.md` l.102 : « les fichiers sont l'enregistrement brut » ; sur la VM ils disparaissent avec elle.
+- n°70 : `install.md` l.40 et `update_modules.md` l.16 : le modèle est résolu contre `pi --list-models`, pas seulement `~/.pi/agent/models.json`.
+- n°72 : `just/obs.just` l.56 et l.63 : `just kill` ne vérifie pas la commande enregistrée.
+- n°76 : `just/adws.just` l.68-69 : le défaut `sdlc` lance `adw_plan_build_test.py`.
+- Hors registre : `sssf_overview.md` l.17-21 oublie `adw_quality` et `adw_plan_build_test_quality`.
+- Aussi déjà au registre (C1, C2-C5_D, N3_lot1) : voir leurs `registre.json`. En particulier n°23 (renommage `run_quality` par install.py, seuls 3 ADW ont suivi), n°16, n°25, n°28, n°31, n°32, n°36.

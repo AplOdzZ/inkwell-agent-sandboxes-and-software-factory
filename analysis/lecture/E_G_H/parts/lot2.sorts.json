@@ -1,0 +1,12 @@
+[
+ {
+  "p": ".claude/skills/sssf/references/handoff.md",
+  "fate": "adapter",
+  "reason": "Les types et l'arborescence sont fidèles au code, mais le chemin « absolu », le rôle de session.py, l'exemple de reprise après adw_plan, le prompt « par appel » et « les fichiers sont l'enregistrement brut » sont faux. À réécrire pour notre version avant qu'un agent s'en serve pour écrire un ADW."
+ },
+ {
+  "p": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+  "fate": "adapter",
+  "reason": "La discipline de traduction du prompt est bonne et sans lien avec le code, mais le tableau de choix d'ADW (plan déjà produit, revue seule), `requests/<slug>.md`, `just phases` et les chemins de l'exemple ne correspondent pas au dépôt. Corriger ces lignes et lever la contradiction « ne pas explorer le code » contre « vérifier chaque chemin »."
+ }
+]

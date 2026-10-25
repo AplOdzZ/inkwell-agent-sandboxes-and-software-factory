@@ -1,0 +1,79 @@
+[
+ {
+  "ou": ".claude/skills/sssf/references/handoff.md l.157 ; adws/adw_plan.py l.31-34 ; adws/adw_build.py l.31-34 ; adws/adw_modules/agents.py l.233-237",
+  "ecrit": "« Run `adw_build.py --adw-id a1b2c3d4` after `adw_plan.py` and the builder resumes its own session rather than starting cold » (handoff.md:157).",
+  "realite": "adw_plan.py ne lance que le planner (adw_plan.py:31-34) : agent_map.json n'a donc aucune entrée « builder ». adw_build.py reçoit une session neuve (agents.py:233-237) et appelle le builder sans `previous` (adw_build.py:33-34), donc avec « (none) » à la place du plan (agents.py:86). Aucun code ne relit le plan ni envelope.json (git grep : aucun lecteur).",
+  "impact": "Un agent ou un orchestrateur qui suit cet exemple croit que le builder reprend son contexte et connaît le plan : il part de zéro et ne voit que le texte du prompt. Chez nous : passer explicitement le chemin du plan au builder.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/handoff.md l.157 ; adws/adw_modules/agents.py l.168, l.191, l.291, l.203-204",
+  "ecrit": "« This map is the key that lets a later ADW rejoin each agent's existing context window » (handoff.md:157).",
+  "realite": "agent_map.json n'est écrit qu'à la fin d'un passage réussi (agents.py:203-204), après les `raise` d'une porte ratée (l.168), d'un dépassement de droits (l.191) ou d'un JSON jamais valide (l.291). Un agent qui n'a jamais réussi dans cette session n'a pas d'entrée : relancer avec `--adw-id` lui donne un nouvel id de session (agents.py:237) alors que Pi a gardé l'ancienne. Un agent qui avait déjà réussi plus tôt garde l'entrée de son dernier succès et est repris avec l'ancienne session.",
+  "impact": "Le cas où l'on veut le plus reprendre (relancer après un échec) repart à froid et perd le contexte de l'agent fautif. Chez nous : enregistrer la session avant les portes, ou documenter que la reprise ne vaut qu'après un succès.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/handoff.md l.159 ; adws/adw_modules/agents.py l.233-237",
+  "ecrit": "« If config drift changes an agent's model, that agent starts a fresh session and the map is updated — never a bad resume » (handoff.md:159).",
+  "realite": "Le seul critère de reprise est l'égalité du modèle de config (agents.py:235). Un changement de tools, de writes, de thinking ou du prompt système reprend quand même l'ancienne session, avec le nouveau `--system-prompt` (agents.py:116, :89, :234-236). La comparaison porte sur le motif de config, pas sur le couple résolu par Pi (Registre n°71).",
+  "impact": "On peut reprendre une session créée avec d'autres outils ou d'autres droits sans que rien ne le signale. Chez nous : ne reprendre que si modèle, outils, writes, thinking et prompt système sont identiques.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/handoff.md l.74 ; adws/adw_modules/agents.py l.90 ; adws/adw_modules/data_types.py l.286-294",
+  "ecrit": "« same system prompt, different user prompt + output type per call site » (handoff.md:74) : un agent peut servir plusieurs appels, avec un user.md différent à chaque appel.",
+  "realite": "Le gabarit user.md est fixé par agent dans la config (`agent.prompt_engineering.user`, agents.py:90 ; data_types.py:299-301). `AgentCall` n'a aucun champ pour un autre gabarit (data_types.py:286-294) : seuls `prompt`, `previous` et `output_type` changent. Le `## Report` du user.md annonce toujours le même type, et adws/adw_prompt.py:32 passe GenericOutput à n'importe quel agent.",
+  "impact": "Un nouvel ADW qui réutilise un agent avec un autre type de sortie envoie à l'agent un Report qui ne correspond pas au type attendu : les champs en trop sont jetés, ceux qui manquent prennent leur valeur par défaut. Chez nous : un agent par type de sortie, ou un gabarit par appel.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/handoff.md l.67, l.74 ; adws/adw_modules/data_types.py l.72-78, l.85-128 ; adws/adw_modules/agents.py l.286",
+  "ecrit": "« the agent's final JSON is parsed against exactly that type. No untyped handoffs » ; « the type enforces it » (handoff.md:67, :74).",
+  "realite": "Aucun modèle d'enveloppe n'a `extra=\"forbid\"` (data_types.py:72-128) : un champ inconnu est jeté en silence, et `{\"status\":\"success\"}` seul est valide pour chaque type de départ (tous les autres champs ont un défaut). Expérience (copie de EnvelopeBase, pydantic 2.13.5) : un JSON avec findings, approved et un champ bidon est accepté comme GenericOutput et ne garde que les quatre champs de base.",
+  "impact": "Un champ oublié ou renommé n'est jamais signalé à l'agent : la relance de JSON ne se déclenche pas, et la porte diff_matches_claims valide une liste `changed_files` vide. Chez nous : refuser les champs inconnus et rendre obligatoires les champs utiles.",
+  "type": "faille"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/handoff.md l.82, l.129 ; adws/adw_modules/agents.py l.89-90 ; adws/adw_modules/prompts.py l.8-12",
+  "ecrit": "« `prompts.py` renders the agent's `user.md`, substituting ... » (handoff.md:82) ; « the matching `system.md` stays static » (handoff.md:129).",
+  "realite": "agents.py rend le system.md ET le user.md avec les mêmes trois variables (agents.py:89-90). `render` est un `str.replace` en boucle (prompts.py:10-11) : un `{{previous_envelope}}` écrit dans la demande de l'ingénieur est aussi remplacé, car `prompt` est traité en premier (agents.py:84-88). Expérience : confirmé sur une copie de la logique.",
+  "impact": "Faible. Un auteur de system.md qui montre un exemple avec `{{prompt}}` le verrait remplacé ; un prompt d'ingénieur contenant `{{...}}` n'arrive pas tel quel à l'agent. Chez nous : documenter le rendu des deux fichiers et neutraliser les accolades dans les valeurs injectées.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md l.74 ; adws/adw_build_test.py l.46-49 ; adws/adw_build.py l.33-34",
+  "ecrit": "Ligne du tableau : « Implements a plan this session already produced (`--adw-id`) | starts at build and verifies ».",
+  "realite": "adw_build_test.py (et adw_build.py) appellent le builder sans `previous` (adw_build_test.py:46-49) : le plan de la session n'est pas transmis, le builder reçoit « (none) » (agents.py:86) et le seul texte du prompt. `--adw-id` ne fait que rejoindre la session (session.py:39) ; rien ne relit plan.md ni envelope.json. Seul le prompt peut désigner le plan.",
+  "impact": "Un orchestrateur qui lance « implémente le plan » avec --adw-id obtient un builder qui improvise sur la demande brute. Chez nous : donner le chemin du plan dans le prompt, ou relire le plan dans l'ADW.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md l.75 ; adws/adw_build_review.py l.42-46 ; adws/adw_simple_sdlc.py l.91-94",
+  "ecrit": "Ligne du tableau : « Confirms built work is what was asked for | ends in a review phase ».",
+  "realite": "Les deux chaînes qui finissent par une revue, adw_build_review.py (phase build l.42-46) et adw_simple_sdlc.py (phase plan, puis build l.91-94), construisent d'abord. Il n'existe aucun ADW qui relit un travail déjà fait sans lancer de builder (liste des 12 ADW : git ls-files 'adws/adw_*.py').",
+  "impact": "Lancer adw_build_review pour « vérifier » un travail existant lance un builder avec la même demande, qui peut modifier le code. Chez nous : créer un ADW de revue seule si on veut ce cas d'usage.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md l.3 ; adws/adw_data/prompt_engineering/reviewer/user.md l.21 ; adws/adw_data/prompt_engineering/reviewer/system.md l.9",
+  "ecrit": "« the planner plans from it, the builder builds from it, the reviewer judges against it » (how_to_prompt_for_the_eng.md:3).",
+  "realite": "Le reviewer établit son cahier des charges en lisant `<context_handoff_dir>/plan.md` s'il existe, et n'utilise le prompt que sinon (reviewer/user.md:21 ; reviewer/system.md:9 ; docstring adws/adw_simple_sdlc.py:27-29). Dans adw_simple_sdlc le plan existe normalement (le planner doit l'écrire ; la porte ne vérifie que les artefacts qu'il déclare, adw_simple_sdlc.py:84-85) : le reviewer juge le plan du planner, pas la demande de l'ingénieur.",
+  "impact": "Les lignes « Done means » du prompt n'arrivent au reviewer qu'à travers l'interprétation du planner. Une mauvaise lecture au plan est approuvée par la revue. Chez nous : faire juger le reviewer aussi contre le prompt d'origine.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md l.92 ; adws/adw_modules/utils.py l.55-63 ; just/sandbox/lifecycle/fill.just l.60",
+  "ecrit": "« for anything longer, write `requests/<slug>.md` and pass the path — every ADW takes either » (how_to_prompt_for_the_eng.md:92).",
+  "realite": "`resolve_prompt` renvoie l'argument tel quel si ce n'est pas un fichier existant (utils.py:57-63) : comportement voulu et documenté pour la VM (just/sandbox/lifecycle/execute.just:23-26 : un chemin vers un fichier du clone de la VM est lu, tout le reste reste du texte). Mais `fill` clone le dépôt depuis GitHub (fill.just:60) : un `requests/<slug>.md` non publié n'y existe pas, aucun fichier `requests/` n'est suivi par git, et le dépôt publie ses demandes longues sous `prompts/`. Expérience : `requests/healht.md` ressort inchangé comme prompt.",
+  "impact": "Dans une VM, la demande longue devient la simple chaîne « requests/xxx.md » et les agents travaillent sur ce texte sans contrôle. Chez nous : publier la demande dans prompts/ avant le lancement, ou refuser un argument qui ressemble à un chemin et n'existe pas.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md l.50-53 ; apps/inkwell/server.ts l.138-190",
+  "ecrit": "Exemple modèle : demande « tags sur les posts » traduite en `Add a GET /api/tags endpoint ... Where: src/server.ts (routes), src/server.test.ts (tests)` (how_to_prompt_for_the_eng.md:47-51).",
+  "realite": "Les fichiers de l'application sont apps/inkwell/server.ts et apps/inkwell/server.test.ts (git ls-files) ; `src/server.ts` n'existe pas, et la route GET /api/tags existe déjà (apps/inkwell/server.ts:138-190).",
+  "impact": "Un orchestrateur qui recopie la forme de l'exemple écrit des chemins faux dans `Where:`, ce que le même fichier dit coûter une phase de build entière (l.88). Chez nous : prendre un exemple qui existe dans notre application.",
+  "type": "perime_pour_nous"
+ }
+]

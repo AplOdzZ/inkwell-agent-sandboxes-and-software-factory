@@ -1,0 +1,92 @@
+[
+ {
+  "p": ".claude/skills/sssf/scripts/install.py",
+  "fate": "adapter",
+  "reason": "Il copie sans sauvegarde et `--force` écraserait 15 fichiers adaptés d'Inkwell ; sa docstring, ses « next steps » et la doc du cookbook sont faux sur plusieurs points. Il ne modifie le contenu d'aucun fichier : l'écart n°23 ne vient pas de lui."
+ },
+ {
+  "p": "just/adws.just",
+  "fate": "adapter",
+  "reason": "Deux recettes (`quality`, `plan-build-test-quality`) lancent des ADW qui plantent (n°23), `sdlc` est mal nommé (n°76) et les paquets Python ne sont pas épinglés."
+ },
+ {
+  "p": "justfile",
+  "fate": "adapter",
+  "reason": "Deux commentaires décrivent des recettes absentes (`kill`, observabilité) ; zsh interactif et `dotenv-load` ne servent qu'à `default`, et `config` ne sert à rien."
+ },
+ {
+  "p": "just/obs.just",
+  "fate": "adapter",
+  "reason": "`kill` ne vérifie pas la commande enregistrée (n°72) et `ui` installe sans épingler, laisse un serveur ouvert en arrière-plan et prend le dossier d'où on a lancé just (faux depuis un sous-dossier)."
+ },
+ {
+  "p": "just/inkwell.just",
+  "fate": "adapter",
+  "reason": "Le commentaire l.8 dit que toutes les recettes tournent sous bash, ce qui est faux pour `test` ; le reste sert tel quel."
+ },
+ {
+  "p": "just/local.just",
+  "fate": "adapter",
+  "reason": "`claude --dangerously-skip-permissions` et un zsh absent des VM vont contre nos règles ; garder seulement `pi`, avec un shell explicite."
+ },
+ {
+  "p": ".claude/skills/sssf/templates/justfile",
+  "fate": "adapter",
+  "reason": "Son `obs` suppose le visualiseur dans le projet et ses recettes manquent de `rosters` et `kill` que les cookbooks citent ; à remplacer par le justfile d'Inkwell si on garde l'installation."
+ },
+ {
+  "p": ".claude/skills/sssf/scripts/make_adw.py",
+  "fate": "adapter",
+  "reason": "L'ADW généré plante en fin de passage (`run.succeeded`, n°24), manque `rich` dans ses dépendances, n'a qu'une porte, et `--name` n'est pas validé."
+ },
+ {
+  "p": ".claude/skills/sssf/scripts/make_config.py",
+  "fate": "adapter",
+  "reason": "Copie d'un modèle aux fournisseurs directs (n°13) qui remplacerait notre roster OpenRouter avec `--force` ; sans `writes` obligatoire."
+ },
+ {
+  "p": ".claude/commands/install.md",
+  "fate": "adapter",
+  "reason": "Trois `curl | bash` non épinglés, exécutés automatiquement par un agent, contredisent nos règles ; `bun install` sans blocage des scripts."
+ },
+ {
+  "p": ".claude/commands/prime.md",
+  "fate": "adapter",
+  "reason": "Annonce quatre espaces de noms au lieu de cinq et cite un chemin inexistant (`just/sandbox/create.just`)."
+ },
+ {
+  "p": ".claude/skills/sssf/cookbooks/create_adw.md",
+  "fate": "adapter",
+  "reason": "Cite `quality.run_tests` qui n'existe pas ici, parle de « starter six » (cinq), et renvoie à un générateur qui produit un ADW cassé."
+ },
+ {
+  "p": ".claude/skills/sssf/cookbooks/create_config.md",
+  "fate": "adapter",
+  "reason": "Présente `[read, bash]` comme lecture seule, compte quatre outils au lieu de sept, ne mentionne jamais `writes` et décrit `harness_engineering` comme des noms au lieu de chemins."
+ },
+ {
+  "p": ".claude/skills/sssf/cookbooks/install.md",
+  "fate": "adapter",
+  "reason": "Promet un « drift check » que le script ne fait pas, compte trois entrées de gitignore au lieu de cinq, et décrit un modèle dont le défaut et les autres agents passent par des fournisseurs (google, fireworks, openai) dont deux sont directs ; le cas google est à vérifier côté Pi."
+ },
+ {
+  "p": ".claude/skills/sssf/cookbooks/run_adw.md",
+  "fate": "adapter",
+  "reason": "Cite des recettes à la racine qui n'y sont pas (n°34), une vérification de `kill` qui n'existe pas (n°72), `just obs` pour lancer l'interface et des sessions tmux inexistantes."
+ },
+ {
+  "p": ".claude/skills/sssf/cookbooks/update_adw.md",
+  "fate": "adapter",
+  "reason": "Son exemple de boucle appelle `quality.run_tests`, absent d'Inkwell (plante en fin de chaîne), et il prête aux portes des vérifications qu'elles ne font pas."
+ },
+ {
+  "p": ".claude/skills/sssf/cookbooks/update_config.md",
+  "fate": "adapter",
+  "reason": "Faux sur les extensions du roster, les couleurs, `tools: []` (n°39) et sur « retirer edit rend structurel » ; rien sur `writes`, seul vrai garde-fou."
+ },
+ {
+  "p": ".claude/skills/sssf/cookbooks/update_modules.md",
+  "fate": "adapter",
+  "reason": "Mauvais rôle donné à `agents.py` et `session.py` (n°52), `utils.py` dit « safe env » alors qu'il copie tout l'environnement, `console.py` listé deux fois, `permissions.py` absent."
+ }
+]

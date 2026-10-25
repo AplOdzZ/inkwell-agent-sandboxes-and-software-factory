@@ -1,0 +1,521 @@
+{
+ ".claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Panneau de détail d'une phase, ouvert sous la cascade quand on clique un bloc. Il ne fait aucun appel réseau, sauf la lecture des deux prompts (route /prompts). Il reçoit tout le reste de SessionTrace et le met en forme : configuration de l'agent, prompts compilés, portes (gates), coût, enveloppes de sortie, et la liste de tous les événements de la phase avec arguments et résultats. C'est le fichier qui affiche le plus de texte venu de la trace : cinq v-html, tous passés par highlight.ts ou markdown.ts.",
+  "points": [
+   "Imports (l.2-33) : seuls paquets externes `vue` et `lucide-vue-next` (11 icônes : Activity, AlignLeft, Brain, Fingerprint, Inbox, MessagesSquare, Package, Receipt, ShieldCheck, SlidersHorizontal, SquareTerminal). Le reste vient de ../lib/format, highlight, events, models, api, markdown. Aucun import dynamique, aucun `eval`, aucun `new Function` (grep sur tout src/).",
+   "Props (l.35-42) : `phase`, `events` (TOUS les événements de la session, pas seulement ceux de la phase), `envelopes`, `gates`. Un seul événement émis : `close`. SessionTrace remplace l'objet `phase` à chaque cycle de 500 ms (commentaire l.236-237 : « the 500ms poll replacing the phase object »), ce qui confirme le rythme du n°41.",
+   "phaseEvents / phaseGates / phaseOutputs (l.44-58) : filtrent par `phase_id`, trient par `rowid` (événements), par `attempt` puis `id` (portes), par `attempt` (enveloppes). Un événement dont `phase_id` est vide (valeur par défaut de EventRecord, adws/adw_modules/data_types.py:357) n'apparaît dans aucune phase.",
+   "agentConfig (l.62-66) : lit la charge utile de l'événement `agent_start` de la phase. Le tracer l'écrit à adws/adw_modules/agents.py:95-104 (model, thinking, color, session_id, coding_agent, purpose, tools, harness_engineering). Elle n'est lue que si `phase.kind === 'agent'`.",
+   "Bloc « agent config » du gabarit (l.393-448) : montre coding_agent, modèle (icône + nom court, titre = identifiant complet), thinking, outils (« all tools » si null), harness_engineering, purpose, session_id. Tout passe par `{{ }}` (texte échappé par Vue). Seule valeur dynamique dans un attribut : `:src` de l'icône (l.411), qui vient de models.ts et ne peut valoir que l'un des 6 chemins /models/*.png.",
+   "phaseUsage (l.84-124) : prend le PREMIER `agent_end` de la phase, lit `usage` (adws/adw_modules/agents.py:209-215 écrit cost et usage). Sans `usage` (anciens runs), une seule ligne « total ». La ligne « thinking » est affichée comme part de « output », pas ajoutée au total (l.106-117) ; la division par `output_tokens` est protégée contre zéro (l.109). Si un champ manque, `NUM.format(undefined)` affiche « NaN » (l.586) : aucune valeur par défaut sur les champs de `usage`.",
+   "money(n) (l.129-132) : 0 donne « $0 », moins de 0,0001 donne « <$0.0001 » (donc aussi un coût NÉGATIF), sinon 4 décimales. NUM = séparateur de milliers en-US (l.126). Pas de conversion de devise.",
+   "requestText (l.136-151) : pour la phase `engineer`, cherche un événement `log` dont la charge utile a un champ `input` (adws/adw_modules/runner.py:27-33 l'écrit). Rendu dans un `<p class=\"d-request\">` en texte (l.390). C'est la demande de l'ingénieur, en entier, sans troncature.",
+   "phaseDurationMs (l.153-158) : pour une phase `running`, utilise `Date.now()` du NAVIGATEUR contre un horodatage écrit par la VM (UTC, adws/adw_modules/utils.py:45-46). Un décalage d'horloge entre le poste et la VM fausse la durée affichée d'une phase en cours.",
+   "violations(g) (l.160-168) : parse `violations_json` ; si ce n'est pas un tableau JSON, affiche la chaîne brute. Rendu en `<li>{{ v }}</li>` (l.542, l.557), texte échappé.",
+   "gateChecks(g) / checksLabel (l.173-195) : parse `checks_json` (item, ok, note). `null` = ancienne ligne sans preuve, `[]` = porte qui n'a rien inspecté (l.170-172). La note d'un contrôle (`c.note`) est montrée en ligne si une seule ligne (l.536), dans un `<pre>` sinon (l.539) : c'est là que la fin d'une sortie de commande peut apparaître (porte tests_pass, adws/adw_modules/gates.py:98-108). Texte échappé par Vue.",
+   "openGates / toggleGate (l.197-202) et expanded / toggle (l.217-222) : ensembles réactifs pour plier/déplier. Au changement de `phase_id` (l.243-250), le watch remet à zéro `openSections` et `openGates` mais PAS `expanded` (événements dépliés) ; sans effet visible, car les `event_id` sont uniques.",
+   "eventDurationMs (l.204-215) : durée = ended_at − started_at ; pour un tool_call ancien sans ended_at, prend `duration_ms` de la charge utile. NaN sinon, et alors aucune pastille de durée.",
+   "richCall / argsHtml (l.225-232) : `richCall` ne renvoie quelque chose que si la charge utile d'un tool_call a un champ `tool` de type texte (.claude/skills/sssf/apps/visualizer/src/lib/events.ts:66-70). `argsHtml` = `highlightJsonText(JSON.stringify(args, null, 2))`. C'est le v-html n°1 (l.662). Expérience : voir l'entrée highlight.ts, aucune balise ni attribut non prévu en sortie.",
+   "Sections repliables (l.234-255) : `DEFAULT_OPEN_SECTIONS = []`, tout est fermé au départ ; l'ensemble est remis à zéro quand `phase_id` change.",
+   "typeClass (l.257-267) : 9 types colorés (gate_fail, error, gate_pass, tool_call, handoff, agent_start, agent_end, thinking, agent_message). Il n'y a rien pour phase_start, phase_end et log, alors que adws/adw_modules/runner.py:80-108 et adws/adw_modules/console.py:43-46 les écrivent : ces lignes s'affichent sans couleur. Registre n°59 (partie visualiseur) confirmé : un `log` n'est pas coloré comme une erreur.",
+   "messageText (l.270-274) : pour `thinking` et `agent_message`, renvoie le champ `text` de la charge utile. Registre n°37 confirmé côté interface : l'écran SAIT afficher la réflexion et les messages de l'agent (aussi .claude/skills/sssf/apps/visualizer/src/lib/events.ts:9-10 pour les couleurs). Le texte vient de adws/adw_modules/agent_pi.py:154-161, coupé à 20 000 caractères (adws/adw_modules/agent_pi.py:26). Rendu dans un `<pre class=\"p-pre p-prose\">` en texte (l.673), pas en v-html.",
+   "Prompts compilés (l.280-320) : au changement de (adw_id, owner, kind) appelle `fetchPrompts(adwId, owner)` et garde le résultat dans un `Map` clé `adw_id:agent` (l.293, l.303-313). La clé n'a PAS de phase : toutes les phases d'un même agent (build, fix_1, revise_1…) montrent le même fichier. Registre n°46 confirmé côté affichage : le serveur lit un seul `prompts/system.md` et `user.md` par agent (.claude/skills/sssf/apps/visualizer/server/index.ts:175, l.183-189), écrasé à chaque passage (adws/adw_modules/agents.py:91-92). Le `Map` est créé dans le composant (l.282), détruit à la fermeture du panneau (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:553, `v-if`) ; tant que le panneau reste ouvert et qu'on passe d'une phase à une autre du même agent, le prompt n'est pas relu (retour anticipé l.294), même si le fichier a été réécrit entre-temps. Le commentaire l.277-278 (« cached for the trace view's lifetime ») dit plus que ce que fait le code.",
+   "promptPanels (l.330-342) : pour chaque prompt non nul, calcule `renderMarkdown(text)` et le nombre de lignes. `promptPanels` (donc `renderMarkdown` sur les deux prompts) est évalué dès que les prompts sont chargés, section fermée, car la prop `:count` (l.464) lit `promptPanels.length` et DetailSection affiche ce compteur hors de son `v-if=\"open\"` (.claude/skills/sssf/apps/visualizer/src/components/DetailSection.vue:22-24). Seul l'affichage du rendu est derrière l'ouverture. Bouton « raw » (l.480-488) = `<pre>` en texte ; « rendered » = v-html n°2 (l.492).",
+   "Bloc « compiled prompts » du gabarit (l.460-496) : le v-html n°2 (l.492) reçoit la sortie de markdown.ts. Le commentaire l.491 dit « Safe: renderMarkdown escapes ALL input ». Expérience (voir markdown.ts) : confirmé sur 40 entrées piégées et 250 000 entrées aléatoires, aucune balise hors liste blanche.",
+   "Bloc « gates » (l.498-561) : nom de la porte, ✓/✗, tentative, heure, liste des contrôles. Tout en `{{ }}`. Seule classe dynamique : `pass`/`fail`.",
+   "Bloc « cost » (l.563-594) : tableau tokens / coût par ligne, texte « this run predates… » pour les anciens runs.",
+   "Bloc « outputs » (l.596-622) : une ligne par enveloppe (type, agent, tentative, valid/invalid) puis le JSON COMPLET de l'enveloppe via `highlightJson(env.payload_json)` : v-html n°3 (l.620). `highlightJson` refait un `JSON.stringify(JSON.parse())` (.claude/skills/sssf/apps/visualizer/src/lib/highlight.ts:47-53) ; un entier plus grand que 2^53 perdrait de la précision à l'affichage.",
+   "Liste des événements (l.625-682) : une ligne par événement (heure, type, étiquette = `eventLabel(e)`, durée, tokens). Cliquer ouvre le panneau : (a) tool_call riche : nom d'outil, « failed » si `ok === false`, durée, puis `args` en v-html n°4 (l.662) et `result_snippet` dans un `<pre>` texte (l.665), jusqu'à 20 000 caractères (adws/adw_modules/agent_pi.py:222) ; (b) tool_call sans champ `tool` : message « no detail available — legacy event payload » (l.669) + JSON en v-html n°5 (l.670) ; (c) thinking / agent_message : texte seul ; (d) tout autre type (phase_start, phase_end, log, handoff, agent_start, agent_end, error, gate_*) : titre « payload » + JSON en v-html n°6 (l.677) ; (e) sinon « no payload ».",
+   "Affichage de repli, ce que voit Theo pour un `log` : la ligne porte comme étiquette le NOM DE LA PHASE (adws/adw_modules/console.py:44 met `name=self.phase_name`), pas le message. Le texte (`message`, `level`) n'apparaît qu'après un clic, sous « payload ». Chaque ligne de la console y est recopiée, donc beaucoup de lignes identiques en apparence.",
+   "Événements du module quality (adws/adw_modules/quality.py:87-100) : ils sont de type `tool_call` mais SANS champ `tool` (nom `quality:lint`, charge utile area/operation/command/returncode/passed/output_artifact). Ici : `richCall` renvoie null, donc le panneau affiche « legacy event payload » (faux message) ; et la ligne n'est jamais rouge, car `payloadOk` ne regarde que `ok` (.claude/skills/sssf/apps/visualizer/src/lib/format.ts:74-83) alors que quality écrit `passed`. Expérience reproduite : voir le registre.",
+   "Les 5 v-html du fichier (l.492, 620, 662, 670, 677) : tous reçoivent la sortie de `renderMarkdown`, `highlightJson` ou `highlightJsonText`, qui échappent `& < > \" '` avant d'ajouter leurs propres balises. Pas d'autre `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `document.write` dans src/ (grep). Aucun `href` dynamique dans ce fichier ; aucun `:style` ; `:class` seulement depuis des tables fixes ou des booléens.",
+   "Style (l.687-1283, scoped) : aucune règle `url()`, `@import`, `@font-face`, `content:` ni `attr()` (grep sur les lignes 687-1283). Les zones de texte longues défilent (max-height 60vh / 30vh / 40vh / 42vh aux lignes 915, 1030, 1159, 1254) ; aucune troncature côté interface.",
+   "Rien n'est écrit, aucun stockage (localStorage, sessionStorage, cookie, IndexedDB : aucune occurrence dans src/), aucun bouton copier, export ni téléchargement (grep Blob, clipboard, download, createObjectURL : rien). Seule façon de sortir un texte : le sélectionner à la souris."
+  ],
+  "deps": [
+   "Reçoit les props de .claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:552-559 (seul parent, git grep `PhaseDetail`).",
+   "Importe .claude/skills/sssf/apps/visualizer/src/lib/format.ts (fmtClock, payloadOk, ts), .claude/skills/sssf/apps/visualizer/src/lib/highlight.ts, .claude/skills/sssf/apps/visualizer/src/lib/events.ts, .claude/skills/sssf/apps/visualizer/src/lib/models.ts, .claude/skills/sssf/apps/visualizer/src/lib/api.ts (fetchPrompts), .claude/skills/sssf/apps/visualizer/src/lib/markdown.ts, StatusChip.vue, StatChip.vue, DetailSection.vue, et les types de .claude/skills/sssf/apps/visualizer/src/lib/types.ts.",
+   "Appelle GET /api/sessions/:adw_id/agents/:agent/prompts (.claude/skills/sssf/apps/visualizer/server/index.ts:167-191).",
+   "Carte à corriger : la fiche « courte » ne dit ni qu'il y a cinq v-html, ni que les prompts sont les seules données chargées par ce composant, ni que le cache est par agent et non par phase, ni la section « request », « description » et le bouton rendered/raw. Elle ne donne aucun lien sortant (liens_sortants vide) alors qu'il importe 8 modules et 3 composants.",
+   "Paquet externe importé : `lucide-vue-next` et `vue`, tous deux déclarés dans package.json:17-19. Rien d'importé et non déclaré."
+  ],
+  "vigilance": [
+   "Ce que l'écran montre EN CLAIR, sans filtre : arguments complets des outils (y compris une commande bash avec une clé tapée dedans), sortie des commandes (jusqu'à 20 000 caractères), réflexion complète du modèle, messages de l'agent, enveloppes en entier, note d'une porte, prompts système et utilisateur, texte de l'erreur de phase (`phase.error`, l.379, coupé à 1000 caractères par adws/adw_modules/runner.py:90), demande de l'ingénieur. Si un agent lit `.env` ou lance `printenv`, la valeur s'affiche. L'écran ne montre PAS l'environnement du processus ni la ligne de commande de Pi (table `processes` jamais interrogée par le serveur).",
+   "Le visualiseur ne masque rien : le filtre de secrets doit être mis à l'écriture dans la trace (décision 4), pas ici.",
+   "L'affichage des prompts n'est pas une preuve d'audit : le fichier lu est écrasé par agent (n°46) et se trouve sous adws/adw_data/, que les agents peuvent modifier (n°14). Un agent malveillant peut changer ce que Theo croit avoir été envoyé.",
+   "Rendu de la liste d'événements : aucune pagination ni virtualisation, une ligne par événement de la phase. À chaque cycle de 500 ms l'objet `phase` change, donc le composant se redessine, et, pour chaque ligne de type tool_call, 3 à 4 `JSON.parse` de la charge utile sont refaits à chaque rendu (`payloadOk` l.634, `eventLabel` l.635 et 636, `eventDurationMs` l.640 et 643 si `ended_at` manque) ; une charge peut atteindre plusieurs dizaines de milliers de caractères (20 000 par argument et par résultat, plusieurs arguments possibles, adws/adw_modules/agent_pi.py:26-27). Les autres types ne sont pas parsés par `eventLabel`. Sur une phase de plusieurs milliers d'appels d'outils, risque de lenteur : à vérifier dans un navigateur.",
+   "Les panneaux de prompts ne s'ouvrent que si le fichier existe côté serveur. Si seule la base sssf.db est rapatriée de la VM (et pas le dossier `sessions/`), l'écran affiche « no compiled prompts recorded » (.claude/skills/sssf/apps/visualizer/src/lib/api.ts:66, .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:471) sans erreur : on peut croire que rien n'a été envoyé.",
+   "Message « no detail available — legacy event payload » (l.669) faux pour les événements du module quality : il fait croire à un ancien format alors que c'est le format actuel."
+  ],
+  "chez_nous": [
+   "Décision 3 (copie de chaque prompt rangée par phase) : l'écran, le cache (clé adw:agent, l.293) et la route serveur (pas de paramètre phase) sont tous par agent. Il faudra ajouter la phase aux trois si on range les copies par phase.",
+   "Décision 4 (masquer les clés dans la trace) : ce panneau est le principal lecteur de la trace ; il affichera ce qui a été écrit. Le masquage doit donc être fait avant écriture. Piste, sans trancher : un second filtre à l'affichage pour les anciennes traces.",
+   "Les règles « jamais de vrai secret dans l'atelier » rendent le risque faible tant que la VM n'a que la clé OpenRouter jetable, mais cette clé s'afficherait si un agent la lit.",
+   "Pour comprendre une phase échouée, les sections utiles sont « gates » (violations) et la liste d'événements. À garder telles quelles ; ajouter peut-être le message de console visible sans clic."
+  ],
+  "a_verifier": [
+   "Comportement du navigateur sur les cinq v-html : l'expérience a été faite sur la logique copiée, avec l'analyseur HTML de Python (html.parser), qui est plus tolérant qu'un navigateur. Une vérification dans un vrai navigateur (ouvrir un prompt contenant les entrées piégées de la note markdown.ts) reste à faire.",
+   "Lenteur de la liste d'événements pour une très longue phase (l.628-681) et mémoire utilisée par tous les événements : à mesurer dans un navigateur.",
+   "Ce que Pi met dans `result_snippet` quand un outil échoue (texte d'erreur, variables d'environnement affichées par une commande) : non vérifiable ici, Pi n'est pas installé."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Vue d'une session : une « cascade » (waterfall) avec une voie par acteur (ingénieur, code, un agent par voie), des blocs par phase positionnés dans le temps, des petits traits pour les appels d'outils, et en dessous le PhaseDetail de la phase choisie. C'est lui qui interroge le serveur toutes les 500 ms pour la session ouverte (session, événements, et — seulement quand une frontière de phase est passée — enveloppes et portes). Il ne s'arrête jamais tant que la page est ouverte.",
+  "points": [
+   "Imports (l.2-22) : `vue`, `lucide-vue-next` (Bot, SquareTerminal, UserRound) ; api (fetchEnvelopes, fetchEvents, fetchGates, fetchSession), format, models, events, router, StatusChip, StatChip, PhaseDetail. Seuls paquets externes : vue et lucide-vue-next.",
+   "Props (l.24) : `adwId` (venu du hash de l'URL, .claude/skills/sssf/apps/visualizer/src/App.vue:38) et `phaseId`. État (l.26-35) : session, phases, agents, usage, events, envelopes, gates, apiError, loaded, nowMs.",
+   "tick() (l.43-80) : à chaque cycle, (1) `fetchSession` (session + phases + agents + usage), (2) boucle de `fetchEvents(adwId, cursor, 1000)` tant que `has_more` (l.55-61), (3) si c'est le premier cycle OU si un événement frais est de type gate_pass, gate_fail, handoff, agent_end, phase_end ou error (l.41, l.66), `fetchEnvelopes` + `fetchGates` en parallèle (l.67). Garde anti-chevauchement `inflight` (l.44-45, l.77-79). Au premier cycle, l'historique COMPLET de la session est chargé page par page (1000 événements max par page, .claude/skills/sssf/apps/visualizer/server/db.ts:32 MAX_LIMIT).",
+   "Fréquence : `setInterval(tick, 500)` (l.84), nettoyé seulement à la fermeture du composant (l.87-90). Pas de `visibilitychange`, pas de test de `session.status`, pas de pause. Registre n°41 confirmé : 500 ms écrit en dur (l.84) ; `poll_ms` n'est lu par aucun fichier (git grep : seulement adws/adw_modules/data_types.py:343, 5 YAML et docs).",
+   "Requêtes par seconde (preuve : l.43-67 + l.84) : un cycle fait au minimum 2 requêtes (session + une page d'événements), donc 4 requêtes par seconde tant que la vue est ouverte, même sur une session terminée, même onglet caché. Plus 2 requêtes (enveloppes + portes) à chaque frontière de phase. Si le serveur est arrêté, la vue réessaie toutes les 500 ms sans attente croissante (l.75-76).",
+   "Perte d'événements : dans la boucle de pages (l.55-61), `cursor` avance (l.59) AVANT que les événements soient rangés dans `events` (l.62). Si la 2e page échoue, le `catch` (l.75) jette `fresh` ; au cycle suivant la lecture reprend après le curseur déjà avancé. Expérience sur une copie de la logique avec un faux réseau : 2 500 événements, 2e page en erreur une fois, il en manque 1 000 (les rowid 1 à 1000) définitivement. Ne se produit que si plus de 1000 événements arrivent d'un coup (premier chargement d'un gros run).",
+   "Données périmées : si `fetchEnvelopes`/`fetchGates` échoue (l.67) après que les événements ont été rangés (l.62), le cycle suivant n'a plus d'événement « frontière » frais, donc ne les redemande pas (l.66). Expérience : les portes restent à l'ancienne valeur jusqu'au prochain événement frontière (parfois jamais, si c'était la fin du run). Seul le premier cycle réessaie, grâce à `!loaded.value`.",
+   "Listes : `events.value = [...events.value, ...fresh]` (l.62) recopie tout le tableau à chaque cycle qui apporte du neuf ; `events` est un `ref` profond (réactivité sur chaque objet), contrairement à SessionCard qui utilise `shallowRef`. Aucun plafond de mémoire : tous les événements de la session, avec leurs charges utiles (jusqu'à ~40 000 caractères chacune), restent dans le navigateur.",
+   "selectedPhase / phaseCrumb (l.92-98) : la phase choisie vient de `phaseId` dans l'URL ; son nom est recopié dans le fil d'Ariane (.claude/skills/sssf/apps/visualizer/src/App.vue:31) en texte.",
+   "ownerStart / lanes (l.150-213) : une voie « engineer » (étiquette = `session.engineer`), une voie « code » si des phases de type code existent, une voie par agent (propriétaire de phase de type agent). Le modèle de la voie vient de `agent_sessions` ou, pour un agent en cours, de la charge utile `agent_start` (l.204). La couleur vient de `agentColor(info.color, start.color, i)` : valeur non validée (voir events.ts).",
+   "laneContext / contextLabel / contextFill (l.129-144) : barre d'occupation du contexte, seulement si `context_tokens` et `context_window` sont non nuls ; division par la fenêtre protégée par le test `!window`. Le plancher visuel est 2 % (l.143).",
+   "Géométrie du temps (l.217-348) : range, requestPhase, zone de requête fixe à 16 % (REQ_ZONE_PCT, l.246), originMs, postSpan, ticks (axisTicks de format.ts, 7 graduations visées), blockLayout (largeur minimale 3,5 %, décalage des blocs suivants pour éviter les chevauchements, l.295-338). Toutes les positions sont des nombres calculés ; aucune ne vient directement d'un texte de la trace.",
+   "blockStyle (l.350-360) : fond et bordure calculés avec `hexAlpha(lane.color, …)` (.claude/skills/sssf/apps/visualizer/src/lib/events.ts:44-49), qui renvoie « transparent » si la couleur n'est pas un hexadécimal à 6 chiffres. Mais deux endroits utilisent la couleur BRUTE : `:style=\"{ color: lane.color }\"` (l.466) et le dégradé de la barre de contexte `linear-gradient(90deg, …, ${lane.color})` (l.488). Voir le registre : valeur libre venue de la config ou de sssf.db.",
+   "STATUS_GLYPH / toolTicks / ticksFor (l.370-405) : un petit trait par appel d'outil dans le bloc, rouge si `payloadOk` est faux (l.388). Les traits de quality:* ne sont jamais rouges (voir PhaseDetail et le registre).",
+   "sessionDurationMs (l.415-422) : pour une session `running`, durée = `Date.now()` navigateur − started_at. Une session dont le processus est mort mais dont le statut est resté `running` continue de s'allonger : l'interface n'a aucun indicateur de « dernier événement il y a X ».",
+   "selectPhase (l.424-426) : change le hash de l'URL (`navigate`).",
+   "Gabarit (l.429-561) : bandeau d'erreur « api unreachable — retrying » (l.431), bandeau de session (demande de l'ingénieur tronquée par CSS, statut `session.status ?? 'fail'`, date, nom de l'ADW, pastilles coût / durée / tokens / lus / écrits), cascade, puis PhaseDetail (l.552-559). Tout texte en `{{ }}` ; les `:title` sont des attributs échappés par Vue. Un statut vide (null) s'affiche « fail » (l.435).",
+   "Attributs dynamiques de ce fichier : `:src=\"modelIcon(lane.model)\"` (l.471, six chemins fixes) ; `:style` aux l.453, 458, 466, 486-490, 497, 498, 504, 527, 536 ; `:class` avec `p.status` (l.503, 509), c'est-à-dire une chaîne de la base utilisée telle quelle comme nom de classe (effet seulement visuel). Aucun `href`, aucun `v-html`.",
+   "Style (l.563-870, scoped) : aucune règle `url()`, `@import`, `content:` ni `attr()` (grep). Deux animations `pulse` (l.812 et l.840).",
+   "Stockage et réseau : aucun `localStorage`, `sessionStorage`, cookie, IndexedDB, `EventSource`, `WebSocket`, `XMLHttpRequest` ; les seuls appels réseau passent par api.ts (même origine)."
+  ],
+  "deps": [
+   "Seul importeur : .claude/skills/sssf/apps/visualizer/src/App.vue:4 et :38 (monté avec `:key=\"route.adwId\"`, donc recréé à chaque changement de session).",
+   "Importe .claude/skills/sssf/apps/visualizer/src/lib/api.ts, .claude/skills/sssf/apps/visualizer/src/lib/format.ts, .claude/skills/sssf/apps/visualizer/src/lib/models.ts, .claude/skills/sssf/apps/visualizer/src/lib/events.ts, .claude/skills/sssf/apps/visualizer/src/lib/router.ts, .claude/skills/sssf/apps/visualizer/src/components/StatusChip.vue, .claude/skills/sssf/apps/visualizer/src/components/StatChip.vue, .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue, .claude/skills/sssf/apps/visualizer/src/lib/types.ts.",
+   "Carte à corriger : « polling des événements, enveloppes et gates » est inexact. Chaque cycle interroge la session et les événements ; enveloppes et portes ne sont redemandées qu'aux frontières de phase (l.66). La carte ne dit pas que la boucle ne s'arrête jamais. liens_sortants vide alors que le fichier importe 9 modules.",
+   "Appelle GET /api/sessions/:id, /api/sessions/:id/events?after=&limit=1000, /envelopes, /gates (.claude/skills/sssf/apps/visualizer/src/lib/api.ts:22-41, 72-78)."
+  ],
+  "vigilance": [
+   "Le sondage ne s'arrête jamais (ni session terminée, ni onglet caché) : 4 requêtes par seconde pour un onglet oublié ouvert sur une VM. Comparer .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:55, 73-75, qui s'arrête quand le run n'est plus `running`.",
+   "Pas de plafond sur le nombre d'événements gardés : un très long run grossit la mémoire du navigateur et la recopie du tableau à chaque cycle.",
+   "Une couleur d'agent non validée (config ou base) est écrite telle quelle dans le style (l.466, l.488).",
+   "L'écran montre « fail » pour un statut vide (l.435) et laisse un run mort affiché `running` avec une durée qui grandit."
+  ],
+  "chez_nous": [
+   "Décision 4 : même remarque que PhaseDetail, tout ce que le tracer écrit s'affiche.",
+   "Si on garde ce visualiseur sur la VM, il faudra choisir : sondage plus lent, arrêt quand la session est terminée, et cache fermé aux autres machines. Le serveur est lu par un autre lecteur ; à croiser.",
+   "Pour comparer les runs après destruction des VM, il faut rapatrier sssf.db ET le dossier sessions/ (prompts) pour que l'écran soit complet."
+  ],
+  "a_verifier": [
+   "Throttling des minuteries d'un onglet caché (Chrome ralentit les `setInterval`) : comportement du navigateur, non vérifiable ici ; le code lui-même ne fait rien.",
+   "Rendu réel des couleurs non validées (voir registre) : à tester dans un navigateur avec une couleur de config piégée.",
+   "Durée réelle d'un cycle sur un gros run (plus de 1000 événements) et mémoire consommée : à mesurer avec le serveur lancé (interdit ici)."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/src/lib/markdown.ts": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Rendu markdown maison, sans bibliothèque, pour afficher les deux prompts compilés dans PhaseDetail. Il découpe le texte ligne par ligne et fabrique du HTML. Promesse du fichier (l.4-6) : tout est échappé AVANT de produire des balises, pas de HTML brut, liens limités à http(s). Vérifié par expérience : la promesse est tenue pour l'injection. Défaut trouvé : le texte placé sur la ligne qui ouvre un bloc de code disparaît.",
+  "points": [
+   "Commentaire d'en-tête (l.1-11) : liste ce qui est géré (titres 1 à 4, blocs de code, code en ligne, gras, liens, listes, citations, ligne horizontale, paragraphes). Pas géré : italique, images, tableaux, listes imbriquées, HTML brut, titres soulignés. Une image `![x](http://…)` devient du texte et un lien (le `!` reste devant).",
+   "Import (l.13) : `escapeHtml` et `highlightJsonText` de .claude/skills/sssf/apps/visualizer/src/lib/highlight.ts. Aucun paquet externe.",
+   "inline(escaped) (l.16-29) : reçoit un texte DÉJÀ échappé (tous les appelants passent par `escapeHtml` avant : l.39 via `line`, l.71, l.87, l.102). Il coupe sur les segments `…` (code en ligne) ; les segments impairs deviennent `<code>…</code>` sans autre traitement (l.20). Sur les autres : `**gras**` puis `[texte](http(s)://…)` (l.22-26). Gras traité AVANT les liens : `[x](http://e.com/**b**)` met une balise `<strong>` dans l'adresse du lien (inoffensif : pas de guillemet, voir expérience).",
+   "Liens (l.23-26) : motif `\\[([^\\]\\n]+)\\]\\((https?:\\/\\/[^)\\s]+)\\)` ; seule une adresse commençant par `http://` ou `https://` est acceptée. `javascript:`, `data:`, `JAVASCRIPT:` restent du texte. Sortie : `<a href=\"…\" target=\"_blank\" rel=\"noopener noreferrer\">`. L'adresse est déjà échappée, donc `\"` et `'` y sont `&quot;`/`&#39;` et ne peuvent pas fermer l'attribut. Limite : le texte du lien est libre, `[Se connecter](https://login.example.org@evil.example/)` donne un lien qui affiche un nom et part ailleurs.",
+   "renderMarkdown(src) (l.31-120) : normalise `\\r\\n`, boucle sur les lignes. À chaque ligne, `line = escapeHtml(raw)` (l.46) ; les tests de structure se font sur `raw` (l.50, 67, 76, 86, 94-95, 109) et les textes sont échappés avant tout assemblage.",
+   "Blocs de code (l.48-65) : motif ouvrant `^\\s*```(\\w*)`. La ligne ouvrante est consommée en entier : TOUT ce qui suit les trois accents sur cette ligne est jeté sans message. Le nom de langage n'est jamais écrit dans la sortie (il sert seulement à comparer avec `json`, l.62) : un nom de langage piégé ne peut rien injecter. Le bloc va jusqu'à la prochaine ligne qui commence par ``` ; sans fermeture, il avale tout le reste du document (l.55-59). Contenu : `highlightJsonText` si langage json, sinon `escapeHtml` (l.61-62).",
+   "Titres (l.67-74), ligne horizontale (l.76-81), citations (l.83-92), listes à puces ou numérotées (l.94-107), lignes vides (l.109-113), paragraphes (l.115) : chacun échappe le texte avant `inline`. Le test de citation se fait sur la version échappée (`&gt;`, l.83), puis la boucle sur la version brute (l.86) : cohérent.",
+   "Expérience 1 (copie byte à byte de markdown.ts et highlight.ts dans le dossier d'expériences, seule modification : extension `.ts` dans l'import ; node 22.22 déjà installé, `--experimental-strip-types` implicite). 40 entrées piégées, sorties relues avec l'analyseur HTML de Python (html.parser) qui vérifie les balises et attributs permis : `<img src=x onerror=alert(1)>` donne `<p>&lt;img src=x onerror=alert(1)&gt;</p>` ; `<script>` idem ; `[x](javascript:alert(1))` reste `[x](javascript:alert(1))` en texte ; `data:` et `JAVASCRIPT:` idem ; `&lt;script&gt;` donne `&amp;lt;script&amp;gt;` (texte littéral, pas de décodage) ; `&#60;` idem ; ``` ```json\"><img src=x onerror=1> ``` donne un bloc json sans le reste de la ligne ; `# <img …>`, `> <img …>`, `- <img …>` : tout échappé. Résultat : 0 sortie hors liste blanche.",
+   "Expérience 2 (fuzz) : 200 000 entrées aléatoires de 1 à 40 morceaux pris parmi 51 fragments piégés (balises, guillemets, entités, crochets, `](`, ``` , `javascript:`, `onerror=`, retours chariot) : 250 000 sorties (avec highlightJson) analysées, 0 balise ou attribut hors liste blanche, 172 liens `<a>` produits, tous en http(s) avec `target=_blank rel=\"noopener noreferrer\"`. Conclusion : aucune injection de HTML ni de script trouvée par une sortie d'agent à travers ce rendu (limite : analyseur Python, pas un navigateur).",
+   "Expérience 3 (fidélité) : `` ```code``` puis <b>gras</b>\\nsuite du texte `` donne `<pre><code>suite du texte</code></pre>` : la première ligne (tout ce qui suit les accents graves) a disparu de la vue « rendered » ; elle reste visible dans la vue « raw » (.claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:490). Voir le registre.",
+   "Expérience 4 (temps) : le motif des liens, appliqué à `[` répété sur une ligne : 10 000 → 81 ms, 20 000 → 328 ms, 40 000 → 1 403 ms (croissance quadratique). Le gras sans fermeture et les blocs json géants restent rapides (80 000 caractères : 94 ms). Une ligne de prompt de 100 000 crochets figerait l'onglet plusieurs secondes ; il faudrait que le texte arrive dans un prompt (demande de l'ingénieur ou enveloppe précédente). Précision : ce calcul se déclenche dès que les prompts d'une phase d'agent sont chargés, section fermée (.claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:464 et 330-342), pas à l'ouverture.",
+   "Utilisation : seul appelant `renderMarkdown(text)` à .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:339, injecté par v-html à .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:492."
+  ],
+  "deps": [
+   "Importé uniquement par .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:30 (git grep `renderMarkdown`).",
+   "Importe .claude/skills/sssf/apps/visualizer/src/lib/highlight.ts (escapeHtml, highlightJsonText).",
+   "Carte à corriger : la fiche dit « fences json colorées » et « (échappé) » : exact. Elle omet que le lien http(s) est le seul HTML d'attribut produit, que le texte après les accents graves de la ligne ouvrante est jeté, et que la carte ne relie pas markdown.ts à PhaseDetail.vue (liens_entrants vide)."
+  ],
+  "vigilance": [
+   "Les liens http(s) sont cliquables dans une vue qui affiche des textes venus d'agents (demande de l'ingénieur, résumé d'une enveloppe précédente injecté dans `user.md` par le gabarit `{{previous_envelope}}`, adws/adw_data/prompt_engineering/planner/user.md:11). Un texte d'agent peut donc fabriquer un lien trompeur sur lequel quelqu'un clique. Aucun envoi automatique : il faut un clic.",
+   "Le rendu masque le contenu d'une ligne qui ouvre un bloc de code et peut avaler la suite d'un prompt dans un bloc de code : la vue « rendered » n'est pas une copie fidèle d'un prompt. La vue « raw » l'est.",
+   "Aucune protection de défense en profondeur : pas de Content-Security-Policy dans index.html ni dans les réponses du serveur (.claude/skills/sssf/apps/visualizer/server/index.ts:98-108). La sécurité repose entièrement sur l'échappement ci-dessus."
+  ],
+  "chez_nous": [
+   "Si on garde ce rendu, ajouter à un test automatique les entrées piégées de cette note.",
+   "Décision 3 : les copies de prompts seront relues ici ; garder la vue « raw » comme référence."
+  ],
+  "a_verifier": [
+   "Comportement d'un vrai navigateur sur la sortie (tolérance différente de html.parser).",
+   "Ordre exact des attributs et aucune exécution : à ouvrir une fois un prompt contenant `[x](javascript:alert(1))` et `<img src=x onerror=alert(1)>` dans le visualiseur lancé (interdit ici)."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/src/lib/highlight.ts": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Coloration JSON sans dépendance. Trois fonctions : `escapeHtml` (échappe & < > \" '), `highlightJsonText` (découpe un texte en jetons et enveloppe chacun dans un `<span class=\"j-…\">`), `highlightJson` (remet en forme un JSON puis le colore, ou renvoie le texte échappé s'il n'est pas du JSON). La promesse (l.1-7) « chaque caractère est échappé » est tenue. Les classes `j-*` sont définies dans style.css.",
+  "points": [
+   "escapeHtml(s) (l.9-16) : remplace dans cet ordre `&`, `<`, `>`, `\"`, `'`. `&` d'abord, donc pas de double échappement des remplacements suivants. Fonction exportée et réutilisée par markdown.ts.",
+   "TOKEN (l.20-21) : expression régulière globale. Alternatives : chaîne entre guillemets (avec échappements `\\\\.`) suivie éventuellement de `:` (donc « clé »), puis `true|false`, `null`, nombre (avec fraction et exposant). Les chaînes passent avant les nombres et mots-clés pour que ceux qui sont dans une chaîne ne soient pas coupés (commentaire l.18-19).",
+   "highlightJsonText(text) (l.24-44) : parcourt les correspondances ; le texte ENTRE deux jetons est écrit avec `escapeHtml` (l.28 et l.42) ; une chaîne et son `:` sont écrits avec `escapeHtml` (l.32) ; `true`/`false` écrits tels quels (l.34) mais ce sont forcément ces deux mots (motif `\\b(true|false)\\b`) ; `null` écrit en dur (l.36) ; un nombre est échappé (l.38). Les seules balises produites sont des `<span class=\"j-key|j-str|j-bool|j-null|j-num\">`.",
+   "highlightJson(raw) (l.47-54) : texte vide ou nul donne chaîne vide ; sinon `JSON.stringify(JSON.parse(raw), null, 2)` coloré ; en cas d'erreur de lecture, `escapeHtml(raw)` (l.52), sans couleur.",
+   "Expérience (même copie que pour markdown.ts) : `{\"a\":\"<b>x</b>\",\"<k>\":[1,2.5e3,true,null]}` donne des `<span>` avec `&lt;b&gt;x&lt;/b&gt;` à l'intérieur ; une clé `\"<script>\"` et une valeur `\"</span><img src=x onerror=1>\"` sont échappées sans pouvoir fermer le span ; `<img src=x onerror=1>` (non JSON) passé à `highlightJson` donne `&lt;img src=x onerror=1&gt;` ; chaîne non terminée `\"abc\" : \"def` donne une clé colorée puis `&quot;def` en texte. Dans le fuzz de 250 000 sorties (voir markdown.ts), 0 balise ou attribut hors liste.",
+   "Temps, deux entrées. (1) Des chaînes bien fermées (`\"\\\"` répété) : 40 000 caractères en 29 ms, rapide ; pas d'explosion exponentielle (les deux branches du motif ne se recouvrent pas). (2) Un guillemet ouvrant jamais fermé suivi de `\\\"` répété : croissance QUADRATIQUE observée (copie du fichier, node 22) : 10 000 caractères → 58 ms, 20 000 → 204 ms, 40 000 → 829 ms, 80 000 → 3 371 ms ; via un bloc json de markdown.ts : 990 ms à 40 000 et 3 090 ms à 80 000. Contrôle indépendant du vérificateur : même ordre de grandeur (bun : 1 057 ms à 40 000). Atteignable par un bloc ```json dans un prompt (.claude/skills/sssf/apps/visualizer/src/lib/markdown.ts:62), pas par `highlightJson` (JSON déjà valide). Voir le registre.",
+   "Utilisateurs : `highlightJson` à .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:620, 670, 677 ; `highlightJsonText` à .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:231 (args) et .claude/skills/sssf/apps/visualizer/src/lib/markdown.ts:62 ; `escapeHtml` à markdown.ts seulement."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/src/lib/markdown.ts:13 et .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:26.",
+   "Aucun import. Carte à corriger : liens_entrants ne contient que markdown.ts ; PhaseDetail.vue importe aussi highlightJson et highlightJsonText (.claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:26)."
+  ],
+  "vigilance": [
+   "Un entier JSON de plus de 15 chiffres perd de la précision dans `highlightJson` (JSON.parse puis stringify), donc la vue d'une enveloppe peut montrer un nombre légèrement différent de celui qui est stocké."
+  ],
+  "chez_nous": [
+   "Rien à changer pour la sécurité. À garder tel quel."
+  ],
+  "a_verifier": [
+   "Rendu du navigateur (non exécuté ici, voir markdown.ts)."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/src/lib/api.ts": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Client HTTP du front : fonctions `fetch` vers les routes `/api/...` de la même origine. Toutes en GET sauf l'archivage (POST). Aucune adresse externe. Chaque identifiant passé dans le chemin est encodé avec `encodeURIComponent`.",
+  "points": [
+   "Imports (l.1-10) : uniquement des types de ./types. Aucun paquet.",
+   "getJson(url) (l.12-16) : `fetch(url)` ; si le statut n'est pas 2xx, lève `Error(\"GET <url> → <statut>\")` ; sinon `res.json()`. Pas de délai maximal (`AbortController`), pas de nouvelle tentative, pas de vérification de la forme du JSON : le résultat est simplement déclaré du bon type par un `as`.",
+   "fetchSessions() (l.18-20) : GET `/api/sessions` sans paramètre ; le serveur applique alors 200 (.claude/skills/sssf/apps/visualizer/server/index.ts:126) et plafonne à 1000 (.claude/skills/sssf/apps/visualizer/server/db.ts:32). L'interface n'a pas de « charger plus » : au-delà de 200 sessions non archivées, les plus anciennes sont invisibles.",
+   "fetchSession(adwId) (l.22-30) : GET `/api/sessions/<id encodé>`. Valeurs par défaut : `usage = {read:0, written:0}`, `phases = []`, `agents = []`. Si `detail.session` manque, il reste `undefined` : pas de défaut.",
+   "fetchEvents(adwId, after, limit = 500) (l.32-41) : GET `.../events?after=<nombre>&limit=<nombre>` (les deux nombres ne sont pas encodés mais viennent du code, pas de la trace). Accepte deux formes de réponse : un tableau (ancien serveur) ou `{events, cursor, has_more}`. Pour un tableau, le curseur est le plus grand `rowid` et `has_more` est `page.length === limit`. Les appelants passent 1000 (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:58, .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:50).",
+   "archiveSession(adwId, archived = true) (l.44-52) : POST `/api/sessions/<id>/archive` avec corps JSON `{archived}`. Seule écriture de toute l'interface. Lève une erreur si le statut n'est pas 2xx. Le seul appelant est .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:23 avec `archived = true` : rien dans l'interface ne permet de restaurer une session archivée (le paramètre `false` n'est jamais utilisé).",
+   "fetchHealth() (l.54-56) : GET `/api/health`. Jamais appelée (git grep : seulement sa définition). Code mort.",
+   "fetchPrompts(adwId, agent) (l.61-70) : GET `/api/sessions/<id>/agents/<agent>/prompts`, les deux encodés. Un 404 est traité comme « pas de prompts » (`{system:null, user:null}`, l.66) : une erreur de route et une absence de fichier se confondent. Autre statut non 2xx : lève une erreur (l.67).",
+   "fetchEnvelopes / fetchGates (l.72-78) : GET `/api/sessions/<id>/envelopes` et `/gates`.",
+   "Aucun `fetch` vers une adresse absolue (`http://`, `https://` : aucune dans api.ts). Hors dépôt de code : le proxy de développement de Vite envoie `/api` vers `http://localhost:${PORT}` (vite.config.ts:16-22), et le serveur de production sert l'interface construite (.claude/skills/sssf/apps/visualizer/server/index.ts:83-111)."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:15, .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:4, .claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue:4, .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:29.",
+   "Importe les types de .claude/skills/sssf/apps/visualizer/src/lib/types.ts:10 (Envelope, EventRow, EventsPage, GateResult, HealthResponse, PromptsResponse, SessionDetail, SessionSummary).",
+   "Carte à corriger : les routes serveur correspondantes sont .claude/skills/sssf/apps/visualizer/server/index.ts:116-191 ; la carte ne les relie pas. Elle dit que la requête non-GET est « POST /api/sessions/:id/archive » : exact (l.44-52). Elle ne dit pas que `fetchHealth` est inutilisée."
+  ],
+  "vigilance": [
+   "Le POST d'archivage n'a ni jeton ni contrôle d'origine. Côté serveur, le corps est lu avec `req.json()` sans regarder le type de contenu (.claude/skills/sssf/apps/visualizer/server/index.ts:141). Un site ouvert dans le même navigateur pourrait peut-être envoyer une requête « simple » en text/plain vers localhost:4600 et archiver des sessions : au pire un drapeau d'archivage (une colonne), mais cela cache des runs. À vérifier dans un navigateur ; le serveur est lu par un autre lecteur.",
+   "Aucune limite de taille ni de durée sur les réponses : il n'y a aucun plafond global : chaque argument et chaque résultat d'un événement peut faire 20 000 caractères (adws/adw_modules/agent_pi.py:26-27) et un événement peut avoir plusieurs arguments, donc une page de 1000 événements peut peser plusieurs dizaines de Mo."
+  ],
+  "chez_nous": [
+   "Si on rapatrie les traces et lance le visualiseur sur le poste de Theo, tout reste local (même origine) : bon point. Aucun appel sortant à supprimer."
+  ],
+  "a_verifier": [
+   "Hôte d'écoute du serveur (Bun.serve sans `hostname`, .claude/skills/sssf/apps/visualizer/server/index.ts:113-115) : toutes les interfaces ou seulement localhost ? À vérifier dans la documentation de Bun, ce qui dépasse ce lot."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/src/lib/events.ts": {
+  "status": "fait",
+  "niveau": 2,
+  "role": "Petits outils de présentation des événements : couleur par type, couleur des voies d'agents, lecture des charges utiles JSON, et libellé d'une ligne d'événement (« bash: ls -la src »). Ce sont ces fonctions qui décident ce qu'on voit sur une ligne sans la déplier.",
+  "points": [
+   "EVENT_DOT_COLORS (l.7-16) : 8 types colorés (agent_start, thinking, agent_message, tool_call, handoff, agent_end, error, gate_fail). Les 12 types réellement écrits (phase_start, phase_end, agent_start, agent_end, thinking, agent_message, tool_call, handoff, gate_pass, gate_fail, log, error : git grep des `type=` dans adws/) donnent : phase_start, phase_end, gate_pass et log sans couleur. Registre n°37 confirmé côté interface : `thinking` et `agent_message` ont bien leur couleur (l.9-10), alors qu'.claude/skills/sssf/references/observability.md:15 ne les liste pas.",
+   "dotColor(type) (l.18-21) : couleur du type, ou null. Utilisé par .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:131-132 : un événement sans couleur n'a PAS de point dans la chronologie de la carte (gate_pass, log, phase_*).",
+   "AGENT_FALLBACK_COLORS / agentColor(configColor, payloadColor, index) (l.28-41) : `configColor ?? payloadColor ?? palette[index] ?? '#c89bff'`. L'opérateur `??` ne prend que null/undefined : une chaîne VIDE gagne. Or le schéma met `color: str = \"\"` par défaut (adws/adw_modules/data_types.py:309) et le tracer écrit `agent.color` tel quel (adws/adw_modules/tracer.py:269). Un agent sans couleur configurée reçoit `\"\"` et non la palette de secours. Expérience : `agentColor('', null, 1)` renvoie `''`. Les 6 YAML livrés ont tous une couleur, donc seul un YAML personnalisé est touché.",
+   "hexAlpha(hex, alpha) (l.44-49) : accepte seulement `#?` + 6 chiffres hexadécimaux ; renvoie `rgba(r,g,b,alpha)`, sinon « transparent ». Expérience : `red` et `red), url(http://x` donnent « transparent ». C'est la seule validation de couleur du front ; elle n'est pas appliquée à `lane.color` aux endroits cités dans SessionTrace.vue.",
+   "parsePayload(raw) (l.53-64) : `JSON.parse`, ne garde que les objets (pas les tableaux, pas les textes) ; toute erreur donne null (« legacy or truncated payloads render raw »).",
+   "parseToolCall / parseAgentStart (l.66-74) : parseToolCall exige un champ `tool` de type texte ; sinon null. C'est ce test qui rend les événements du module quality (sans `tool`) « ordinaires » dans PhaseDetail. parseAgentStart ne vérifie rien (juste un cast).",
+   "ARG_LABEL_KEYS (l.78-88) : ordre de recherche du texte de la ligne : command, cmd, file_path, path, pattern, query, url, prompt, description. LABEL_MAX = 160 (l.90).",
+   "oneLine / argsSummary (l.92-110) : aplatit les blancs, coupe à 160 caractères avec « … ». Si aucune clé prioritaire n'a un texte non vide, assemble `clé=valeur` pour chaque argument (valeurs non texte en JSON). Cela peut donc montrer le début de n'importe quel argument (par exemple un contenu de fichier ou une clé), coupé à 160 caractères.",
+   "eventLabel(e) (l.117-133) : pour un tool_call avec `tool`, préfère `e.name` (étiquette écrite par le tracer, coupée à 80 caractères par adws/adw_modules/agent_pi.py:28) s'il commence par le nom de l'outil, sinon `outil: résumé`. Pour un ancien format avec `pi_event`, « nom pi_event ». Sinon `e.name ?? e.type ?? ''`. Donc pour `log`, l'étiquette est le nom de la phase ; pour thinking / agent_message, le début du texte (80 caractères, adws/adw_modules/agent_pi.py:159).",
+   "Expérience (copie du fichier, entrées fabriquées) : un événement `quality:lint` avec `passed:false, returncode:2` donne l'étiquette `quality:lint`, `parseToolCall` = null ; un tool_call bash avec `ok:false` est bien repéré par payloadOk (false).",
+   "Texte venu de la trace : ces fonctions ne produisent que du TEXTE ou des nombres. Aucune ne fabrique du HTML ; les étiquettes sont affichées avec `{{ }}` et `:title` (.claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:635-636, .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:139)."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:27, .claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:18, .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:6.",
+   "Importe seulement des types de .claude/skills/sssf/apps/visualizer/src/lib/types.ts:1.",
+   "Carte à corriger : la fiche dit que EVENT_DOT_COLORS couvre « agent_start, thinking, agent_message, tool_call, handoff, agent_end, error, gate_fail » : exact. Elle omet agentColor et hexAlpha (l.28-49), qui ont le bogue de la chaîne vide et la validation partielle. liens_entrants est vide alors que trois composants l'importent."
+  ],
+  "vigilance": [
+   "Une ligne de tool_call montre l'étiquette `bash: <début de la commande>` : une clé tapée au début d'une commande est visible sans clic.",
+   "Types sans couleur dans les cartes : on ne voit pas les `gate_pass` ni les messages de console (`log`) dans la chronologie."
+  ],
+  "chez_nous": [
+   "Si on renomme ou ajoute des types d'événements, penser à ce fichier et à .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:257-267 en même temps.",
+   "Décision 5 (aucun modèle par défaut) : ce fichier ne choisit aucun modèle ; rien à changer."
+  ],
+  "a_verifier": [
+   "Aucun point à vérifier hors du navigateur."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/src/App.vue": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Composant racine. Une barre du haut (logo, nom du produit, fil d'Ariane sessions › identifiant de session › nom de phase, mot « live ») et la zone principale qui montre soit la liste des sessions, soit la cascade d'une session selon le hash de l'URL.",
+  "points": [
+   "Script (l.1-7) : importe `useRoute`, `hrefFor`, `phaseCrumb` de lib/router, puis SessionsList et SessionTrace. Aucun paquet externe ici.",
+   "Fil d'Ariane (l.12-33) : liens `<a :href=\"hrefFor(...)\">` dont l'adresse est `#/` + identifiants passés par `encodeURIComponent` (.claude/skills/sssf/apps/visualizer/src/lib/router.ts:32-37). L'identifiant de session de l'URL est affiché en texte (`{{ route.adwId }}`, l.26) et le nom de phase aussi (`{{ phaseCrumb ?? route.phaseId }}`, l.31) : un identifiant venu d'un lien est donc du texte échappé.",
+   "Logo (l.15-19) : SVG écrit dans le gabarit (copie de public/logo.svg, commentaire l.13-14) pour éviter une requête. Mot « live » (l.34) : toujours affiché, quel que soit l'état de l'API ; c'est un ornement, pas un indicateur.",
+   "Zone principale (l.36-39) : `<SessionsList v-if=\"!route.adwId\">`, sinon `<SessionTrace :key=\"route.adwId\" ...>`. La clé force un nouveau composant (donc un nouveau chargement complet) à chaque changement de session. Changer seulement de phase ne recharge rien.",
+   "Style (l.43-131, scoped) : barre collante avec flou, ligne en dégradé (`content: ''`, l.59), animation `pulse` (l.129). Aucune règle `url()` ni `@import`.",
+   "Registre n°7 confirmé : le visualiseur est présent dans le dépôt (.claude/skills/sssf/apps/visualizer/, 19 fichiers de src/ plus server/ et shared/), contrairement à SKILL.md l.76."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/src/main.ts:4. Importe .claude/skills/sssf/apps/visualizer/src/lib/router.ts (l.2), .claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue (l.3), .claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue (l.4).",
+   "Carte à corriger : exacte sur le rôle et sur la plage de gabarit 9-41. Elle ne dit pas que le composant est recréé à chaque changement de session (clé l.38) ni que le mot « live » est fixe."
+  ],
+  "vigilance": [
+   "Le mot « live » reste affiché même si l'API est injoignable ou si toutes les sessions sont terminées (l.34) : il ne faut pas s'y fier."
+  ],
+  "chez_nous": [
+   "Le nom du produit et le logo sont ceux de disler (l.20). Sans conséquence ; à changer si on republie."
+  ],
+  "a_verifier": []
+ },
+ ".claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Une carte de la liste : identifiant, nom de l'ADW, demande, chronologie de points par agent (une ligne par agent, un point par événement), pastilles de statut, durée, coût, tokens, et un bouton « × » qui archive la session. Chaque carte tire elle-même les événements de sa session.",
+  "points": [
+   "Props (l.12) : `session` (SessionSummary avec phases et agents embarqués) et `nowMs`. Émet `archived` (l.13).",
+   "archive(event) (l.18-27) : bloque la navigation du lien (la carte entière est un `<a>`), prévient le parent tout de suite (suppression « optimiste »), puis appelle `archiveSession` (.claude/skills/sssf/apps/visualizer/src/lib/api.ts:44-52). En cas d'échec, émet `archived` avec une chaîne vide pour que le parent recharge (.claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue:39-43). Seule écriture de l'interface ; aucune confirmation avant d'archiver, aucun moyen de restaurer dans l'interface.",
+   "pull() (l.41-61) : lit les événements de la session par pages de 1000 à partir du curseur (.claude/skills/sssf/apps/visualizer/src/lib/api.ts:32-41). Au montage (l.64), CHAQUE carte fait ce chargement complet de l'historique de sa session, même terminée, pour ne dessiner que des points (type, heure, étiquette). Garde anti-chevauchement `inflight`. Même défaut que SessionTrace : le curseur avance (l.51) avant que `events.value` soit mis à jour (l.54) ; une page qui échoue fait perdre les précédentes (expérience dans SessionTrace.vue).",
+   "Fréquence (l.65 et l.73) : `setInterval(pull, 500)` seulement si la session est `running` (au montage, ou quand elle le devient). Registre n°41 confirmé : 500 ms en dur à .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:65 et :73, .claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue:33, .claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:84 ; `poll_ms` n'est lu nulle part. Arrêt : `stopPolling()` dès que `pull` voit un statut différent de `running` (l.55) et au démontage (l.68). Un dernier `pull` est lancé à la sortie de `running` (l.75) mais il est ignoré si un `pull` est déjà en cours (l.42) : les derniers événements pourraient alors manquer (course possible, non reproduite).",
+   "Requêtes par seconde pour la page liste : 2 par seconde pour la liste elle-même (.claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue:33) + 2 par seconde par carte dont la session est `running`. Soit 2 + 2R avec R sessions en cours ; pour N cartes affichées toutes en cours : 2 + 2N (ex. 10 → 22, 200 → 402). Au montage, au moins N requêtes d'événements (plus s'il y a plus de 1000 événements). Une session morte mais restée `running` (statut jamais passé à fail) est sondée sans fin.",
+   "Calculs d'affichage (l.79-186) : `range` (l.81-94) utilise `Math.min(...)` / `Math.max(...)` avec les événements en arguments (l.85, l.90), seulement quand `started_at` ou `ended_at` manque ; au-delà d'une centaine de milliers d'événements ce serait une erreur de pile. `rows` (l.114-161) place un point par événement dont le type a une couleur (`dotColor`) ; `ticks` (axisTicks, 5 graduations visées, l.96). `visibleRows` : 4 lignes d'agents au maximum, 3 + « +N more agents » au-delà (l.175-186).",
+   "Gabarit (l.189-250) : carte `<a :class=\"session.status\" :href=\"hrefFor(session.adw_id)\">` ; texte `{{ session.adw_id }}`, `adw_name`, `request` (aussi en `:title`), `row.owner`, `dot.title` (= type + étiquette + décalage). `:style` aux l.213 (position numérique), 219 (`color: row.color`, valeur de la config non validée : voir le registre) et 228 (`left` numérique, `background: dot.color` pris dans EVENT_DOT_COLORS, donc fixe). Aucun `v-html`. `:class=\"session.status\"` met la chaîne de la base comme nom de classe (effet visuel seulement).",
+   "Style (l.252-472, scoped) : hauteur fixe de 420 px (l.257), aucune règle `url()` ni `@import`.",
+   "Aucune donnée sensible nommée : le texte de la demande et l'étiquette des événements (début des commandes) sont visibles dans la liste, sans clic."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue:6 (seul parent). Importe .claude/skills/sssf/apps/visualizer/src/lib/api.ts (archiveSession, fetchEvents), .claude/skills/sssf/apps/visualizer/src/lib/format.ts, .claude/skills/sssf/apps/visualizer/src/lib/events.ts, .claude/skills/sssf/apps/visualizer/src/lib/router.ts, StatusChip.vue, StatChip.vue, PhaseDots.vue.",
+   "Carte à corriger : la fiche « courte » ne signale pas que chaque carte a son propre sondage d'événements (l.41-77) ni le chargement complet au montage ; elle ne donne aucun lien sortant ni entrant (liens_sortants vide) alors que SessionsList l'importe."
+  ],
+  "vigilance": [
+   "Une carte garde en mémoire tous les événements de sa session (avec charges utiles) alors qu'elle ne dessine que des points : pour 200 sessions, c'est tout l'historique de 200 sessions dans le navigateur.",
+   "Le bouton « × » est imbriqué dans un lien (l.190-199) ; un clic involontaire archive sans demander.",
+   "À chaque cycle de la liste (500 ms), toutes les cartes reçoivent un nouvel objet `session` (.claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue:20), donc le calcul de `rows` est refait sur tous les événements de chaque carte (l.117 dépend de `session.phases`). Coût à mesurer dans un navigateur."
+  ],
+  "chez_nous": [
+   "Si on garde la liste, la limiter aux sessions de la VM courante (une ou quelques-unes) rend ces coûts négligeables."
+  ],
+  "a_verifier": [
+   "Course du dernier `pull` (l.42 / l.75) : à observer dans un navigateur avec un run qui se termine.",
+   "Mémoire et vitesse avec beaucoup de sessions : à mesurer."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Page d'accueil : compte les sessions non archivées, les trie de la plus récente à la plus ancienne et affiche une SessionCard par session. Interroge le serveur toutes les 500 ms.",
+  "points": [
+   "tick() (l.16-29) : `fetchSessions()` (.claude/skills/sssf/apps/visualizer/src/lib/api.ts:18-20), sans paramètre, donc au plus 200 sessions (serveur : .claude/skills/sssf/apps/visualizer/server/index.ts:126, plafond 1000 .claude/skills/sssf/apps/visualizer/server/db.ts:32). Remplace toute la liste à chaque cycle (`shallowRef`, l.20). Garde anti-chevauchement `inflight`.",
+   "Sondage (l.31-36) : `setInterval(tick, 500)` au montage (l.33), nettoyé au démontage. Aucune pause onglet caché, aucune lecture d'un réglage. Registre n°41 confirmé (l.33).",
+   "onArchived (l.39-45) : retire la session de la liste tout de suite ; une chaîne vide demande un rechargement.",
+   "ordered (l.47-49) : tri par `started_at` décroissant ; `ts(...) || 0` met les dates absentes en dernier.",
+   "Gabarit (l.52-70) : bandeau « api unreachable — retrying » (l.54, avec le message d'erreur en texte), « N runs », grille de cartes, messages « no sessions yet — run an ADW to see it here » et « loading sessions… ».",
+   "Pas de pagination ni de « charger plus » : au-delà de 200 sessions non archivées les plus anciennes sont invisibles tant qu'on n'en archive pas d'autres."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/src/App.vue:3. Importe .claude/skills/sssf/apps/visualizer/src/lib/api.ts (fetchSessions), .claude/skills/sssf/apps/visualizer/src/lib/format.ts (ts), SessionCard.vue, les types de .claude/skills/sssf/apps/visualizer/src/lib/types.ts.",
+   "Carte à corriger : exacte (« interrogée périodiquement ») ; elle ne donne pas la période (500 ms, l.33) ni le plafond de 200 sessions."
+  ],
+  "vigilance": [
+   "Le sondage continue sur un onglet caché et ne baisse pas de rythme en cas d'erreur."
+  ],
+  "chez_nous": [
+   "Pour une interface sur une VM, brancher ce rythme sur un réglage (poll_ms aujourd'hui sans effet) ou le ralentir."
+  ],
+  "a_verifier": []
+ },
+ ".claude/skills/sssf/apps/visualizer/src/components/DetailSection.vue": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Section repliable générique du panneau de détail : un bouton d'en-tête (flèche, icône, titre, nombre) et le contenu (`<slot />`) montré seulement quand la section est ouverte.",
+  "points": [
+   "Props (l.4-11) : `title`, `icon` (composant), `count` (optionnel), `open` (booléen). Émet `toggle` (l.13).",
+   "Gabarit (l.16-28) : le titre et le nombre sont du texte (`{{ }}`) ; le contenu est rendu seulement si `open` (`v-if`, l.24). Seul le contenu du `<slot />` est rendu à l'ouverture ; le compteur `count` est affiché hors du `v-if` (l.22), donc une valeur calculée passée en prop (ex. `promptPanels.length` dans .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:464, qui déclenche le rendu markdown) est évaluée même section fermée.",
+   "Style (reste du fichier, scoped). Aucun appel réseau, aucun HTML dynamique."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:33 (7 emplois). Aucun import externe sauf le type `Component` de vue."
+  ],
+  "vigilance": [],
+  "chez_nous": [],
+  "a_verifier": []
+ },
+ ".claude/skills/sssf/apps/visualizer/src/components/PhaseDots.vue": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Rangée de petits symboles, un par phase d'une session : ● succès, ◐ en cours, ○ en attente, ✗ échec. Montrée dans le pied de chaque carte.",
+  "points": [
+   "Tri par `seq` (l.7) ; table des symboles (l.9-14). Un statut inconnu prend ○ (gabarit, l.25).",
+   "Gabarit (l.17-29) : `:class=\"p.status\"` (l.23) met le statut de la base comme nom de classe ; `:title=\"`${p.name} — ${p.status}`\"` ; aucun HTML dynamique.",
+   "Affiche « — » s'il n'y a aucune phase (l.27)."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:10. Importe vue et le type Phase de lib/types.ts."
+  ],
+  "vigilance": [],
+  "chez_nous": [],
+  "a_verifier": []
+ },
+ ".claude/skills/sssf/apps/visualizer/src/components/StatChip.vue": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Pastille de statistique : coût, durée, tokens échangés, tokens lus ou tokens écrits, avec une icône et une aide au survol qui explique le chiffre.",
+  "points": [
+   "Props (l.6-12) : `kind` (cost | tokens | runtime | read | written), `value` (nombre, null ou undefined), `compact`. Icônes de `lucide-vue-next` (l.3, l.14-20).",
+   "TITLES (l.24-39) : textes d'aide fixes. Celui de `tokens` précise que le chiffre est la quantité FACTURÉE (chaque tour renvoie toute la conversation), pas la taille de la conversation.",
+   "text (l.41-45) : coût via fmtCost, durée via fmtDuration (NaN si absent), sinon fmtTokens. Voir les remarques d'arrondi dans format.ts.",
+   "Gabarit (l.49-53) : `:title` fixe et `{{ text }}`. Rien de dynamique côté HTML."
+  ],
+  "deps": [
+   "Importé par SessionCard.vue, SessionTrace.vue, PhaseDetail.vue. Importe format.ts (fmtCost, fmtDuration, fmtTokens) et lucide-vue-next (BookOpen, CircleDollarSign, Coins, PenLine, Timer)."
+  ],
+  "vigilance": [
+   "Les aides au survol de `read` et `written` (l.32-38) affirment un compte exact (« a true count of output »). Or les chiffres viennent de `usage()` du serveur, qui ne somme que les événements `agent_end` (.claude/skills/sssf/apps/visualizer/server/db.ts:337-358) ; un `agent_end` n'est écrit qu'après réussite de la phase (adws/adw_modules/agents.py:209), donc une phase en échec n'y est pas comptée. Les chiffres lus/écrits sous-comptent les runs qui ratent (voir aussi le registre du lot du serveur)."
+  ],
+  "chez_nous": [],
+  "a_verifier": []
+ },
+ ".claude/skills/sssf/apps/visualizer/src/components/StatusChip.vue": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Pastille d'état avec icône : success (coche), fail (croix), running (cercle qui tourne), queued (cercle). Un état inconnu prend l'icône cercle.",
+  "points": [
+   "Table des icônes (l.6-11) ; `ICONS[status] ?? Circle` (l.16).",
+   "Gabarit (l.14-19) : `:class=\"status\"` met la chaîne telle quelle comme nom de classe, et le texte `{{ status }}` l'affiche.",
+   "Appelants : session.status ?? 'fail' (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:435, .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:239) et phase.status ?? 'queued' (.claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:355). Un statut vide d'une session s'affiche donc « fail » et celui d'une phase « queued »."
+  ],
+  "deps": [
+   "Importé par SessionCard.vue, SessionTrace.vue, PhaseDetail.vue. Importe lucide-vue-next (Check, Circle, LoaderCircle, X)."
+  ],
+  "vigilance": [],
+  "chez_nous": [],
+  "a_verifier": []
+ },
+ ".claude/skills/sssf/apps/visualizer/src/lib/format.ts": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Fonctions de mise en forme : dates, durées, tokens, coût, décalages d'axe, graduations d'axe du temps, test « cet appel d'outil a-t-il réussi ? », JSON indenté.",
+  "points": [
+   "ts(iso) (l.1-4) : `new Date(iso).getTime()` ; NaN si vide. Les horodatages du tracer sont en UTC avec fuseau (adws/adw_modules/utils.py:45-46), donc lus correctement quel que soit le fuseau du navigateur.",
+   "fmtDuration(ms) (l.6-16) : « — » si NaN, infini ou négatif ; moins d'une seconde « 0.xx s » ; moins d'une minute « x.y s » ; moins d'une heure « m ss s » ; sinon « h mm m ». Expérience (copie du fichier) : 59 999 ms donne « 60.0s », 3 599 999 ms donne « 59m 60s », 3 jours donnent « 72h 00m ».",
+   "fmtClock / fmtDate (l.18-29) : heure sur 24 h et date courte, selon la langue du navigateur ; « — » si absente.",
+   "fmtTokens(n) (l.31-36) : « — » si null ; < 1000 le nombre ; < 1 000 000 « x.yk » ; sinon « x.yyM ». Expérience : 999 999 donne « 1000.0k » ; NaN donne « NaNM » ; un nombre négatif est affiché tel quel.",
+   "fmtCost(n) (l.38-41) : « — » si null ; 2 décimales à partir de 1 $, sinon 4. Expérience : -0.01 donne « $-0.0100 » ; NaN donne « $NaN » ; 0.99996 donnerait « $1.0000 ». Une seule devise (dollar), aucun prix en dur dans ce fichier.",
+   "fmtOffset(ms) (l.44-55) : 0s, 30s, 1m, 1m30s, 1h05m. Arrondit à la seconde.",
+   "axisTicks(spanMs, maxTicks = 8) (l.57-70) : pas choisi dans [1 s … 1 h] pour avoir au plus maxTicks graduations ; si même 1 h ne suffit pas, retombe sur 1 h (`?? 3_600_000`, l.64) et fabrique donc span/1 h graduations. Pas de division par zéro (`Math.max(spanMs, 1)`, l.63). Expérience, 7 graduations visées : 1 jour → 25, 7 jours → 169, 30 jours → 721, 1 an → 8 761, 100 ans → 876 001 en 609 ms (puis autant de balises à dessiner). Voir le registre.",
+   "payloadOk(raw) (l.74-83) : vrai sauf si la charge utile est un objet JSON avec `ok: false`. Un JSON illisible compte comme réussi. Ne connaît ni `passed` ni `returncode` (voir le registre, événements quality).",
+   "prettyJson(raw) (l.85-92) : jamais appelée (git grep : seulement sa définition). Code mort ; highlightJson fait la même chose."
+  ],
+  "deps": [
+   "Importé par SessionCard.vue, SessionTrace.vue, PhaseDetail.vue, StatChip.vue et aussi .claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue:5 (`ts`) (dossier .claude/skills/sssf/apps/visualizer/src/components/). Aucun import.",
+   "Carte à corriger : la fiche cite « JSON indenté » (prettyJson) comme fonction utile ; elle est inutilisée. Elle ne signale pas les défauts d'arrondi ni l'absence de borne de axisTicks."
+  ],
+  "vigilance": [
+   "Une session restée `running` après la mort de son processus allonge sans fin l'axe du temps (voir registre, axisTicks).",
+   "Les durées d'une session en cours utilisent l'horloge du navigateur contre celle de la VM."
+  ],
+  "chez_nous": [],
+  "a_verifier": []
+ },
+ ".claude/skills/sssf/apps/visualizer/src/lib/models.ts": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Associe un nom de modèle à une icône de fournisseur (6 images dans public/models/) par simple recherche d'un morceau de texte, et raccourcit un identifiant « fournisseur/modèle » à son dernier segment. Il n'y a AUCUN prix, AUCUNE liste de modèles ni aucune fenêtre de contexte en dur.",
+  "points": [
+   "MODEL_ICONS (l.8-15) : claude (claude, opus, sonnet, haiku), deepseek, gemini, kimi (kimi, moonshot), openai (gpt, openai, codex, o3, o4), zai (glm, zai, z.ai). Le premier groupe qui correspond gagne.",
+   "modelIcon(model) (l.17-24) : minuscules, puis `includes` sur chaque motif ; null sinon. Les motifs `o3` et `o4` sont très courts : tout nom contenant ces deux caractères d'affilée (après vérification des groupes précédents) reçoit l'icône OpenAI.",
+   "modelName(model) (l.26-30) : coupe sur `/`, garde le dernier segment non vide. « openrouter/openai/gpt-5.6-luna » s'affiche « gpt-5.6-luna » : le fournisseur n'est PAS visible sur la ligne ; l'identifiant complet reste en `title` (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:470, .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:410).",
+   "Expérience (copie du fichier) : les 7 modèles des 5 YAML d'Inkwell reçoivent tous une icône (claude-opus-5, deepseek-v4-flash-0731, gemini-3.6-flash, kimi-k3, gpt-5.6-luna, gpt-5.6-sol, glm-5.2). Pas d'icône pour x-ai/grok, qwen, mistral, meta-llama, nvidia, minimax, amazon, stepfun. Aucun faux positif trouvé sur ces noms.",
+   "Les chemins d'icônes sont des constantes (l.9-14) : le `:src` des deux composants ne peut valoir que ces six adresses ou rien (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:471, .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:411).",
+   "Spécification citée par la carte : specs/c5f50a47_modelname-helper-tests.md prévoit un fichier `models.test.ts` ; git ls-files n'en contient aucun. Le code décrit par app_docs/27ef9462_model-routing-context.md:19-24 (Kimi, nom court) est bien présent."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:17 et .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:28. Images : .claude/skills/sssf/apps/visualizer/public/models/*.png (6 fichiers PNG, vérifiés avec `file`).",
+   "Carte à corriger : exacte. Elle ne dit pas que `modelName` cache le fournisseur, ni qu'aucun test n'existe malgré la spécification c5f50a47."
+  ],
+  "vigilance": [
+   "Le modèle montré est celui demandé par la config (charge utile `agent_start`, adws/adw_modules/agents.py:95-96), pas celui que Pi a réellement résolu (registre n°67 et n°71) : l'écran ne permet pas de vérifier « OpenRouter seul »."
+  ],
+  "chez_nous": [
+   "Décision 5 : aucun modèle par défaut — ce fichier n'en choisit aucun. Si on ajoute un fournisseur, ajouter son icône ici.",
+   "Piste, sans trancher : afficher le préfixe `openrouter/` (ou le fournisseur réellement utilisé) pour voir d'un coup d'œil si une ligne sort de la règle."
+  ],
+  "a_verifier": []
+ },
+ ".claude/skills/sssf/apps/visualizer/src/lib/router.ts": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Routeur par hash (la partie après `#` de l'adresse) : `#/` liste, `#/<session>` cascade, `#/<session>/<phase>` cascade avec panneau ouvert. État réactif Vue. Aucun paquet de routage.",
+  "points": [
+   "parse() (l.9-16) : prend `location.hash`, retire `#/`, coupe sur `/`, enlève les segments vides, applique `decodeURIComponent` à chacun (l.14). Retourne `{adwId, phaseId}` (les deux premiers segments).",
+   "État (l.18-22) : `route` initialisé par `parse()` à l'import, mis à jour sur l'événement `hashchange`. Une séquence `%` mal formée fait lancer une erreur par `decodeURIComponent` : à l'import l'application ne se monte pas (page blanche) ; plus tard l'écouteur échoue et la route ne change pas. Expérience : `decodeURIComponent('%E0%A4%A')` donne `URIError: URI malformed`. Voir le registre.",
+   "useRoute / phaseCrumb (l.24-30) : la route et le nom de phase du fil d'Ariane.",
+   "hrefFor / navigate (l.32-41) : fabriquent `#/<id>` et `#/<id>/<phase>` avec `encodeURIComponent` ; `navigate` écrit dans `location.hash`. Mode « hash », pas « history » : aucune requête au serveur pour une route, tout le dépouillement est côté navigateur.",
+   "Aucun stockage (`localStorage` etc.) ; aucune adresse externe."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/src/App.vue:2, .claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:19, .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:7. Importe `ref` de vue.",
+   "Carte à corriger : liens_entrants incomplet (App.vue seulement) ; router.ts est aussi importé par .claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:19 et .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:7. Elle omet aussi que le hash est décodé sans protection d'erreur."
+  ],
+  "vigilance": [
+   "Les identifiants lus dans l'adresse sont envoyés au serveur après `encodeURIComponent` (api.ts) ; le serveur les valide en plus (.claude/skills/sssf/apps/visualizer/server/index.ts:63-67, 138, 170)."
+  ],
+  "chez_nous": [],
+  "a_verifier": []
+ },
+ ".claude/skills/sssf/apps/visualizer/src/lib/types.ts": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Point d'entrée unique des types du front : ré-exporte 22 types de shared/types.ts (alias `@shared`). Aucun code exécuté.",
+  "points": [
+   "Un seul `export type { … } from '@shared/types'` (l.3-26) : Session, SessionSummary, SessionUsage, SessionDetail, Phase, Event (renommé EventRow), EventsPage, Envelope, GateResult, GateCheck, AgentSession, AgentStartPayload, AgentEndPayload, UsageBreakdown, ToolCallPayload, AgentPrompts, PromptsResponse, HealthResponse, SessionStatus, PhaseStatus, PhaseKind, EventType.",
+   "Le fichier réel est shared/types.ts : EventType y liste les 12 types écrits (.claude/skills/sssf/apps/visualizer/shared/types.ts:19-31), ce qui correspond à la liste obtenue en cherchant les `type=` dans adws/. Son commentaire dit « the twelve types tracer.py emits » ; ils sont en fait créés par agents.py, runner.py, quality.py et console.py puis enregistrés par tracer.py.",
+   ".claude/skills/sssf/apps/visualizer/shared/types.ts:145-149 promet `color: null` pour un agent sans couleur configurée ; la base reçoit en fait une chaîne vide (voir registre, events.ts)."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/src/lib/api.ts:10 et .claude/skills/sssf/apps/visualizer/src/lib/events.ts:1, mais aussi par .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:11, .claude/skills/sssf/apps/visualizer/src/components/PhaseDots.vue:3, .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:3, .claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:13 et .claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue:3. Dépend de .claude/skills/sssf/apps/visualizer/shared/types.ts (alias défini dans vite.config.ts:12 et tsconfig.json).",
+   "Carte à corriger : liens_entrants incomplet (api.ts et events.ts seulement) ; il manque les cinq composants cités ci-dessus."
+  ],
+  "vigilance": [],
+  "chez_nous": [],
+  "a_verifier": []
+ },
+ ".claude/skills/sssf/apps/visualizer/src/main.ts": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Point d'entrée du navigateur : charge la police Play (graisses 400 et 700), l'application et la feuille de style, puis monte l'application dans `#app`.",
+  "points": [
+   "Imports (l.1-5) : `vue` (createApp), `@fontsource/play/400.css` et `/700.css` (police fournie par le paquet npm et empaquetée par Vite, donc servie par le même serveur : aucune adresse externe dans le code), App.vue, style.css.",
+   "Montage (l.7) : `createApp(App).mount('#app')`. Aucun gestionnaire d'erreur global (`app.config.errorHandler`), aucune extension (routeur, store).",
+   "index.html (13 lignes) : une icône `/logo.svg` locale, un titre « Super Simple Software Factory », le script `/src/main.ts`. Aucun `<link>` ni `<script>` externe, aucune politique de sécurité (CSP)."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/index.html:11. Importe .claude/skills/sssf/apps/visualizer/src/App.vue (l.4) et .claude/skills/sssf/apps/visualizer/src/style.css (l.5). Paquets externes : `vue`, `@fontsource/play` (déclarés package.json:17,19).",
+   "Carte à corriger : exacte."
+  ],
+  "vigilance": [
+   "Les fichiers de police sont dans node_modules (absent du dépôt) : on ne peut pas confirmer ici qu'aucune requête de police n'est faite vers un site tiers."
+  ],
+  "chez_nous": [],
+  "a_verifier": [
+   "Contenu réel du CSS de @fontsource/play 5.3.0 (adresses `url(...)` relatives, attendues locales) : à vérifier après installation, non vérifiable ici (pas de node_modules, pas d'installation permise)."
+  ]
+ },
+ ".claude/skills/sssf/apps/visualizer/src/style.css": {
+  "status": "fait",
+  "niveau": 1,
+  "role": "Feuille de style globale : variables de couleurs et de polices, fond, balise `pre`, couleurs des jetons JSON (`.j-*`), barre d'erreur, états vides et mise en forme du markdown rendu (`.md`).",
+  "points": [
+   "Variables (l.1-24) : couleurs, `--sans` (Play, puis Helvetica Neue, system-ui), `--mono` (polices à chasse fixe du système), `--surface`. Aucune police chargée ici.",
+   "Base (l.26-72) : fond en dégradés fixes, taille minimale de 16 px (commentaire l.45), `pre` avec retour à la ligne (l.59-72).",
+   "Jetons JSON (l.74-93) : `.j-key`, `.j-str`, `.j-num`, `.j-bool`, `.j-null`, classes écrites par highlight.ts.",
+   "Utilitaires (l.95-118) : `.dim`, `.faint`, `.error-bar`, `.empty-state`.",
+   "Markdown rendu (l.120-196) : tout sous `.md`, global car le contenu est injecté par v-html (commentaire l.120-121). Mise en forme de h1-h4, p, code, pre.md-code, listes, citation, ligne horizontale.",
+   "Animation `pulse` (l.198-206), utilisée par .claude/skills/sssf/apps/visualizer/src/App.vue:129, .claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:812 et :840, PhaseDots.vue:49 et .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:443.",
+   "Aucun `@import`, `url()`, `@font-face`, `content: attr()` : le fichier ne déclenche aucune requête (grep sur tout src/). Confirme app_docs/806adbfc_ui-visual-contrast.md:19 pour ce fichier : `--border-soft` vaut bien #222b3d (l.7)."
+  ],
+  "deps": [
+   "Importé par .claude/skills/sssf/apps/visualizer/src/main.ts:5. Aucun import.",
+   "Carte à corriger : la fiche cite « variables de couleurs, fond, jetons de coloration JSON » ; il y a aussi la mise en forme du markdown rendu (l.120-196), la barre d'erreur et les états vides."
+  ],
+  "vigilance": [],
+  "chez_nous": [],
+  "a_verifier": []
+ }
+}

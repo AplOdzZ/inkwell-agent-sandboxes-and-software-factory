@@ -1,0 +1,72 @@
+[
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/lib/format.ts l.74-83 ; adws/adw_modules/quality.py l.87-100 ; .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue l.668-669",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/format.ts:72-73 : « New-tracer tool_call payloads carry ok:false on tool errors; older payloads have no ok key and count as ok ». .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:668-669 : un tool_call sans détail riche est « legacy event payload ».",
+  "realite": "adws/adw_modules/quality.py:87-100 écrit des événements `tool_call` nommés `quality:<nom>` dont la charge utile n'a ni `tool` ni `ok`, mais `passed` et `returncode`. `payloadOk` ne regarde que `ok` (.claude/skills/sssf/apps/visualizer/src/lib/format.ts:78) donc rend vrai ; `parseToolCall` exige `tool` (.claude/skills/sssf/apps/visualizer/src/lib/events.ts:66-70) donc rend null et le panneau écrit « legacy ». Expérience (copie d'events.ts et format.ts) : `quality:lint` avec passed:false et returncode:2 donne payloadOk = true, parseToolCall = null.",
+  "impact": "Une commande qualité (lint, tests, build) qui échoue n'est ni rouge dans la liste d'événements ni marquée dans la cascade (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:388), et le panneau annonce à tort un ancien format. Il faut déplier la ligne et lire `passed` dans le JSON.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue l.55-62 ; .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue l.47-54",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/shared/types.ts:263-267 : « Poll with `after` = the cursor from the previous response » ; le contrat suppose que les événements d'une page sont retenus quand son curseur est consommé.",
+  "realite": "Dans la boucle des pages, `cursor` avance (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:59, .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:51) avant que `events.value` soit mis à jour (l.62 et l.54). Si la page suivante échoue, `fresh` est jeté par le `catch` (l.75 et l.56) et la lecture reprend après le curseur déjà avancé. Expérience (copie de la logique, faux réseau, 2 500 événements, 2e page en erreur une fois) : 1 500 événements affichés, les rowid 1 à 1000 manquent définitivement. Ne se produit que si plus de 1000 événements arrivent dans un même cycle (premier chargement d'un gros run).",
+  "impact": "Une trace affichée peut être incomplète sans message durable (le bandeau d'erreur disparaît au cycle suivant, .claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:73). On pourrait croire qu'un agent n'a rien fait au début d'un long run.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue l.62-70",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:64-65 : « Envelopes and gates only gain rows around phase/agent boundaries — refetch on those events instead of every tick ».",
+  "realite": "La redemande n'a lieu que si les événements frais du cycle contiennent un événement frontière (l.66). Si `fetchEnvelopes` ou `fetchGates` échoue (l.67) après que ces événements ont été rangés (l.62), le cycle suivant n'a plus d'événement frontière frais et ne réessaie pas. Expérience (copie de la logique) : après une erreur sur /gates suite à un `phase_end`, deux cycles plus tard les portes affichées sont toujours l'ancienne version, `gatesCalls` reste à 2. Seul le premier cycle réessaie (`!loaded.value`).",
+  "impact": "Les portes et les enveloppes affichées peuvent rester périmées jusqu'au prochain événement frontière, parfois jusqu'à la fin de la session : un échec de porte peut ne pas apparaître.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/lib/format.ts l.57-70",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/format.ts:61 : « Evenly-stepped time-axis ticks over a span, ≤ maxTicks of them ». Les appelants demandent 5 (.claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:96) ou 7 graduations (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:280).",
+  "realite": "Si même le pas le plus grand (1 h) ne suffit pas, `find(...) ?? 3_600_000` (l.64) retombe sur 1 h et la boucle (l.66-68) produit span/1 h graduations, sans plafond. Expérience (copie du fichier, 7 visées) : 1 jour → 25, 7 jours → 169, 30 jours → 721, 1 an → 8 761, 100 ans → 876 001 graduations en 609 ms.",
+  "impact": "Une session restée `running` après la mort de son processus (cas connu, session.py) gagne UNE graduation par heure (169 après 7 jours) : lent, pas un gel immédiat. Le gel ne concerne que des horodatages absurdes (années) dans sssf.db.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts l.35-40 ; adws/adw_modules/data_types.py l.309 ; adws/adw_modules/tracer.py l.269",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts:24-26 : « Config color wins …; the palette below covers dbs written before the color column existed ». .claude/skills/sssf/apps/visualizer/shared/types.ts:145-149 : couleur nulle « on agents with no configured color — fall back to the UI's own palette ».",
+  "realite": "Le schéma met `color: str = \"\"` (adws/adw_modules/data_types.py:309 et :329) et le tracer enregistre `agent.color` tel quel (adws/adw_modules/tracer.py:269) : un agent sans couleur reçoit une chaîne VIDE, pas NULL. `agentColor` utilise `??` (.claude/skills/sssf/apps/visualizer/src/lib/events.ts:36-37), qui ne rejette que null et undefined. Expérience : `agentColor('', null, 1)` rend `''` ; `hexAlpha('', 0.5)` rend « transparent ». Les 5 YAML d'Inkwell et celui du skill ont tous une couleur, donc seul un YAML personnalisé est concerné.",
+  "impact": "Un agent sans couleur configurée a un nom sans couleur et une barre de contexte sans fond, au lieu d'une couleur de la palette. Esthétique, mais l'écran ne tient pas sa promesse. Chez nous : tester `||` ou rendre `color` obligatoire.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/lib/markdown.ts l.48-65",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/markdown.ts:48 : « Fenced code block — verbatim until the closing fence ». .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:277-278 : les prompts montrés sont « the exact system/user prompts sent ».",
+  "realite": "La ligne qui ouvre un bloc est consommée en entier (`i += 1`, l.54) et tout ce qui suit les trois accents graves est jeté. Un bloc sans fermeture avale tout le reste du document (l.55-59). Expérience : `` ```code``` puis <b>gras</b>\\nsuite du texte `` rend `<pre class=\"md-code\"><code>suite du texte</code></pre>` : la première ligne a disparu de la vue « rendered » ; elle reste dans la vue « raw » (.claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:490).",
+  "impact": "La vue « rendered » d'un prompt n'est pas une copie fidèle : du texte peut manquer ou être rangé dans un bloc de code. Pour un audit des prompts (décision 3), s'appuyer sur la vue « raw ».",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue l.466 et l.488 ; .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue l.219",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts:43-49 : `hexAlpha` « Invalid input → transparent » ; adws/adw_modules/data_types.py:309 : « hex swatch » ; adws/adw_sssf_config/sssf.config.yaml:43 : « optional hex ».",
+  "realite": "`color` est une chaîne libre, sans validation (adws/adw_modules/data_types.py:309, 329 ; aucun validateur par git grep). Elle arrive brute dans `:style=\"{ color: lane.color }\"` (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:466), dans `background: linear-gradient(90deg, …, ${lane.color})` (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:488) et dans `color: row.color` (.claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:219), alors que les autres usages passent par `hexAlpha`. La valeur vient de la config (payload `agent_start`, adws/adw_modules/agents.py:95-96) ou de la table `agent_sessions` (adws/adw_modules/tracer.py:269) ; sssf.db n'est pas protégée contre les agents (registre n°19). Par lecture : une valeur du genre `red), url(https://hote/x.png` ferait du dégradé un fond à deux couches dont l'une est une image externe. Le comportement du navigateur n'a pas été vérifié.",
+  "impact": "Une couleur modifiée dans la base (ou dans un YAML repris d'ailleurs) peut faire contacter un hôte extérieur par le navigateur de celui qui regarde la trace, avec l'adresse demandée choisie par l'auteur de la couleur. Pas d'exécution de code. À tester dans un navigateur.",
+  "type": "faille"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue l.82-90",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:29-30 et :55 : la carte sonde « only while the run is live » et arrête son minuteur quand le statut n'est plus `running` ; .claude/skills/sssf/references/observability.md:152 : « Live view polls on a rowid cursor … ».",
+  "realite": "SessionTrace démarre `setInterval(tick, 500)` au montage (l.84) et ne l'arrête qu'au démontage (l.87-90) : pas de test de `session.status`, pas de `visibilitychange`. Un cycle fait au moins 2 requêtes (session + événements, l.47 et l.58), soit 4 requêtes par seconde, même sur une session terminée.",
+  "impact": "Un onglet oublié ouvert sur une VM envoie 4 requêtes par seconde indéfiniment, y compris vers une VM qu'on voudrait laisser tranquille. Chez nous : arrêter quand la session est terminée ou l'onglet caché.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/lib/router.ts l.9-18",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/router.ts:3 : « Hash routes: #/ → sessions · #/<adw_id> → waterfall · #/<adw_id>/<phase_id> → phase panel open ».",
+  "realite": "`parse()` applique `decodeURIComponent` sans protection (l.14) et est appelée dès l'import (l.18). Une séquence `%` mal formée lance `URIError` (expérience : `decodeURIComponent('%E0%A4%A')` → « URI malformed »). Par lecture, à l'import le module échoue et l'application ne se monte pas ; plus tard, l'écouteur `hashchange` (l.20-22) échoue et la route ne change pas.",
+  "impact": "Un lien avec un hash mal formé donne une page blanche jusqu'à ce qu'on corrige l'adresse. Faible : l'adresse est celle de Theo.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/lib/highlight.ts l.20-21 ; .claude/skills/sssf/apps/visualizer/src/lib/markdown.ts l.62",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/highlight.ts:1-7 : coloration « sans dépendance » dont la seule promesse est l'échappement complet ; rien n'est dit sur le coût du découpage.",
+  "realite": "Le motif TOKEN (l.20-21) devient quadratique sur un guillemet ouvrant jamais fermé suivi de la séquence backslash-guillemet répétée : chaque guillemet rencontré relance une lecture jusqu'à la fin. Expérience (copie de highlight.ts, node 22) : 10 000 caractères → 58 ms, 20 000 → 204 ms, 40 000 → 829 ms, 80 000 → 3 371 ms ; via un bloc json de markdown.ts : 990 ms à 40 000. Le vérificateur obtient le même ordre de grandeur (bun : 1 057 ms à 40 000). Atteignable par un bloc ```json d'un prompt (.claude/skills/sssf/apps/visualizer/src/lib/markdown.ts:62), pas par `highlightJson` (JSON déjà valide).",
+  "impact": "Un texte hostile dans un prompt (demande ou résumé d'une enveloppe précédente) peut bloquer l'onglet quelques secondes à l'ouverture d'une phase d'agent, car les prompts sont rendus dès leur chargement (.claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:464). Faible : il faut un bloc json de dizaines de milliers de caractères.",
+  "type": "bug"
+ }
+]

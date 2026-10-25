@@ -1,0 +1,596 @@
+[
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue",
+   "type": "code",
+   "lignes": 1283,
+   "role": "Panneau de détail d'une phase : config d'agent (outils, harness_engineering), prompts, coût, événements, appels d'outils avec args et résultat, enveloppes, gates et violations.",
+   "fiche": "courte"
+  },
+  "liens_sortants": [],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue",
+   "type": "code",
+   "lignes": 870,
+   "role": "Vue cascade d'une session : lanes par agent/phase, polling des événements, enveloppes et gates ; ouvre PhaseDetail.",
+   "fiche": "courte"
+  },
+  "liens_sortants": [],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/App.vue",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/App.vue:4",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/markdown.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/markdown.ts",
+   "type": "code",
+   "langage": "typescript",
+   "lignes": 120,
+   "role": "Rendu markdown minimal (échappé) pour afficher les prompts compilés ; fences json colorées.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Mécanique."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/lib/markdown.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/lib/highlight.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/lib/markdown.ts:13",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/highlight.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/highlight.ts",
+   "type": "code",
+   "langage": "typescript",
+   "lignes": 54,
+   "role": "Coloration JSON sans dépendance, avec échappement HTML complet.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Mécanique."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/lib/markdown.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/lib/highlight.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/lib/markdown.ts:13",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/api.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/api.ts",
+   "type": "code",
+   "langage": "typescript",
+   "lignes": 78,
+   "role": "Client HTTP du front : fonctions fetch vers les routes /api (sessions, session, events, archive, health, prompts, envelopes, gates).",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Mécanique de transport."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "fetchSessions/fetchSession/fetchEvents/fetchPrompts/fetchEnvelopes/fetchGates/fetchHealth",
+     "lignes": "18-78",
+     "ce_quelle_fait": "GET sur les routes du serveur."
+    },
+    {
+     "nom": "archiveSession",
+     "lignes": "44-52",
+     "ce_quelle_fait": "POST /api/sessions/:id/archive, seule requête non-GET."
+    }
+   ],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [
+    {
+     "hote": "même origine, chemins /api/* (proxy Vite vers PORT en dev)",
+     "ligne": 13
+    }
+   ],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/lib/api.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/lib/types.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/lib/api.ts:10",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts",
+   "type": "code",
+   "langage": "typescript",
+   "lignes": 133,
+   "role": "Couleurs par type d'événement, couleurs de lanes d'agents, parsing des payloads et libellé d'une ligne d'appel d'outil (commande, file_path, path, pattern...).",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Couleurs des événements (7-16) ; clés d'arguments affichées (78-88)."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "EVENT_DOT_COLORS",
+     "lignes": "7-16",
+     "ce_quelle_fait": "Couleur par type : agent_start, thinking, agent_message, tool_call, handoff, agent_end, error, gate_fail."
+    },
+    {
+     "nom": "eventLabel",
+     "lignes": "117-133",
+     "ce_quelle_fait": "Libellé d'un tool_call ('tool: résumé des args')."
+    },
+    {
+     "nom": "argsSummary",
+     "lignes": "98-110",
+     "ce_quelle_fait": "Résume les args, clés prioritaires dont file_path et path."
+    }
+   ],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/lib/types.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts:1",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/App.vue",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/App.vue",
+   "type": "code",
+   "langage": "vue",
+   "lignes": 131,
+   "role": "Composant racine : barre de fil d'Ariane + choix entre la liste des sessions et la vue de trace d'une session selon la route hash.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Habillage et titre de l'UI ; mécanique."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "template",
+     "lignes": "9-41",
+     "ce_quelle_fait": "Affiche SessionsList si pas d'adw_id, sinon SessionTrace."
+    }
+   ],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/App.vue",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/App.vue:4",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/App.vue",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/App.vue:3",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/App.vue",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/lib/router.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/App.vue:2",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/main.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/App.vue",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/main.ts:4",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue",
+   "type": "code",
+   "lignes": 472,
+   "role": "Carte d'une session dans la liste : chronologie d'événements par agent, stats, bouton d'archivage.",
+   "fiche": "courte"
+  },
+  "liens_sortants": [],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue",
+   "type": "code",
+   "lignes": 96,
+   "role": "Liste des sessions interrogée périodiquement (polling) via fetchSessions.",
+   "fiche": "courte"
+  },
+  "liens_sortants": [],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/App.vue",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/components/SessionsList.vue",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/App.vue:3",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/components/DetailSection.vue",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/components/DetailSection.vue",
+   "type": "code",
+   "lignes": 76,
+   "role": "Section repliable générique du panneau de détail.",
+   "fiche": "courte"
+  },
+  "liens_sortants": [],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/components/PhaseDots.vue",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/components/PhaseDots.vue",
+   "type": "code",
+   "lignes": 55,
+   "role": "Petits points de progression des phases d'une session.",
+   "fiche": "courte"
+  },
+  "liens_sortants": [],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/components/StatChip.vue",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/components/StatChip.vue",
+   "type": "code",
+   "lignes": 88,
+   "role": "Pastille de statistique (durée, tokens, coût).",
+   "fiche": "courte"
+  },
+  "liens_sortants": [],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/components/StatusChip.vue",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/components/StatusChip.vue",
+   "type": "code",
+   "lignes": 73,
+   "role": "Pastille d'état (running/success/fail).",
+   "fiche": "courte"
+  },
+  "liens_sortants": [],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/format.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/format.ts",
+   "type": "code",
+   "langage": "typescript",
+   "lignes": 92,
+   "role": "Formatage : durées, heures, dates, tokens, coût, ticks d'axe temporel, payloadOk (ok:false), JSON indenté.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Mécanique."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [],
+  "liens_entrants": [],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/models.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/models.ts",
+   "type": "code",
+   "langage": "typescript",
+   "lignes": 30,
+   "role": "Associe un nom de modèle à une icône de fournisseur (public/models/*.png) et raccourcit les identifiants.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Ajouter un fournisseur/une icône ici."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [],
+  "liens_entrants": [
+   {
+    "de": "app_docs/27ef9462_model-routing-context.md",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/lib/models.ts",
+    "type": "decrit",
+    "preuve": "app_docs/27ef9462_model-routing-context.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": "specs/c5f50a47_modelname-helper-tests.md",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/lib/models.ts",
+    "type": "decrit",
+    "preuve": "specs/c5f50a47_modelname-helper-tests.md:6",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/router.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/router.ts",
+   "type": "code",
+   "langage": "typescript",
+   "lignes": 41,
+   "role": "Routeur par hash (#/, #/<adw_id>, #/<adw_id>/<phase_id>) en état réactif Vue.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Mécanique."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/App.vue",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/lib/router.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/App.vue:2",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/types.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/lib/types.ts",
+   "type": "code",
+   "langage": "typescript",
+   "lignes": 26,
+   "role": "Ré-exporte les types de shared/types.ts (alias @shared) pour le front.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Mécanique."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/lib/types.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/shared/types.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/lib/types.ts:26",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/lib/api.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/lib/types.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/lib/api.ts:10",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/lib/types.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts:1",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/main.ts",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/main.ts",
+   "type": "code",
+   "langage": "typescript",
+   "lignes": 7,
+   "role": "Point d'entrée du client : monte App.vue, charge la police Play et style.css.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Mécanique."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/main.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/App.vue",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/main.ts:4",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/main.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/style.css",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/main.ts:5",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/index.html",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/main.ts",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/index.html:11",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/apps/visualizer/src/style.css",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/apps/visualizer/src/style.css",
+   "type": "code",
+   "lignes": 206,
+   "role": "Feuille de style globale : variables de couleurs, fond, jetons de coloration JSON.",
+   "fiche": "courte"
+  },
+  "liens_sortants": [],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/apps/visualizer/src/main.ts",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/style.css",
+    "type": "importe",
+    "preuve": ".claude/skills/sssf/apps/visualizer/src/main.ts:5",
+    "confiance": "haute"
+   },
+   {
+    "de": "app_docs/806adbfc_ui-visual-contrast.md",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/style.css",
+    "type": "decrit",
+    "preuve": "app_docs/806adbfc_ui-visual-contrast.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": "specs/806adbfc_ui-visual-contrast.md",
+    "vers": ".claude/skills/sssf/apps/visualizer/src/style.css",
+    "type": "decrit",
+    "preuve": "specs/806adbfc_ui-visual-contrast.md:34",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ }
+]

@@ -1,0 +1,248 @@
+[
+ {
+  "chemin": ".claude/skills/sssf/references/handoff.md",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/references/handoff.md",
+   "type": "doc",
+   "langage": "markdown",
+   "lignes": 161,
+   "role": "Reference du schema d'enveloppe (EnvelopeBase et types de sortie de depart), contrat a deux canaux, regle de typage, injection des placeholders dans user.md, layout du repertoire de session et agent_map.json.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Specification du contrat de transfert ; les types eux-memes vivent dans data_types.py."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:55",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:63",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_build.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:157",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_data/sessions/*/agent_map.json",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:135",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_data/sssf.db",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:159",
+    "confiance": "haute",
+    "produit_a_l_execution": true
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:78",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:76",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_modules/changes.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:61",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_modules/data_types.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:28",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_modules/prompts.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:82",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_modules/quality.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:59",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_modules/session.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:144",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_plan.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:157",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_simple_sdlc.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:57",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/SKILL.md",
+    "vers": ".claude/skills/sssf/references/handoff.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/SKILL.md:58",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/sssf_overview.md",
+    "vers": ".claude/skills/sssf/references/handoff.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/sssf_overview.md:88",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": ".claude/skills/sssf/references/handoff.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:62",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+   "type": "doc",
+   "langage": "markdown",
+   "lignes": 110,
+   "role": "Regles pour traduire la demande de l'ingenieur en prompt d'ADW (meme intention, plus de precision, format a quatre lignes), choix de l'ADW sur disque et compte rendu apres lancement ; a lire avant chaque lancement.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Modifier la discipline de traduction du prompt et les regles de choix de chaine."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md:108",
+     "code": "just/obs.just:39",
+     "resume": "Cite 'just phases <adw_id>' ; dans le depot la recette est 'just obs phases' (module obs, justfile:50) ; seul le justfile modele a une recette phases a la racine (templates/justfile:71)."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+    "vers": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md:83",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+    "vers": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md:92",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+    "vers": "adws/adw_*.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md:64",
+    "confiance": "haute",
+    "motif": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md:108",
+    "confiance": "faible",
+    "pourquoi_faible": "La doc cite 'just phases' sans fichier ; recette trouvee dans just/obs.just:39 (module obs)."
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+    "vers": "requests/<slug>.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md:92",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/SKILL.md",
+    "vers": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/SKILL.md:55",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:7",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/sssf_overview.md",
+    "vers": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/sssf_overview.md:79",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ }
+]

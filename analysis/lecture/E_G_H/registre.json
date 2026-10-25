@@ -1,0 +1,527 @@
+[
+ {
+  "ou": "adws/adw_data/prompt_engineering/planner/user.md:25 (avec planner/system.md:11, sssf.config.yaml:50-51, permissions.py:146)",
+  "ecrit": "« Never overwrite an existing spec — the earlier plan is the record of what was asked for then » (planner/user.md:25). app_docs/306a0046_prevent-overwriting-specs-docs.md:21 : « Existing documentation and specifications remain preserved in the repository ».",
+  "realite": "Rien dans le code n'empêche l'écrasement. Le planner a `writes: [specs/]` (sssf.config.yaml:50-51), donc tout fichier de `specs/` est permis (permissions.py:146) et la commande conseillée `cp` (planner/user.md:27) écrase sans `-n`. Expérience 3 (exp_perm.py, copie de snapshot/permitted dans un dépôt jetable) : un spec non commité réécrit garde l'empreinte « untracked » (permissions.py:81-82), il n'apparaît même pas dans les chemins touchés ; un spec commité réécrit apparaît mais n'est pas refusé pour le planner (seul `out.txt`, créé pour l'essai, l'est).",
+  "impact": "La règle « jamais d'écrasement » ne vaut que si le modèle la suit ; une session réutilisée (`--adw-id`) peut perdre un plan non commité sans aucune alerte. Chez nous : calculer le nom unique par le code.",
+  "type": "faille"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/documenter/user.md:26 (avec documenter/system.md:15, sssf.config.yaml:131-132)",
+  "ecrit": "« Never overwrite an existing write-up — it describes a change that already shipped » (documenter/user.md:26) ; « an overwritten write-up describes a change that already shipped » (documenter/system.md:15).",
+  "realite": "Le documenter a `writes: [app_docs/, docs/, \"**/*.md\", \"*.md\"]` (sssf.config.yaml:131-135) : `app_docs/` est permis en entier (permissions.py:146) et `cp` écrase sans `-n` (documenter/user.md:28). Même expérience 3 : un fichier non suivi réécrit est invisible ; un fichier suivi réécrit apparaît mais est permis. Aucune porte ne compare le nouveau document à l'ancien (gates.py:27-44).",
+  "impact": "Un write-up déjà livré peut être remplacé sans trace dans les contrôles de la factory. Même remède que pour les specs : nom unique calculé par le code.",
+  "type": "faille"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/planner/user.md:40",
+  "ecrit": "`commit_message` : « imperative one-line git subject for committing THIS PLAN DOCUMENT, not the work it describes » (planner/user.md:40).",
+  "realite": "Le message du planner n'est lu que par adw_simple_sdlc.py:87-89 (commit_plan, via `commit`, l.69-70). adw_plan_build.py:41-44, adw_plan_build_test.py:71-74 et adw_plan_build_test_quality.py:83-86 font UN seul commit avec le message du builder (`git add -A`, git_helper.py:49), qui contient donc aussi le plan. adw_plan.py ne commite rien.",
+  "impact": "Dans le workflow par défaut des VM (`just sdlc` = adw_plan_build_test), le champ demandé au planner ne sert à rien et le plan part dans le commit du code. Ne pas compter sur un commit séparé du plan.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/documenter/user.md:43",
+  "ecrit": "`commit_message` : « imperative one-line git subject for committing THIS WRITE-UP, not the change it describes » (documenter/user.md:43).",
+  "realite": "Seul adw_simple_sdlc.py:169-171 (commit_docs) commite le write-up avec ce message. adw_document.py (l.46-66) n'a aucune phase de commit : le message n'est jamais utilisé et le document reste non commité dans l'arbre de la VM.",
+  "impact": "Avec `just document`, le write-up reste non commité dans l'arbre de la VM : il n'est pas dans les commits récoltés par harvest. L'étape artefacts du teardown copie `app_docs/` et `specs/` de l'arbre de travail tant que la VM est vivante (just/sandbox/lifecycle/teardown.just:101-111, ligne 109), commités ou non. De plus, le défaut des VM (`sdlc`) ne lance pas le documenter.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/builder/system.md:12 (aussi planner/system.md:13, reviewer/system.md:15, scout/system.md:11, documenter/system.md:17)",
+  "ecrit": "« You inherit the operator's shell environment — their PATH, toolchains and credentials are already live. Call tools by bare name (`bun`, `uv`, `pytest`) ».",
+  "realite": "Exact côté code : `load_dotenv()` charge `.env` (utils.py:13), `operator_env()` copie tout `os.environ` sauf `VIRTUAL_ENV` (utils.py:31-38) et Pi est lancé avec cette copie (agent_pi.py:281). Le prompt le dit à l'agent. `pytest` n'est utilisé nulle part dans le dépôt (seul l'exemple du modèle du skill, templates/adws/adw_modules/quality.py:18, :25) ; la commande de test réelle est `bun test` (quality.py:193).",
+  "impact": "Contraire à la décision 1 (liste fixe de variables, une seule clé OpenRouter) et à la règle « pas de vrai secret » : on dit à chaque agent que les clés sont utilisables. À réécrire dans les 5 prompts.",
+  "type": "perime_pour_nous"
+ },
+ {
+  "ou": "adws/adw_plan_build_test.py:49 et :67",
+  "ecrit": "Le builder « report[s] every file you changed » (builder/system.md:5) dans `changed_files` (builder/user.md:29) ; la table des portes typiques du cookbook donne `diff_matches_claims` pour le builder (.claude/skills/sssf/cookbooks/create_adw.md:15) ; les autres ADW qui appellent le builder l'utilisent (adw_build.py:34, adw_plan_build.py:39, adw_plan_build_test_quality.py:46, adw_simple_sdlc.py:94).",
+  "realite": "adw_plan_build_test.py met `gates=[gates.artifacts_exist]` au build (l.49) et au fix (l.67). `artifacts_exist` ne parcourt que `envelope.artifacts` (gates.py:29), vide dans l'exemple du prompt (builder/user.md:30). Une porte sans aucune vérification ne produit aucune violation et passe (agents.py:156-166). Les fichiers annoncés ne sont donc vérifiés d'aucune façon.",
+  "impact": "C'est le workflow par défaut des VM (just/adws.just:68-69 ; just/sandbox/lifecycle/execute.just:48) : les déclarations du builder n'y sont pas contrôlées, même pas pour l'existence. À corriger si on garde cet ADW.",
+  "type": "bug"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/reviewer/user.md:23 (avec reviewer/system.md:14 et adws/adw_modules/gates.py:84-94)",
+  "ecrit": "« Rule on every requirement in the spec — one `findings` entry each, with evidence » (reviewer/user.md:23) ; « `approved` is true ONLY when every requirement is met and `blocking` is empty » (reviewer/system.md:14) ; « Write the review to `<context_handoff_dir>/review.md` » (reviewer/user.md:24).",
+  "realite": "`verdict_consistent` (gates.py:84-94) ne fait que croiser `approved`, `blocking` et les `findings` présents. Expérience 3 (copie de la logique) : `approved=true`, `findings=[]`, `blocking=[]` PASSE. `artifacts_exist` ne teste que ce que l'agent déclare (gates.py:29) et `files_non_empty` n'est pas appliqué aux revues (adw_build_review.py:53-54 ; adw_simple_sdlc.py:120) : `review.md` peut ne pas exister ou être vide. Le verdict `review.approved` décide ensuite de `accepted` (adw_build_review.py:66 ; adw_simple_sdlc.py:144).",
+  "impact": "Un reviewer qui répond « approuvé » sans aucune exigence ni fichier fait passer le run au vert. La revue n'est un contrôle que si le modèle fait le travail.",
+  "type": "faille"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/documenter/system.md:9 (aussi documenter/user.md:21)",
+  "ecrit": "« **Read `diff_path`** — the full diff is the source of truth » (documenter/system.md:9) ; « Read the full diff at `previous_envelope.diff_path` » (documenter/user.md:21) ; `diff_path: str = \"\" # read this for the full diff` (data_types.py:234).",
+  "realite": "`changes.capture` coupe le diff à `max_diff_lines=2000` (data_types.py:181 ; changes.py:62-66) et ne nomme que les fichiers non suivis, sans leur contenu (changes.py:68-72). Le fichier `changes.diff` contient alors une ligne `[truncated at 2000 lines…]` que l'agent doit remarquer.",
+  "impact": "Sur un gros changement, le write-up s'appuie sur un diff partiel présenté comme complet. Le prompt devrait dire de continuer avec `git diff` quand le fichier est tronqué.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "adws/adw_sssf_config/sssf.config.yaml:133-134 (avec documenter/system.md:14 et permissions.py:146-148)",
+  "ecrit": "« documentation only — \"document only\" is a rule now, not a line in a prompt the model may drift from » (sssf.config.yaml:131-132) ; « Write documentation only. Never modify source code, tests, or config » (documenter/system.md:14) ; `protected_files` : « Off-limits to every agent that does not name them in its own `writes` » (sssf.config.yaml:20-23). Le YAML assume le choix : « Markdown anywhere, because docs live next to the code they describe » (sssf.config.yaml:133-134).",
+  "realite": "`\"**/*.md\"` et `\"*.md\"` autorisent tout fichier markdown. `permitted()` regarde `writes` AVANT `protected_files` (permissions.py:146-148) : expérience 3, le documenter peut écrire `adws/adw_modules/NOTE.md` et `adws/adw_sssf_config/NOTE.md` (dossiers protégés) et tous les fichiers d'instructions en markdown : `.claude/skills/sssf/SKILL.md`, cookbooks, références, `.claude/commands/*.md`, modèles de prompts sous `templates/`, `specs/*.md`, `README.md`. Le motif est le même dans les 4 YAML qui ont des `writes` et dans le modèle de config du skill.",
+  "impact": "Le choix « Markdown partout » est assumé dans le YAML, mais il ouvre en écriture tous les fichiers markdown qui servent d'instructions à d'autres agents et lève la protection des dossiers protégés pour le markdown. À restreindre à `app_docs/` chez nous.",
+  "type": "faille"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/scout/system.md:14",
+  "ecrit": "« Write your findings to `<context_handoff_dir>/scout_findings.md` for agents that follow » (scout/system.md:14).",
+  "realite": "`git grep scout -- 'adws/*.py'` ne montre que adw_scout.py (phase unique, l.31-34) et adw_prompt.py (`--agent scout`, l.30-32) ; recettes `just scout` (just/adws.just:36-38) et `just ask scout` (:32-34). L'enveloppe du scout n'est passée à aucun autre agent et `git grep scout_findings` ne montre aucun lecteur (seulement prompts, YAML et handoff.md:124).",
+  "impact": "Le travail du scout n'alimente pas la chaîne : il sert à l'humain. Ne pas bâtir un workflow qui compte sur un lecteur automatique de ce fichier.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/config.md:67",
+  "ecrit": "`prompt_engineering.system` : « Path to the system prompt — who the agent is, its single purpose, its output contract » (config.md:67).",
+  "realite": "Les cinq `system.md` ne contiennent aucun contrat de sortie (builder/system.md, planner/system.md, scout/system.md, documenter/system.md : aucun champ JSON ; reviewer/system.md:14 donne seulement la règle de `approved`). Le contrat JSON est dans `user.md`, section `## Report` (builder/user.md:21-34, etc.), et update_config.md:91 dit bien que le système est « Purpose + Instructions, nothing else ».",
+  "impact": "Un humain ou l'orchestrateur qui suit config.md écrira le contrat de sortie au mauvais endroit pour un nouvel agent.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "adws/adw_data/prompt_engineering/planner/user.md:39 (aussi planner/user.md:21 et :27 ; reviewer/user.md:21, :24, :39 ; documenter/user.md:22, :28, :42 ; scout/user.md:32)",
+  "ecrit": "Chaque user.md déclare ses variables en `{{context_handoff_dir}}` (section Variables, ex. planner/user.md:15), puis cite le dossier avec des chevrons `<context_handoff_dir>` dans la tâche, les commandes et l'exemple JSON d'`artifacts` (planner/user.md:21, :27, :39), de même `<adw_id>` et `<slug>`.",
+  "realite": "`prompts.render` ne remplace que `{{clé}}` (prompts.py:10-11 ; expérience 1, exp_render.py partie 7 : les chevrons restent littéraux). L'agent doit deviner que `<context_handoff_dir>` est la valeur affichée sous « ### context_handoff_dir », qui est un chemin relatif (agents.py:87, runner.py:54-55). Si le texte littéral reste dans `artifacts`, `artifacts_exist` échoue (gates.py:30-31) et la phase `plan` (sans `retries`) arrête le run (agents.py:167-169).",
+  "impact": "Un modèle faible qui recopie l'exemple tel quel perd un run entier sur une faute de syntaxe du gabarit. Chez nous : n'utiliser qu'une syntaxe, remplie par le code, avec un chemin absolu.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/handoff.md l.157 ; adws/adw_plan.py l.31-34 ; adws/adw_build.py l.31-34 ; adws/adw_modules/agents.py l.233-237",
+  "ecrit": "« Run `adw_build.py --adw-id a1b2c3d4` after `adw_plan.py` and the builder resumes its own session rather than starting cold » (handoff.md:157).",
+  "realite": "adw_plan.py ne lance que le planner (adw_plan.py:31-34) : agent_map.json n'a donc aucune entrée « builder ». adw_build.py reçoit une session neuve (agents.py:233-237) et appelle le builder sans `previous` (adw_build.py:33-34), donc avec « (none) » à la place du plan (agents.py:86). Aucun code ne relit le plan ni envelope.json (git grep : aucun lecteur).",
+  "impact": "Un agent ou un orchestrateur qui suit cet exemple croit que le builder reprend son contexte et connaît le plan : il part de zéro et ne voit que le texte du prompt. Chez nous : passer explicitement le chemin du plan au builder.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/handoff.md l.157 ; adws/adw_modules/agents.py l.168, l.191, l.291, l.203-204",
+  "ecrit": "« This map is the key that lets a later ADW rejoin each agent's existing context window » (handoff.md:157).",
+  "realite": "agent_map.json n'est écrit qu'à la fin d'un passage réussi (agents.py:203-204), après les `raise` d'une porte ratée (l.168), d'un dépassement de droits (l.191) ou d'un JSON jamais valide (l.291). Un agent qui n'a jamais réussi dans cette session n'a pas d'entrée : relancer avec `--adw-id` lui donne un nouvel id de session (agents.py:237) alors que Pi a gardé l'ancienne. Un agent qui avait déjà réussi plus tôt garde l'entrée de son dernier succès et est repris avec l'ancienne session.",
+  "impact": "Le cas où l'on veut le plus reprendre (relancer après un échec) repart à froid et perd le contexte de l'agent fautif. Chez nous : enregistrer la session avant les portes, ou documenter que la reprise ne vaut qu'après un succès.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/handoff.md l.159 ; adws/adw_modules/agents.py l.233-237",
+  "ecrit": "« If config drift changes an agent's model, that agent starts a fresh session and the map is updated — never a bad resume » (handoff.md:159).",
+  "realite": "Le seul critère de reprise est l'égalité du modèle de config (agents.py:235). Un changement de tools, de writes, de thinking ou du prompt système reprend quand même l'ancienne session, avec le nouveau `--system-prompt` (agents.py:116, :89, :234-236). La comparaison porte sur le motif de config, pas sur le couple résolu par Pi (Registre n°71).",
+  "impact": "On peut reprendre une session créée avec d'autres outils ou d'autres droits sans que rien ne le signale. Chez nous : ne reprendre que si modèle, outils, writes, thinking et prompt système sont identiques.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/handoff.md l.74 ; adws/adw_modules/agents.py l.90 ; adws/adw_modules/data_types.py l.286-294",
+  "ecrit": "« same system prompt, different user prompt + output type per call site » (handoff.md:74) : un agent peut servir plusieurs appels, avec un user.md différent à chaque appel.",
+  "realite": "Le gabarit user.md est fixé par agent dans la config (`agent.prompt_engineering.user`, agents.py:90 ; data_types.py:299-301). `AgentCall` n'a aucun champ pour un autre gabarit (data_types.py:286-294) : seuls `prompt`, `previous` et `output_type` changent. Le `## Report` du user.md annonce toujours le même type, et adws/adw_prompt.py:32 passe GenericOutput à n'importe quel agent.",
+  "impact": "Un nouvel ADW qui réutilise un agent avec un autre type de sortie envoie à l'agent un Report qui ne correspond pas au type attendu : les champs en trop sont jetés, ceux qui manquent prennent leur valeur par défaut. Chez nous : un agent par type de sortie, ou un gabarit par appel.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/handoff.md l.67, l.74 ; adws/adw_modules/data_types.py l.72-78, l.85-128 ; adws/adw_modules/agents.py l.286",
+  "ecrit": "« the agent's final JSON is parsed against exactly that type. No untyped handoffs » ; « the type enforces it » (handoff.md:67, :74).",
+  "realite": "Aucun modèle d'enveloppe n'a `extra=\"forbid\"` (data_types.py:72-128) : un champ inconnu est jeté en silence, et `{\"status\":\"success\"}` seul est valide pour chaque type de départ (tous les autres champs ont un défaut). Expérience (copie de EnvelopeBase, pydantic 2.13.5) : un JSON avec findings, approved et un champ bidon est accepté comme GenericOutput et ne garde que les quatre champs de base.",
+  "impact": "Un champ oublié ou renommé n'est jamais signalé à l'agent : la relance de JSON ne se déclenche pas, et la porte diff_matches_claims valide une liste `changed_files` vide. Chez nous : refuser les champs inconnus et rendre obligatoires les champs utiles.",
+  "type": "faille"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/handoff.md l.82, l.129 ; adws/adw_modules/agents.py l.89-90 ; adws/adw_modules/prompts.py l.8-12",
+  "ecrit": "« `prompts.py` renders the agent's `user.md`, substituting ... » (handoff.md:82) ; « the matching `system.md` stays static » (handoff.md:129).",
+  "realite": "agents.py rend le system.md ET le user.md avec les mêmes trois variables (agents.py:89-90). `render` est un `str.replace` en boucle (prompts.py:10-11) : un `{{previous_envelope}}` écrit dans la demande de l'ingénieur est aussi remplacé, car `prompt` est traité en premier (agents.py:84-88). Expérience : confirmé sur une copie de la logique.",
+  "impact": "Faible. Un auteur de system.md qui montre un exemple avec `{{prompt}}` le verrait remplacé ; un prompt d'ingénieur contenant `{{...}}` n'arrive pas tel quel à l'agent. Chez nous : documenter le rendu des deux fichiers et neutraliser les accolades dans les valeurs injectées.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md l.74 ; adws/adw_build_test.py l.46-49 ; adws/adw_build.py l.33-34",
+  "ecrit": "Ligne du tableau : « Implements a plan this session already produced (`--adw-id`) | starts at build and verifies ».",
+  "realite": "adw_build_test.py (et adw_build.py) appellent le builder sans `previous` (adw_build_test.py:46-49) : le plan de la session n'est pas transmis, le builder reçoit « (none) » (agents.py:86) et le seul texte du prompt. `--adw-id` ne fait que rejoindre la session (session.py:39) ; rien ne relit plan.md ni envelope.json. Seul le prompt peut désigner le plan.",
+  "impact": "Un orchestrateur qui lance « implémente le plan » avec --adw-id obtient un builder qui improvise sur la demande brute. Chez nous : donner le chemin du plan dans le prompt, ou relire le plan dans l'ADW.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md l.75 ; adws/adw_build_review.py l.42-46 ; adws/adw_simple_sdlc.py l.91-94",
+  "ecrit": "Ligne du tableau : « Confirms built work is what was asked for | ends in a review phase ».",
+  "realite": "Les deux chaînes qui finissent par une revue, adw_build_review.py (phase build l.42-46) et adw_simple_sdlc.py (phase plan, puis build l.91-94), construisent d'abord. Il n'existe aucun ADW qui relit un travail déjà fait sans lancer de builder (liste des 12 ADW : git ls-files 'adws/adw_*.py').",
+  "impact": "Lancer adw_build_review pour « vérifier » un travail existant lance un builder avec la même demande, qui peut modifier le code. Chez nous : créer un ADW de revue seule si on veut ce cas d'usage.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md l.3 ; adws/adw_data/prompt_engineering/reviewer/user.md l.21 ; adws/adw_data/prompt_engineering/reviewer/system.md l.9",
+  "ecrit": "« the planner plans from it, the builder builds from it, the reviewer judges against it » (how_to_prompt_for_the_eng.md:3).",
+  "realite": "Le reviewer établit son cahier des charges en lisant `<context_handoff_dir>/plan.md` s'il existe, et n'utilise le prompt que sinon (reviewer/user.md:21 ; reviewer/system.md:9 ; docstring adws/adw_simple_sdlc.py:27-29). Dans adw_simple_sdlc le plan existe normalement (le planner doit l'écrire ; la porte ne vérifie que les artefacts qu'il déclare, adw_simple_sdlc.py:84-85) : le reviewer juge le plan du planner, pas la demande de l'ingénieur.",
+  "impact": "Les lignes « Done means » du prompt n'arrivent au reviewer qu'à travers l'interprétation du planner. Une mauvaise lecture au plan est approuvée par la revue. Chez nous : faire juger le reviewer aussi contre le prompt d'origine.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md l.92 ; adws/adw_modules/utils.py l.55-63 ; just/sandbox/lifecycle/fill.just l.60",
+  "ecrit": "« for anything longer, write `requests/<slug>.md` and pass the path — every ADW takes either » (how_to_prompt_for_the_eng.md:92).",
+  "realite": "`resolve_prompt` renvoie l'argument tel quel si ce n'est pas un fichier existant (utils.py:57-63) : comportement voulu et documenté pour la VM (just/sandbox/lifecycle/execute.just:23-26 : un chemin vers un fichier du clone de la VM est lu, tout le reste reste du texte). Mais `fill` clone le dépôt depuis GitHub (fill.just:60) : un `requests/<slug>.md` non publié n'y existe pas, aucun fichier `requests/` n'est suivi par git, et le dépôt publie ses demandes longues sous `prompts/`. Expérience : `requests/healht.md` ressort inchangé comme prompt.",
+  "impact": "Dans une VM, la demande longue devient la simple chaîne « requests/xxx.md » et les agents travaillent sur ce texte sans contrôle. Chez nous : publier la demande dans prompts/ avant le lancement, ou refuser un argument qui ressemble à un chemin et n'existe pas.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md l.50-53 ; apps/inkwell/server.ts l.138-190",
+  "ecrit": "Exemple modèle : demande « tags sur les posts » traduite en `Add a GET /api/tags endpoint ... Where: src/server.ts (routes), src/server.test.ts (tests)` (how_to_prompt_for_the_eng.md:47-51).",
+  "realite": "Les fichiers de l'application sont apps/inkwell/server.ts et apps/inkwell/server.test.ts (git ls-files) ; `src/server.ts` n'existe pas, et la route GET /api/tags existe déjà (apps/inkwell/server.ts:138-190).",
+  "impact": "Un orchestrateur qui recopie la forme de l'exemple écrit des chemins faux dans `Where:`, ce que le même fichier dit coûter une phase de build entière (l.88). Chez nous : prendre un exemple qui existe dans notre application.",
+  "type": "perime_pour_nous"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/server/index.ts l.113-115 et l.201",
+  "ecrit": "Le journal de démarrage annonce « visualizer api  http://localhost:${server.port} » (.claude/skills/sssf/apps/visualizer/server/index.ts:201). C'est la seule promesse écrite sur l'adresse ; le commentaire de tête (index.ts:1-12) ne dit rien d'autre.",
+  "realite": "`Bun.serve({ port: PORT, routes })` est appelé sans `hostname` (.claude/skills/sssf/apps/visualizer/server/index.ts:113-115). Expérience (serveur de test avec la même forme d'appel, Bun 1.4.4, lecture de /proc/net/tcp) : le port écoute sur 00000000, c'est-à-dire toutes les interfaces IPv4, alors que Bun affiche `hostname: localhost`. Le dépôt le suppose aussi (just/sandbox/lifecycle/observe.just:54-56 « bun binds 0.0.0.0 by default »). Aucun mot de passe, aucun contrôle de Host ni d'Origin, aucun en-tête CORS (grep) ; les routes à fonction répondent à toutes les méthodes. Le dépôt EXIGE cette écoute large pour le proxy exe.dev (gotchas.md:66 « Servers must bind 0.0.0.0 »), donc corriger = filtrer l'accès (jeton, Host, Origin), pas seulement passer à 127.0.0.1. IPv6 non testé (pas de /proc/net/tcp6 sur la machine d'essai).",
+  "impact": "Tout ce qui atteint le port 4600 (autre processus de la VM, l'agent par curl, tout réseau qui joint la VM, tout navigateur local par « DNS rebinding ») lit la trace complète en clair. Le seul rempart prouvé est une affirmation sur le proxy d'exe.dev.",
+  "type": "faille"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/server/db.ts l.11-12 (route .claude/skills/sssf/apps/visualizer/server/index.ts l.135-146)",
+  "ecrit": "« it never runs unless a human clicks the button » (.claude/skills/sssf/apps/visualizer/server/db.ts:11-12) ; « Archiving is review triage — it belongs to the reader » (.claude/skills/sssf/apps/visualizer/server/index.ts:133-134).",
+  "realite": "La route `POST /api/sessions/:adw_id/archive` (.claude/skills/sssf/apps/visualizer/server/index.ts:135-146) n'a ni authentification, ni contrôle d'origine, ni contrôle du type de contenu ; le corps est lu par `req.json().catch(() => ({}))` et `archived` absent vaut vrai (l.141-142). Expérience sur un serveur de test à la même logique : un POST sans corps, un POST `text/plain` avec `Origin: http://evil.example` et un corps JSON invalide ont tous rendu `archived: true`. `Boolean(body.archived)` (l.142) fait aussi archiver `{\"archived\":\"false\"}`.",
+  "impact": "Réversible, mais c'est la seule route qui écrit et elle n'est pas protégée. Une page web tierce ne peut archiver que si elle connaît l'adw_id (8 caractères hexadécimaux, adws/adw_modules/utils.py:41-42) et elle ne peut pas lire la liste (même origine). Les cas réalistes sont un script ou l'agent sur la VM (qui lit /api/sessions) ou un « DNS rebinding » (Host non contrôlé).",
+  "type": "faille"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/server/db.ts l.335-360 (usage)",
+  "ecrit": "« Raw tokens read and written » ; .claude/skills/sssf/apps/visualizer/shared/types.ts:235-245 : « What actually moved through a session, summed across every agent » ; .claude/skills/sssf/apps/visualizer/shared/types.ts:249 « Derived from agent_end payloads, so historical runs have it too ».",
+  "realite": "`usage()` additionne seulement les charges `agent_end` (.claude/skills/sssf/apps/visualizer/server/db.ts:338). Or `agent_end` n'est écrit qu'après portes passées, JSON valide, droits respectés et enveloppe valide enregistrée (il l'est même si l'enveloppe annonce status≠success : l.209 vient avant la levée des l.219-220) (adws/adw_modules/agents.py:209-210), après les portes (adws/adw_modules/agents.py:168), la lecture du JSON (adws/adw_modules/agents.py:291), le contrôle des droits (adws/adw_modules/agents.py:183) et l'enregistrement de l'enveloppe. Aucun autre code n'écrit ce type (git grep). Pour une phase qui échoue, les jetons sont pourtant comptés dans `sessions.total_tokens` (adws/adw_modules/agents.py:134 → adws/adw_modules/runner.py:66-69).",
+  "impact": "Le chiffre « lu / écrit » du visualiseur est trop bas, ou nul, pour les runs qui ratent, c'est-à-dire ceux où l'on veut savoir ce que l'agent a dépensé. Il ne concorde plus avec le total facturé.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.24",
+  "ecrit": "« `agent_end` | the agent's run completes; envelope parsed or not — payload carries cost, usage... ».",
+  "realite": "`agent_end` n'est écrit qu'à adws/adw_modules/agents.py:209-210, après le contrôle des droits (adws/adw_modules/agents.py:183) et l'enregistrement d'une enveloppe VALIDE (adws/adw_modules/agents.py:197, `_persist_envelope(..., valid=True)`). Une enveloppe jamais valide (adws/adw_modules/agents.py:291), un échec de porte (adws/adw_modules/agents.py:168), une violation de droits (adws/adw_modules/agents.py:186-191) ou une erreur de Pi (agent_pi.py:320) lèvent avant : pas d'événement. Aucun try/finally.",
+  "impact": "Un lecteur qui s'appuie sur ce document cherchera en vain l'`agent_end` d'une phase en échec : pas de coût ni de contexte pour ces phases.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.28",
+  "ecrit": "« `parent_id` nests spans, so an agent phase expands into its tool-call spans in the UI. »",
+  "realite": "`parent_id` n'est jamais renseigné : le seul endroit est le défaut `\"\"` de adws/adw_modules/data_types.py:362 (git grep : aucun appel ne passe `parent_id`) et l'interface ne le lit pas (grep dans .claude/skills/sssf/apps/visualizer/src : aucune occurrence). Les colonnes `events.parent_id` sont donc toutes vides ; le regroupement se fait par `phase_id`.",
+  "impact": "Un outil qui voudrait reconstruire l'arbre des appels d'outils avec `parent_id` ne trouverait rien.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.134",
+  "ecrit": "« Phase status invariants: `queued` only for manifest-declared phases not yet entered (dashed in the UI) ».",
+  "realite": "Aucun code n'écrit `queued` : la phase naît « running » (adws/adw_modules/runner.py:77), le défaut du modèle est « fail » (data_types.py:63), et il n'y a aucun « manifest » dans adws/ (git grep vide). Le mot existe seulement dans des types et dans l'interface : adws/adw_modules/data_types.py:17 (Literal), .claude/skills/sssf/apps/visualizer/shared/types.ts:13, et quatre composants (SessionTrace.vue:374, 407-413 et 531-545 ; PhaseDots.vue:12 ; StatusChip.vue:10 ; PhaseDetail.vue:355). Rien ne produit la valeur.",
+  "impact": "Les phases « à venir » ne sont jamais visibles à l'avance dans le visualiseur ; la promesse est celle d'une fonction qui n'existe pas.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.51-58",
+  "ecrit": "Le tableau `sessions` liste adw_id, request, status, engineer, started_at, ended_at, total_tokens, total_cost.",
+  "realite": "Le schéma réel (adws/adw_modules/tracer.py:18-27) ajoute `adw_name` (l.20) et `archived` (l.26). Le document cite `sessions.archived` plus bas (l.146) : il se contredit. `request` est limité à 500 caractères (adws/adw_modules/tracer.py:158), non dit.",
+  "impact": "Une requête SQL écrite d'après le document ignore deux colonnes que le visualiseur utilise.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.23",
+  "ecrit": "« `log` | an explicit `ph.log(...)` from the ADW script ».",
+  "realite": "`log` est aussi écrit pour chaque ligne que la console affiche (adws/adw_modules/console.py:43-46, via `_emit`, avec `phase_id` vide avant la première phase, console.py:33) et pour `paths_touched` (adws/adw_modules/agents.py:193-195). `ph.log` n'est qu'une source (adws/adw_modules/runner.py:27-31).",
+  "impact": "Les `log` sont l'essentiel du flux ; ils contiennent des messages d'erreur et des résumés, pas seulement ce que l'ADW a voulu noter.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.130",
+  "ecrit": "« `just procs <adw_id>` lists what is live, `just kill <adw_id>` stops children before the parent, and both verify the recorded `command` still matches the pid before signalling it ».",
+  "realite": "Le justfile racine ne définit que des modules (justfile:38-50) : les recettes sont `just obs procs` et `just obs kill` (just/obs.just:47-48, 53-66). `procs` ne vérifie rien (c'est un SELECT, obs.just:48). Même cause que n°34 (autre fichier) ; le défaut de `kill` est le n°72.",
+  "impact": "Un humain ou un agent qui tape la commande du document obtient « no recipe » ; le document laisse croire à une vérification que `procs` n'a pas.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.36",
+  "ecrit": "« `context_window` is the same `contextWindow` pi reads from `~/.pi/agent/models.json` ».",
+  "realite": "adws/adw_modules/agent_pi.py:108-117 lit `models.json`, puis retombe sur le catalogue de Pi (`_pi_catalog()`, l.114-116) et rend 0 si le modèle n'est dans aucun des deux. app_docs/27ef9462_model-routing-context.md:14 le décrit déjà ainsi.",
+  "impact": "Un modèle absent de `models.json` n'est plus « sans fenêtre » : sa fenêtre vient du catalogue de la machine (qui varie), pas du fichier de la VM.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.138-144",
+  "ecrit": "« Open **every** connection — writer and reader — with PRAGMA journal_mode=WAL; synchronous=NORMAL; busy_timeout=5000 ».",
+  "realite": "Le traceur le fait (adws/adw_modules/tracer.py:109-111). Le lecteur du visualiseur ne peut pas poser `journal_mode` et pose les deux autres (.claude/skills/sssf/apps/visualizer/server/db.ts:79-83) ; sa connexion d'archivage n'ouvre qu'avec `busy_timeout` (.claude/skills/sssf/apps/visualizer/server/db.ts:143-144).",
+  "impact": "Faible : le mode WAL est inscrit dans le fichier et reste, mais la règle écrite n'est pas suivie par le propre code du visualiseur.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/references/observability.md l.9",
+  "ecrit": "« Location comes from `observability.db` in `sssf.config.yaml` ».",
+  "realite": "Vrai pour le traceur (adws/adw_modules/session.py:40) ; le visualiseur ne lit pas la config : chemin = `--db`, sinon `SSSF_DB`, sinon `adws/adw_data/sssf.db` du dossier courant (.claude/skills/sssf/apps/visualizer/server/db.ts:39-49). Il faut donc le lui dire (observe.just:113 et obs.just:73 le font avec la valeur par défaut codée en dur).",
+  "impact": "Si un roster change `observability.db`, le visualiseur lancé par les recettes ouvre l'ancienne base sans erreur.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "just/sandbox/lifecycle/teardown.just l.109",
+  "ecrit": "La récolte copie `adws/adw_data/sssf.db` dans les artefacts ; .claude/skills/sssf/references/observability.md:7 « Losing the db loses nothing that can't be rebuilt from files » ; .claude/skills/sssf/references/observability.md:146 « WAL allows readers during writes ».",
+  "realite": "La commande est `tar cf - ... adws/adw_data/sssf.db ...` : le fichier -wal n'est pas copié. Tant qu'une connexion de lecture reste ouverte (le visualiseur garde la sienne, db.ts:77, fermée seulement sur SIGINT, index.ts:209-212, et observe.just le lance sur chaque VM), SQLite ne checkpointe pas à la fermeture de l'écrivain. Expérience (Python sqlite3 puis bun:sqlite, base fabriquée avec le SCHEMA de tracer.py, 50 sessions) : sans lecteur ouvert, la copie du seul .db contient les 50 lignes ; avec un lecteur ouvert, le -wal et le -shm subsistent et la copie du seul .db donne « no such table: sessions ».",
+  "impact": "La trace rapatriée avant la destruction de la VM peut être vide ou incomplète (au moins pour une petite base), sans message d'erreur. À confirmer sur une vraie VM avec une vraie taille de base.",
+  "type": "bug"
+ },
+ {
+  "ou": "just/sandbox/lifecycle/observe.just l.159-167",
+  "ecrit": "Commentaire l.159-160 : « 307/401 anonymously is CORRECT for the obs port: alternate ports stay auth-gated » ; message l.167 : « obs  $OBS_CODE anonymous — expected, it is owner-gated ». README.md:232 « the agent view stays auth-gated to you ».",
+  "realite": "Le test (l.163) n'échoue que pour 000 ou un code ≥ 500 ; un 200 anonyme sur le port 4600, c'est-à-dire un visualiseur public, passe et affiche quand même « expected, it is owner-gated » (l.167, texte fixe). Le code ne peut donc pas détecter que le port est devenu public.",
+  "impact": "Si exe.dev change de comportement ou si quelqu'un lance `share set-public` sur ce port, la trace complète est exposée à tous sans qu'aucun contrôle du dépôt ne le dise.",
+  "type": "faille"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/run_adw.md l.122",
+  "ecrit": "« the visualizer app in the skill (`just obs`, or tmux sessions viz-api :4600 + viz-ui :4601) ».",
+  "realite": "Aucune session tmux `viz-api` ou `viz-ui` n'est créée nulle part (git grep « viz-api » hors analysis : cette seule ligne). Les lancements réels sont just/obs.just:73, templates/justfile:89, observe.just:113 (nohup, sans tmux).",
+  "impact": "Un lecteur cherche des sessions tmux qui n'existent pas.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/package.json l.6",
+  "ecrit": "« Read-only observability UI for the Super Simple Software Factory — polls sssf.db in a target repo. »",
+  "realite": "Le serveur a une écriture : `POST /api/sessions/:adw_id/archive` → `UPDATE sessions SET archived` (.claude/skills/sssf/apps/visualizer/server/index.ts:135-146, .claude/skills/sssf/apps/visualizer/server/db.ts:146-148), sur une seconde connexion en lecture-écriture (.claude/skills/sssf/apps/visualizer/server/db.ts:143). .claude/skills/sssf/apps/visualizer/server/db.ts:8-12 et .claude/skills/sssf/references/observability.md:146 le disent ; la description du paquet, non.",
+  "impact": "Faible, mais « lecture seule » pousse à ne pas protéger la seule route qui écrit.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/server/index.ts l.18",
+  "ecrit": "Commentaire d'usage l.11 : `PORT=4600 bun run server/index.ts` ; défaut 4600 (`Number(process.env.PORT ?? 4600)`).",
+  "realite": "`??` ne remplace pas une chaîne vide : `PORT=` donne `Number(\"\") = 0`, donc un port ALÉATOIRE (essai Bun 1.4.4 : 38903) ; `PORT=abc` donne NaN et le démarrage plante avec une exception non attrapée (`Bun.serve` n'est pas dans un try). Le journal affiche le vrai port, mais observe.just:33-34 et vite.config.ts:5 attendent 4600.",
+  "impact": "Rare : il faut que `PORT` soit vide ou invalide dans l'environnement du processus bun lui-même (ni obs.just, module sans `dotenv-load`, ni le lancement par ssh d'observe.just:113 ne transmettent le .env de l'hôte). Le montage échoue alors à « never bound :4600 ».",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/server/db.ts l.174-176, 221-223, 276-281, 338, 389-391, 400-402 (schéma adws/adw_modules/tracer.py l.17-90)",
+  "ecrit": "Le visualiseur interroge la base toutes les 500 ms (SessionsList.vue:33, SessionTrace.vue:84, SessionCard.vue:65) ; observability.md:146-158 présente la lecture par curseur comme le mécanisme léger.",
+  "realite": "Le schéma ne crée aucun index (aucun CREATE INDEX dans tracer.py, grep). EXPLAIN QUERY PLAN sur le SCHEMA recopié (Python sqlite3) : la requête agent_start de `agentsFor` fait `SCAN e` sur toute la table events, `usage()` fait `SCAN events`, les phases d'un lot de sessions font `SCAN phases` + tri temporaire, enveloppes et portes `SCAN`. Seule la requête d'événements profite de la clé rowid (`SEARCH events USING INTEGER PRIMARY KEY (rowid>?)`).",
+  "impact": "Sur une grosse trace (beaucoup d'événements : sorties d'outils jusqu'à 20 000 caractères chacune), chaque rafraîchissement relit toute la table events pour les agents en cours et l'usage ; lenteur probable, pas une faille. À mesurer sur une vraie trace.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/lib/format.ts l.74-83 ; adws/adw_modules/quality.py l.87-100 ; .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue l.668-669",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/format.ts:72-73 : « New-tracer tool_call payloads carry ok:false on tool errors; older payloads have no ok key and count as ok ». .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:668-669 : un tool_call sans détail riche est « legacy event payload ».",
+  "realite": "adws/adw_modules/quality.py:87-100 écrit des événements `tool_call` nommés `quality:<nom>` dont la charge utile n'a ni `tool` ni `ok`, mais `passed` et `returncode`. `payloadOk` ne regarde que `ok` (.claude/skills/sssf/apps/visualizer/src/lib/format.ts:78) donc rend vrai ; `parseToolCall` exige `tool` (.claude/skills/sssf/apps/visualizer/src/lib/events.ts:66-70) donc rend null et le panneau écrit « legacy ». Expérience (copie d'events.ts et format.ts) : `quality:lint` avec passed:false et returncode:2 donne payloadOk = true, parseToolCall = null.",
+  "impact": "Une commande qualité (lint, tests, build) qui échoue n'est ni rouge dans la liste d'événements ni marquée dans la cascade (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:388), et le panneau annonce à tort un ancien format. Il faut déplier la ligne et lire `passed` dans le JSON.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue l.55-62 ; .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue l.47-54",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/shared/types.ts:263-267 : « Poll with `after` = the cursor from the previous response » ; le contrat suppose que les événements d'une page sont retenus quand son curseur est consommé.",
+  "realite": "Dans la boucle des pages, `cursor` avance (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:59, .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:51) avant que `events.value` soit mis à jour (l.62 et l.54). Si la page suivante échoue, `fresh` est jeté par le `catch` (l.75 et l.56) et la lecture reprend après le curseur déjà avancé. Expérience (copie de la logique, faux réseau, 2 500 événements, 2e page en erreur une fois) : 1 500 événements affichés, les rowid 1 à 1000 manquent définitivement. Ne se produit que si plus de 1000 événements arrivent dans un même cycle (premier chargement d'un gros run).",
+  "impact": "Une trace affichée peut être incomplète sans message durable (le bandeau d'erreur disparaît au cycle suivant, .claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:73). On pourrait croire qu'un agent n'a rien fait au début d'un long run.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue l.62-70",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:64-65 : « Envelopes and gates only gain rows around phase/agent boundaries — refetch on those events instead of every tick ».",
+  "realite": "La redemande n'a lieu que si les événements frais du cycle contiennent un événement frontière (l.66). Si `fetchEnvelopes` ou `fetchGates` échoue (l.67) après que ces événements ont été rangés (l.62), le cycle suivant n'a plus d'événement frontière frais et ne réessaie pas. Expérience (copie de la logique) : après une erreur sur /gates suite à un `phase_end`, deux cycles plus tard les portes affichées sont toujours l'ancienne version, `gatesCalls` reste à 2. Seul le premier cycle réessaie (`!loaded.value`).",
+  "impact": "Les portes et les enveloppes affichées peuvent rester périmées jusqu'au prochain événement frontière, parfois jusqu'à la fin de la session : un échec de porte peut ne pas apparaître.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/lib/format.ts l.57-70",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/format.ts:61 : « Evenly-stepped time-axis ticks over a span, ≤ maxTicks of them ». Les appelants demandent 5 (.claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:96) ou 7 graduations (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:280).",
+  "realite": "Si même le pas le plus grand (1 h) ne suffit pas, `find(...) ?? 3_600_000` (l.64) retombe sur 1 h et la boucle (l.66-68) produit span/1 h graduations, sans plafond. Expérience (copie du fichier, 7 visées) : 1 jour → 25, 7 jours → 169, 30 jours → 721, 1 an → 8 761, 100 ans → 876 001 graduations en 609 ms.",
+  "impact": "Une session restée `running` après la mort de son processus (cas connu, session.py) gagne UNE graduation par heure (169 après 7 jours) : lent, pas un gel immédiat. Le gel ne concerne que des horodatages absurdes (années) dans sssf.db.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts l.35-40 ; adws/adw_modules/data_types.py l.309 ; adws/adw_modules/tracer.py l.269",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts:24-26 : « Config color wins …; the palette below covers dbs written before the color column existed ». .claude/skills/sssf/apps/visualizer/shared/types.ts:145-149 : couleur nulle « on agents with no configured color — fall back to the UI's own palette ».",
+  "realite": "Le schéma met `color: str = \"\"` (adws/adw_modules/data_types.py:309 et :329) et le tracer enregistre `agent.color` tel quel (adws/adw_modules/tracer.py:269) : un agent sans couleur reçoit une chaîne VIDE, pas NULL. `agentColor` utilise `??` (.claude/skills/sssf/apps/visualizer/src/lib/events.ts:36-37), qui ne rejette que null et undefined. Expérience : `agentColor('', null, 1)` rend `''` ; `hexAlpha('', 0.5)` rend « transparent ». Les 5 YAML d'Inkwell et celui du skill ont tous une couleur, donc seul un YAML personnalisé est concerné.",
+  "impact": "Un agent sans couleur configurée a un nom sans couleur et une barre de contexte sans fond, au lieu d'une couleur de la palette. Esthétique, mais l'écran ne tient pas sa promesse. Chez nous : tester `||` ou rendre `color` obligatoire.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/lib/markdown.ts l.48-65",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/markdown.ts:48 : « Fenced code block — verbatim until the closing fence ». .claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:277-278 : les prompts montrés sont « the exact system/user prompts sent ».",
+  "realite": "La ligne qui ouvre un bloc est consommée en entier (`i += 1`, l.54) et tout ce qui suit les trois accents graves est jeté. Un bloc sans fermeture avale tout le reste du document (l.55-59). Expérience : `` ```code``` puis <b>gras</b>\\nsuite du texte `` rend `<pre class=\"md-code\"><code>suite du texte</code></pre>` : la première ligne a disparu de la vue « rendered » ; elle reste dans la vue « raw » (.claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:490).",
+  "impact": "La vue « rendered » d'un prompt n'est pas une copie fidèle : du texte peut manquer ou être rangé dans un bloc de code. Pour un audit des prompts (décision 3), s'appuyer sur la vue « raw ».",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue l.466 et l.488 ; .claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue l.219",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/events.ts:43-49 : `hexAlpha` « Invalid input → transparent » ; adws/adw_modules/data_types.py:309 : « hex swatch » ; adws/adw_sssf_config/sssf.config.yaml:43 : « optional hex ».",
+  "realite": "`color` est une chaîne libre, sans validation (adws/adw_modules/data_types.py:309, 329 ; aucun validateur par git grep). Elle arrive brute dans `:style=\"{ color: lane.color }\"` (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:466), dans `background: linear-gradient(90deg, …, ${lane.color})` (.claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue:488) et dans `color: row.color` (.claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:219), alors que les autres usages passent par `hexAlpha`. La valeur vient de la config (payload `agent_start`, adws/adw_modules/agents.py:95-96) ou de la table `agent_sessions` (adws/adw_modules/tracer.py:269) ; sssf.db n'est pas protégée contre les agents (registre n°19). Par lecture : une valeur du genre `red), url(https://hote/x.png` ferait du dégradé un fond à deux couches dont l'une est une image externe. Le comportement du navigateur n'a pas été vérifié.",
+  "impact": "Une couleur modifiée dans la base (ou dans un YAML repris d'ailleurs) peut faire contacter un hôte extérieur par le navigateur de celui qui regarde la trace, avec l'adresse demandée choisie par l'auteur de la couleur. Pas d'exécution de code. À tester dans un navigateur.",
+  "type": "faille"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/components/SessionTrace.vue l.82-90",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/components/SessionCard.vue:29-30 et :55 : la carte sonde « only while the run is live » et arrête son minuteur quand le statut n'est plus `running` ; .claude/skills/sssf/references/observability.md:152 : « Live view polls on a rowid cursor … ».",
+  "realite": "SessionTrace démarre `setInterval(tick, 500)` au montage (l.84) et ne l'arrête qu'au démontage (l.87-90) : pas de test de `session.status`, pas de `visibilitychange`. Un cycle fait au moins 2 requêtes (session + événements, l.47 et l.58), soit 4 requêtes par seconde, même sur une session terminée.",
+  "impact": "Un onglet oublié ouvert sur une VM envoie 4 requêtes par seconde indéfiniment, y compris vers une VM qu'on voudrait laisser tranquille. Chez nous : arrêter quand la session est terminée ou l'onglet caché.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/lib/router.ts l.9-18",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/router.ts:3 : « Hash routes: #/ → sessions · #/<adw_id> → waterfall · #/<adw_id>/<phase_id> → phase panel open ».",
+  "realite": "`parse()` applique `decodeURIComponent` sans protection (l.14) et est appelée dès l'import (l.18). Une séquence `%` mal formée lance `URIError` (expérience : `decodeURIComponent('%E0%A4%A')` → « URI malformed »). Par lecture, à l'import le module échoue et l'application ne se monte pas ; plus tard, l'écouteur `hashchange` (l.20-22) échoue et la route ne change pas.",
+  "impact": "Un lien avec un hash mal formé donne une page blanche jusqu'à ce qu'on corrige l'adresse. Faible : l'adresse est celle de Theo.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/apps/visualizer/src/lib/highlight.ts l.20-21 ; .claude/skills/sssf/apps/visualizer/src/lib/markdown.ts l.62",
+  "ecrit": ".claude/skills/sssf/apps/visualizer/src/lib/highlight.ts:1-7 : coloration « sans dépendance » dont la seule promesse est l'échappement complet ; rien n'est dit sur le coût du découpage.",
+  "realite": "Le motif TOKEN (l.20-21) devient quadratique sur un guillemet ouvrant jamais fermé suivi de la séquence backslash-guillemet répétée : chaque guillemet rencontré relance une lecture jusqu'à la fin. Expérience (copie de highlight.ts, node 22) : 10 000 caractères → 58 ms, 20 000 → 204 ms, 40 000 → 829 ms, 80 000 → 3 371 ms ; via un bloc json de markdown.ts : 990 ms à 40 000. Le vérificateur obtient le même ordre de grandeur (bun : 1 057 ms à 40 000). Atteignable par un bloc ```json d'un prompt (.claude/skills/sssf/apps/visualizer/src/lib/markdown.ts:62), pas par `highlightJson` (JSON déjà valide).",
+  "impact": "Un texte hostile dans un prompt (demande ou résumé d'une enveloppe précédente) peut bloquer l'onglet quelques secondes à l'ouverture d'une phase d'agent, car les prompts sont rendus dès leur chargement (.claude/skills/sssf/apps/visualizer/src/components/PhaseDetail.vue:464). Faible : il faut un bloc json de dizaines de milliers de caractères.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/scripts/install.py:10-11 (docstring)",
+  "ecrit": "« adws/adw_data/prompt_engineering/ (4 starter agents) » (install.py:10-11).",
+  "realite": "`templates/prompt_engineering/` contient 5 dossiers : builder, documenter, planner, reviewer, scout (`git ls-files`, 10 fichiers) ; cookbooks/install.md:23 en liste cinq. La liste de la docstring oublie aussi `harness_engineering/` et `justfile`, posés aux l.72-73 et l.81.",
+  "impact": "Faible : le lecteur de la docstring compte un agent de moins et ne sait pas que le justfile est posé.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/scripts/install.py:90-96 (« next steps »)",
+  "ecrit": "Les étapes suivantes affichées sont `just demo`, `just sessions`, `just obs` (install.py:92-94), sans condition.",
+  "realite": "Ces trois recettes n'existent que dans le justfile du modèle (templates/justfile:29, 67, 88). Quand un `justfile` existe déjà, install.py le saute (l.78-81, texte « Skipped like any other file ») mais imprime quand même ces trois lignes. Dans Inkwell : pas de `demo` ni de `sessions` à la racine (justfile:38-54) et `just obs` ne fait que lister le module (just/obs.just:10-12).",
+  "impact": "Après une pose dans un dépôt qui a déjà un justfile, les commandes proposées échouent ; l'ingénieur ne sait pas pourquoi.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/install.md:34 ; .claude/skills/sssf/scripts/install.py:88-89",
+  "ecrit": "« install.py skips every file that already exists ... and reports what it skipped, so a second run doubles as a drift check » (install.md:34).",
+  "realite": "Pour les fichiers sautés, install.py n'imprime que leur NOMBRE (install.py:88-89 : `skipped (already exist, use --force to overwrite): N`) ; jamais leurs noms. Il ne compare pas le contenu : un fichier identique au modèle et un fichier modifié sont tous deux « skipped » (l.43-45). Expérience : 2e passage sur 43 fichiers = « skipped 43 », sans aucune différence signalée.",
+  "impact": "On ne peut pas savoir par ce script si une installation a dérivé du modèle ; la promesse donne une fausse assurance.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/scripts/install.py:43-48",
+  "ecrit": "« Existing files are skipped unless --force » (install.py:13) ; toutes les destinations sont sous le dossier courant (l.66-81).",
+  "realite": "`dest.exists()` (l.43) suit les liens symboliques. Un lien CASSÉ vaut « n'existe pas » : `shutil.copy2` (l.47) écrit alors le fichier visé par le lien, même sans `--force`. Avec `--force`, un lien valide est écrit à travers. Expérience (réplique de stamp, dossiers fictifs) : `.env.sample` lié vers un fichier hors du dépôt est écrasé avec `--force` ; `justfile` lié vers un fichier absent crée ce fichier hors du dépôt.",
+  "impact": "Faible : suppose des liens symboliques dans le dépôt cible. Mais le script peut écrire hors du dossier cible et écraser un fichier que l'opérateur croyait protégé.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/scripts/make_adw.py:25",
+  "ecrit": "Le squelette généré déclare `# dependencies = [\"pydantic\", \"python-dotenv\", \"pyyaml\"]` (make_adw.py:25) ; la doc le présente comme le squelette canonique (cookbooks/create_adw.md:48, 50-57).",
+  "realite": "`adws/adw_modules/console.py:11-14` importe `rich` au niveau du module (chaîne session -> runner -> console), et les 12 ADW du dépôt déclarent `rich` (adws/adw_*.py:3 ; squelette de create_adw.md:57). Un ADW généré n'aurait pas `rich` dans son environnement `uv run`. Expérience : squelette régénéré, `grep rich` : absent ; comportement de uv non essayé.",
+  "impact": "Le fichier généré échouerait à l'import avant la première phase (à confirmer avec uv). Ajouté au défaut `run.succeeded` (n°24), aucun ADW généré ne peut aller au bout.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/scripts/make_adw.py:105-110",
+  "ecrit": "`--name` : « snake_case adw name » (make_adw.py:78) ; le fichier est écrit dans `adws/adw_<name>.py` (l.105).",
+  "realite": "`args.name` n'est pas validé. Expérience (même construction de chemin, `Path.cwd() / \"adws\" / f\"adw_{name}.py\"` puis `mkdir(parents=True)`) : avec le nom `/../../../x`, le fichier est écrit UN niveau au-dessus du dossier courant (le dossier parent) ; chaque `..` de plus remonte d'un cran.",
+  "impact": "Faible : l'argument vient de l'opérateur ou d'un orchestrateur qui suit create_adw.md. Un nom mal formé écrit hors de `adws/`.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/install.md:41",
+  "ecrit": "« install.py appends `adws/adw_data/sessions/`, `adws/adw_data/sssf.db*`, and `.env` for you ... All three ».",
+  "realite": "`GITIGNORE_ENTRIES` contient cinq lignes : les trois citées plus `__pycache__/` et `*.pyc` (install.py:23-33).",
+  "impact": "Faible : la liste de contrôle fait vérifier trois lignes sur cinq.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/create_adw.md:27 ; .claude/skills/sssf/cookbooks/update_adw.md:58",
+  "ecrit": "« a kind=\"code\" phase runs it (`quality.run_tests(run)` -> `quality.as_envelope(result, \"tests\")`) » (create_adw.md:27) ; `test = quality.run_tests(run)` dans le modèle de boucle (update_adw.md:58).",
+  "realite": "Dans ce dépôt, `adws/adw_modules/quality.py` n'a pas de `run_tests` : la fonction est `run_inkwell_tests` (quality.py:198), appelée par adw_build_test.py:56. Seul le modèle du skill a `run_tests` (templates/.../quality.py:177). gotchas.md:101-103 documente l'AttributeError que cela produit.",
+  "impact": "Un agent qui compose un ADW d'après ces cookbooks écrit un appel qui plante en fin de chaîne, après avoir payé planner et builder.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/create_adw.md:9",
+  "ecrit": "« The starter six cover most chains » (create_adw.md:9).",
+  "realite": "Les cinq rosters et le modèle n'ont que cinq agents : planner, builder, scout, reviewer, documenter (`grep '  - name:'` sur les YAML). Le tableau l.13-19 en liste cinq, plus la ligne « no tester » et la ligne générique.",
+  "impact": "Faible : l'agent ou l'humain cherche un sixième agent de départ qui n'existe pas.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/update_config.md:68",
+  "ecrit": "« The starter roster ships with none [harness extensions] — this is an escape hatch, not a default » (update_config.md:68).",
+  "realite": "Le roster livré (templates/sssf.config.yaml:48-49, 87-88) et celui d'Inkwell (adws/adw_sssf_config/sssf.config.yaml, mêmes lignes) mettent `adws/adw_data/harness_engineering/subagents.ts` sur le planner et sur le scout. cookbooks/install.md:30 le dit.",
+  "impact": "Un lecteur croit que les agents n'ont aucune extension ; or deux d'entre eux chargent du code TypeScript qui lance des sous-agents (registre n°21, n°68).",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/update_config.md:25",
+  "ecrit": "« the starter roster ships violet/cyan/amber/green » (update_config.md:25).",
+  "realite": "Les couleurs sont #a78bfa (violet), #22d3ee (cyan), #fbbf24 (ambre), #fb7185 (rose), #e879f9 (fuchsia) (sssf.config.yaml:43, 65, 82, 109, 126, identiques dans le modèle). Pas de vert, et cinq couleurs au lieu de quatre.",
+  "impact": "Négligeable ; erreur de fait dans une doc lue pour changer la config.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/create_config.md:53 ; .claude/skills/sssf/cookbooks/update_config.md:56",
+  "ecrit": "« a read-only recon agent gets `[read, bash]` » (create_config.md:53) ; « withholding `edit` makes that structural instead of merely prompted » pour un relecteur qui doit « change nothing » (update_config.md:56).",
+  "realite": "`bash` permet d'écrire n'importe où et `write` reste dans la liste du relecteur (sssf.config.yaml:116-123). Le code le dit : « `tools` cannot express this: `bash` runs anything and `write` reaches any path » (data_types.py:315-317) ; seul `writes: []` est appliqué par permissions.py. Aucun des 9 cookbooks ne mentionne la clé de config `writes` (les 5 occurrences du mot sont le verbe « écrire » ; seul references/config.md la documente).",
+  "impact": "Un agent ajouté d'après ces cookbooks est tenu pour « en lecture seule » alors qu'il peut tout modifier hors fichiers protégés (cf. registre n°29, n°42, n°60).",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/create_config.md:53 ; .claude/skills/sssf/cookbooks/update_config.md:32",
+  "ecrit": "« Pi's builtin tools are `read`, `bash`, `edit`, `write` » (create_config.md:53) ; « Pi's seven builtins: read, bash, edit, write, grep, find, ls » (update_config.md:32).",
+  "realite": "Les deux phrases se contredisent dans les mêmes cookbooks ; references/config.md:110 en liste sept (comme update_config.md). Liste réelle de Pi 1.3.0 non vérifiable ici.",
+  "impact": "Faible : l'allowlist d'un agent peut oublier `grep`, `find`, `ls` si on suit create_config.md.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/create_config.md:24",
+  "ecrit": "`harness_engineering: []          # pi extension names` (create_config.md:24).",
+  "realite": "Chaque entrée est passée telle quelle à `pi -e <entrée>` (agent_pi.py:263-264) et la config d'Inkwell y met un CHEMIN de fichier : `adws/adw_data/harness_engineering/subagents.ts` (sssf.config.yaml:49). update_config.md:68 le dit correctement.",
+  "impact": "Faible : un nom court écrit d'après ce commentaire n'est pas un chemin et ne chargerait rien (comportement de Pi à vérifier).",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/update_modules.md:26",
+  "ecrit": "`utils.py` : « safe subprocess env, logging, resolve_prompt ».",
+  "realite": "`operator_env()` renvoie `os.environ.copy()` (utils.py:31) dont seul `VIRTUAL_ENV` est retiré (l.32-38) ; `.env` est chargé dès l'import (utils.py:13). Aucune clé n'est filtrée. Pi (agent_pi.py:281) et les commandes de qualité reçoivent tout.",
+  "impact": "Un lecteur croit que les agents ne voient pas les clés. Chez nous : liste fixe de variables (décision 1).",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/update_modules.md:23-24",
+  "ecrit": "Le tableau des modules décrit `console.py` deux fois : « the terminal narrative ... plain sequential lines, no spinners » (l.23) et « the rich stdout reporter » (l.24).",
+  "realite": "Un seul module `console.py`, qui importe `rich` (console.py:11-14). Deux lignes, deux descriptions presque identiques, dont l'une dit « plain » et l'autre « rich ».",
+  "impact": "Négligeable ; signe d'un tableau recopié sans relecture.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/cookbooks/run_adw.md:122 (`just obs`)",
+  "ecrit": "« the visualizer app in the skill (`just obs` ...) » polls the db (run_adw.md:122) : `just obs` est donné comme la commande qui lance l'interface.",
+  "realite": "Chez Inkwell `just obs` est un module : sans recette, il liste ses recettes (just/obs.just:10-12). L'interface se lance par `just obs ui` (obs.just:71-73). `just obs` démarre l'interface seulement dans le justfile du modèle (templates/justfile:88-89). Les sessions tmux de la même phrase sont traitées dans le registre du lot 3.",
+  "impact": "Faible : l'orchestrateur lance `just obs` et n'obtient pas d'interface.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "justfile:13-14 ; justfile:20-22",
+  "ecrit": "« `kill` below runs as a bash script and only calls real binaries » (justfile:13-14) ; « Still needed at root: the observability recipes below read the same roster/db » (justfile:21, au-dessus de `config :=`, l.22).",
+  "realite": "Le justfile racine n'a qu'une recette, `default` (l.53-54). `kill` est dans just/obs.just:53 ; `config` n'est utilisée par aucune recette du fichier (`grep '{{config}}' justfile` : aucune ligne) et obs.just écrit le chemin de la base en dur (obs.just:36, 40, 44, 48), sans lire `SSSF_CONFIG`.",
+  "impact": "Faible : deux commentaires décrivent une structure d'avant le passage aux modules ; ils font croire que la variable `config` et le zsh interactif de la racine servent aux recettes d'observation.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": "just/inkwell.just:8-9",
+  "ecrit": "« Recipes run bash (not the root's interactive zsh): they call real binaries only » (inkwell.just:8-9).",
+  "realite": "Seules `run` et `dev` ont un shebang bash (inkwell.just:20, 27). `test` (l.33-34) n'en a pas et tourne sous le shell par défaut de just (`sh`).",
+  "impact": "Négligeable pour une commande simple ; mais la phrase « identiques sur l'hôte et dans la VM » repose sur un bash qui n'est pas partout posé.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/commands/prime.md:11 ; .claude/commands/prime.md:29",
+  "ecrit": "« `just` (four namespaces, nothing else), then `just --list sbx`, `adw`, `obs`, `local` » (prime.md:11) ; « the four namespaces » (prime.md:29).",
+  "realite": "Le justfile racine déclare cinq modules : inkwell, local, adw, sbx, obs (justfile:38-50). `inkwell` manque dans la liste et dans le résumé demandé à l'agent. install.md:47 et :78 listent bien les cinq.",
+  "impact": "Faible : l'agent amorcé par `/prime` ne regarde pas le module `inkwell` et résume un système à quatre espaces. (L'écart n°1 concerne TREE.md ; celui-ci est un autre fichier.)",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/commands/prime.md:21",
+  "ecrit": "« Walk one phase end to end: `just/sandbox/create.just` » (prime.md:21).",
+  "realite": "Ce fichier n'existe pas (`git ls-files just/sandbox`) ; la phase create est dans `just/sandbox/lifecycle/create.just` (create.just:17).",
+  "impact": "Faible : l'agent cherche un fichier absent au lieu de lire la phase annoncée.",
+  "type": "doc_en_retard"
+ },
+ {
+  "ou": ".claude/skills/sssf/templates/justfile:82-89 (recette `obs`)",
+  "ecrit": "`just obs` « boot the trace UI » (templates/justfile:87-89) dans le justfile que install.py pose dans un dépôt cible ; install.py:94 l'annonce (« the trace UI, needs bun »).",
+  "realite": "La recette fait `cd .claude/skills/sssf/apps/visualizer`, un dossier du PROJET que install.py ne copie pas (le visualiseur n'est pas dans `templates/`). cookbooks/install.md:11 admet que le skill peut vivre dans `~/.claude/skills/sssf` ; dans ce cas ce `cd` échoue.",
+  "impact": "Sur une installation en portée utilisateur, `just obs` plante ; l'interface de trace ne se lance pas depuis le justfile posé.",
+  "type": "bug"
+ },
+ {
+  "ou": ".claude/commands/install.md:30 ; :42 ; :46 ; :47",
+  "ecrit": "« Auto-install what has a clean CDN installer (bun, just); ask before anything heavier » (l.30) : `curl -fsSL https://bun.sh/install | bash` (l.42), `curl -LsSf https://astral.sh/uv/install.sh | sh` (l.46), `curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin` (l.47).",
+  "realite": "Trois scripts distants sont téléchargés et exécutés d'un seul geste, sans version épinglée (aucun numéro dans les URL ni `--tag`) et sans vérification d'empreinte ; l'agent est invité à le faire seul pour bun et just. just s'installe dans `~/.local/bin`, hors du dépôt ; bun et uv écrivent dans le dossier personnel. La même chose est faite sur chaque VM (sandbox_mount/guest/provision.sh:38, 66). La procédure est juste pour disler ; elle est périmée pour nous.",
+  "impact": "Contredit « versions épinglées » et « rien d'installé sans relecture » : un agent qui suit la commande installe du code non relu. Fait noté, pas corrigé.",
+  "type": "perime_pour_nous"
+ },
+ {
+  "ou": "just/local.just:25-27 (recette `cc`)",
+  "ecrit": "`cc` : « Claude Code orchestrator » lancé par `claude --dangerously-skip-permissions \"Read and Execute .claude/skills/sssf/SKILL.md\"` (local.just:27).",
+  "realite": "Claude Code démarre avec toutes les demandes de permission désactivées, sur le compte `claude` de la machine (abonnement ou clé de l'opérateur). `ipi` (l.34-35) est une fonction zsh absente du dépôt. Même posture dans sandbox/orch/mod.just.",
+  "impact": "Va contre « jamais l'abonnement Claude pour ce qui tourne seul » si la recette est lancée sans personne devant. Chez nous : seul `pi` avec la clé OpenRouter de la VM.",
+  "type": "perime_pour_nous"
+ }
+]

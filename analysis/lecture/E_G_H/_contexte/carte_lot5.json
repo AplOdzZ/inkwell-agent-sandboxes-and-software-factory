@@ -1,0 +1,2980 @@
+[
+ {
+  "chemin": ".claude/skills/sssf/scripts/install.py",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/scripts/install.py",
+   "type": "script",
+   "langage": "python",
+   "lignes": 101,
+   "role": "Stampe l'usine SSSF depuis templates/ vers le repertoire courant (adws/, prompts, extensions, config, .env.sample, justfile) en sautant les fichiers existants sauf --force, puis ajoute des entrees au .gitignore.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Modifier ce qui est copie (liste des stamp()) et les entrees de .gitignore."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "stamp",
+     "lignes": "36-48",
+     "ce_quelle_fait": "Copie recursivement (copy2) un modele vers sa destination, ignore __pycache__, saute si la cible existe sans --force."
+    },
+    {
+     "nom": "ensure_gitignore",
+     "lignes": "51-58",
+     "ce_quelle_fait": "Ajoute au .gitignore les entrees GITIGNORE_ENTRIES manquantes (sessions, sssf.db*, .env, __pycache__, *.pyc)."
+    },
+    {
+     "nom": "main",
+     "lignes": "61-97",
+     "ce_quelle_fait": "Appelle stamp pour chaque modele puis imprime le bilan et les etapes suivantes."
+    }
+   ],
+   "lit": [
+    {
+     "quoi": ".claude/skills/sssf/templates/",
+     "ligne": 21,
+     "note": "TEMPLATES = dossier templates a cote de scripts/"
+    },
+    {
+     "quoi": ".claude/skills/sssf/templates/adws",
+     "ligne": 69
+    },
+    {
+     "quoi": ".claude/skills/sssf/templates/prompt_engineering",
+     "ligne": 70
+    },
+    {
+     "quoi": ".claude/skills/sssf/templates/harness_engineering",
+     "ligne": 72
+    },
+    {
+     "quoi": ".claude/skills/sssf/templates/sssf.config.yaml",
+     "ligne": 74
+    },
+    {
+     "quoi": ".claude/skills/sssf/templates/env.sample",
+     "ligne": 77
+    },
+    {
+     "quoi": ".claude/skills/sssf/templates/justfile",
+     "ligne": 81
+    },
+    {
+     "quoi": ".gitignore (cwd)",
+     "ligne": 53
+    }
+   ],
+   "ecrit": [
+    {
+     "quoi": "adws/ (cwd)",
+     "ligne": 69
+    },
+    {
+     "quoi": "adws/adw_data/prompt_engineering/",
+     "ligne": 71
+    },
+    {
+     "quoi": "adws/adw_data/harness_engineering/",
+     "ligne": 73
+    },
+    {
+     "quoi": "adws/adw_sssf_config/sssf.config.yaml",
+     "ligne": 75
+    },
+    {
+     "quoi": ".env.sample",
+     "ligne": 77
+    },
+    {
+     "quoi": "justfile",
+     "ligne": 81
+    },
+    {
+     "quoi": ".gitignore",
+     "ligne": 56
+    }
+   ],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": ".claude/skills/sssf/scripts/install.py:11",
+     "code": ".claude/skills/sssf/cookbooks/install.md:23",
+     "resume": "Le docstring dit '4 starter agents' ; templates/prompt_engineering contient 5 dossiers (planner, builder, scout, reviewer, documenter) et install.md:23 en liste cinq."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": ".env.sample",
+    "type": "ecrit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:77",
+    "confiance": "haute",
+    "note": "Destination relative au cwd (depot cible) ; ici le chemin existe parce que ce depot a deja ete installe."
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": ".gitignore",
+    "type": "ecrit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:56",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": "adws/",
+    "type": "ecrit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:69",
+    "confiance": "haute",
+    "note": "Destination relative au cwd (depot cible) ; ici le chemin existe parce que ce depot a deja ete installe."
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": "adws/adw_data/harness_engineering/",
+    "type": "ecrit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:73",
+    "confiance": "haute",
+    "note": "Destination relative au cwd (depot cible) ; ici le chemin existe parce que ce depot a deja ete installe."
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": "adws/adw_data/prompt_engineering/",
+    "type": "ecrit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:71",
+    "confiance": "haute",
+    "note": "Destination relative au cwd (depot cible) ; ici le chemin existe parce que ce depot a deja ete installe."
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": "adws/adw_sssf_config/sssf.config.yaml",
+    "type": "ecrit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:75",
+    "confiance": "haute",
+    "note": "Destination relative au cwd (depot cible) ; ici le chemin existe parce que ce depot a deja ete installe."
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": "justfile",
+    "type": "ecrit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:81",
+    "confiance": "haute",
+    "note": "Destination relative au cwd (depot cible) ; ici le chemin existe parce que ce depot a deja ete installe."
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": ".claude/skills/sssf/templates/adws",
+    "type": "lit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:69",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": ".claude/skills/sssf/templates/env.sample",
+    "type": "lit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:77",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": ".claude/skills/sssf/templates/harness_engineering",
+    "type": "lit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:72",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": ".claude/skills/sssf/templates/justfile",
+    "type": "lit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:81",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": ".claude/skills/sssf/templates/prompt_engineering",
+    "type": "lit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:70",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": ".claude/skills/sssf/templates/sssf.config.yaml",
+    "type": "lit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:74",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": ".gitignore",
+    "type": "lit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:53",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/scripts/install.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:8",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/config.md",
+    "vers": ".claude/skills/sssf/scripts/install.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/config.md:5",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "just/adws.just",
+  "fiche_carte": {
+   "chemin": "just/adws.just",
+   "type": "recette_just",
+   "langage": "just",
+   "lignes": 77,
+   "role": "Module `adw` : une recette par workflow ADW, chacune lance `uv run adws/adw_*.py --config {{config}}` avec les arguments transmis. Execute a l'identique sur l'hote ou dans la VM.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Ajouter/retirer un workflow expose a `just adw`, ou changer le roster par defaut (SSSF_CONFIG)."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "default",
+     "lignes": "22-23",
+     "ce_quelle_fait": "Liste les recettes du module."
+    },
+    {
+     "nom": "prompt",
+     "lignes": "28-29",
+     "ce_quelle_fait": "adw_prompt.py : un agent, un prompt."
+    },
+    {
+     "nom": "ask",
+     "lignes": "32-33",
+     "ce_quelle_fait": "adw_prompt.py --agent AGENT (${@:2}, necessite bash)."
+    },
+    {
+     "nom": "scout",
+     "lignes": "36-37",
+     "ce_quelle_fait": "adw_scout.py : reconnaissance en lecture seule."
+    },
+    {
+     "nom": "plan",
+     "lignes": "40-41",
+     "ce_quelle_fait": "adw_plan.py."
+    },
+    {
+     "nom": "build",
+     "lignes": "44-45",
+     "ce_quelle_fait": "adw_build.py : implementation sans plan."
+    },
+    {
+     "nom": "plan-build",
+     "lignes": "48-49",
+     "ce_quelle_fait": "adw_plan_build.py."
+    },
+    {
+     "nom": "build-test",
+     "lignes": "52-53",
+     "ce_quelle_fait": "adw_build_test.py (boucle de correction bornee)."
+    },
+    {
+     "nom": "build-review",
+     "lignes": "56-57",
+     "ce_quelle_fait": "adw_build_review.py (boucle de revision)."
+    },
+    {
+     "nom": "quality",
+     "lignes": "60-61",
+     "ce_quelle_fait": "adw_quality.py (deterministe)."
+    },
+    {
+     "nom": "document",
+     "lignes": "64-65",
+     "ce_quelle_fait": "adw_document.py (diff vs main)."
+    },
+    {
+     "nom": "sdlc",
+     "lignes": "68-69",
+     "ce_quelle_fait": "adw_plan_build_test.py : chaine plan, build, test."
+    },
+    {
+     "nom": "plan-build-test-quality",
+     "lignes": "72-73",
+     "ce_quelle_fait": "adw_plan_build_test_quality.py."
+    },
+    {
+     "nom": "simple-sdlc",
+     "lignes": "76-77",
+     "ce_quelle_fait": "adw_simple_sdlc.py : plan, build, test, review, document avec commits separes."
+    }
+   ],
+   "lit": [
+    {
+     "quoi": ".env",
+     "ligne": 13
+    }
+   ],
+   "ecrit": [],
+   "lance": [
+    {
+     "commande": "uv run adws/adw_prompt.py",
+     "ligne": 29
+    },
+    {
+     "commande": "uv run adws/adw_scout.py",
+     "ligne": 37
+    },
+    {
+     "commande": "uv run adws/adw_plan.py",
+     "ligne": 41
+    },
+    {
+     "commande": "uv run adws/adw_build.py",
+     "ligne": 45
+    },
+    {
+     "commande": "uv run adws/adw_plan_build.py",
+     "ligne": 49
+    },
+    {
+     "commande": "uv run adws/adw_build_test.py",
+     "ligne": 53
+    },
+    {
+     "commande": "uv run adws/adw_build_review.py",
+     "ligne": 57
+    },
+    {
+     "commande": "uv run adws/adw_quality.py",
+     "ligne": 61
+    },
+    {
+     "commande": "uv run adws/adw_document.py",
+     "ligne": 65
+    },
+    {
+     "commande": "uv run adws/adw_plan_build_test.py",
+     "ligne": 69
+    },
+    {
+     "commande": "uv run adws/adw_plan_build_test_quality.py",
+     "ligne": 73
+    },
+    {
+     "commande": "uv run adws/adw_simple_sdlc.py",
+     "ligne": 77
+    },
+    {
+     "commande": "just --justfile <ce fichier> --list",
+     "ligne": 23
+    }
+   ],
+   "reseau": [],
+   "variables_env": [
+    {
+     "nom": "SSSF_CONFIG",
+     "ligne": 11,
+     "lue_ou_ecrite": "lue"
+    }
+   ],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_build.py",
+    "type": "lance",
+    "preuve": "just/adws.just:45",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_build_review.py",
+    "type": "lance",
+    "preuve": "just/adws.just:57",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_build_test.py",
+    "type": "lance",
+    "preuve": "just/adws.just:53",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_document.py",
+    "type": "lance",
+    "preuve": "just/adws.just:65",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_plan.py",
+    "type": "lance",
+    "preuve": "just/adws.just:41",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_plan_build.py",
+    "type": "lance",
+    "preuve": "just/adws.just:49",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_plan_build_test.py",
+    "type": "lance",
+    "preuve": "just/adws.just:69",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_plan_build_test_quality.py",
+    "type": "lance",
+    "preuve": "just/adws.just:73",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_prompt.py",
+    "type": "lance",
+    "preuve": "just/adws.just:29",
+    "confiance": "haute",
+    "occurrences": 2
+   },
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_quality.py",
+    "type": "lance",
+    "preuve": "just/adws.just:61",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_scout.py",
+    "type": "lance",
+    "preuve": "just/adws.just:37",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_simple_sdlc.py",
+    "type": "lance",
+    "preuve": "just/adws.just:77",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/adws.just",
+    "vers": ".env",
+    "type": "lit",
+    "preuve": "just/adws.just:13",
+    "confiance": "haute",
+    "produit_a_l_execution": true
+   },
+   {
+    "de": "just/adws.just",
+    "vers": "adws/adw_sssf_config/sssf.config.yaml",
+    "type": "lit",
+    "preuve": "just/adws.just:11",
+    "confiance": "haute",
+    "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/SKILL.md",
+    "vers": "just/adws.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/SKILL.md:60",
+    "confiance": "haute",
+    "occurrences": 3
+   },
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/cookbooks/just_command_model.md",
+    "vers": "just/adws.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/cookbooks/just_command_model.md:4",
+    "confiance": "haute",
+    "occurrences": 10
+   },
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/references/gotchas.md",
+    "vers": "just/adws.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/references/gotchas.md:40",
+    "confiance": "haute",
+    "occurrences": 5
+   },
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/references/kickoff_paths.md",
+    "vers": "just/adws.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/references/kickoff_paths.md:35",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/references/phases.md",
+    "vers": "just/adws.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/references/phases.md:8",
+    "confiance": "haute",
+    "occurrences": 3
+   },
+   {
+    "de": "TREE.md",
+    "vers": "just/adws.just",
+    "type": "decrit",
+    "preuve": "TREE.md:30",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/sandbox/lifecycle/execute.just",
+    "vers": "just/adws.just",
+    "type": "lance",
+    "preuve": "just/sandbox/lifecycle/execute.just:91",
+    "confiance": "haute",
+    "note": "execute `just ... adw <ADW>` dans ~/app de la VM, donc les recettes du module adw de la copie de la VM"
+   },
+   {
+    "de": "just/sandbox/manage/mod.just",
+    "vers": "just/adws.just",
+    "type": "lance",
+    "preuve": "just/sandbox/manage/mod.just:34",
+    "confiance": "haute",
+    "note": "just --list adw"
+   },
+   {
+    "de": "justfile",
+    "vers": "just/adws.just",
+    "type": "importe",
+    "preuve": "justfile:44",
+    "confiance": "haute"
+   },
+   {
+    "de": "specs/sandbox-mount-system.html",
+    "vers": "just/adws.just",
+    "type": "decrit",
+    "preuve": "specs/sandbox-mount-system.html:206",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "justfile",
+  "fiche_carte": {
+   "chemin": "justfile",
+   "type": "recette_just",
+   "langage": "just",
+   "lignes": 56,
+   "role": "Racine just : charge .env (dotenv-load), force un zsh interactif comme shell des recettes, et monte les cinq modules inkwell, local, adw, sbx, obs. Ne contient qu'une recette (default = just --list).",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Mecanique de montage des modules ; seul le choix du shell (zsh -ic) et de la config par defaut SSSF_CONFIG est personnalisable."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "default",
+     "lignes": "53-54",
+     "ce_quelle_fait": "Affiche la liste des recettes (just --list)."
+    },
+    {
+     "nom": "mod inkwell/local/adw/sbx/obs",
+     "lignes": "38-50",
+     "ce_quelle_fait": "Declare les cinq modules et leurs fichiers."
+    }
+   ],
+   "lit": [
+    {
+     "quoi": ".env",
+     "ligne": 1
+    }
+   ],
+   "ecrit": [],
+   "lance": [
+    {
+     "commande": "just --list",
+     "ligne": 54
+    },
+    {
+     "commande": "zsh -ic (shell des recettes)",
+     "ligne": 15
+    }
+   ],
+   "reseau": [],
+   "variables_env": [
+    {
+     "nom": "SSSF_CONFIG",
+     "ligne": 22,
+     "lue_ou_ecrite": "lue"
+    },
+    {
+     "nom": "SHELL_SESSIONS_DISABLE",
+     "ligne": 18,
+     "lue_ou_ecrite": "ecrite"
+    }
+   ],
+   "cles_config": [],
+   "secrets": "dotenv-load (ligne 1) injecte tout .env (dont OPENROUTER_PROVISIONING_KEY) dans l'environnement des recettes ; aucune valeur manipulee ici.",
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": "justfile:13",
+     "code": "just/obs.just:53",
+     "resume": "Le commentaire dit que `kill` est 'below' dans ce fichier ; la recette kill est dans le module just/obs.just, pas dans le justfile racine."
+    },
+    {
+     "doc": "justfile:20-22",
+     "code": "just/obs.just:20",
+     "resume": "Le commentaire dit que la variable `config` est 'still needed at root' pour les recettes d'observabilite ; aucune recette du justfile n'utilise `config` (ligne 22 seule) et obs.just code les chemins en dur sans SSSF_CONFIG."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": "justfile",
+    "vers": "just/adws.just",
+    "type": "importe",
+    "preuve": "justfile:44",
+    "confiance": "haute"
+   },
+   {
+    "de": "justfile",
+    "vers": "just/inkwell.just",
+    "type": "importe",
+    "preuve": "justfile:38",
+    "confiance": "haute"
+   },
+   {
+    "de": "justfile",
+    "vers": "just/local.just",
+    "type": "importe",
+    "preuve": "justfile:41",
+    "confiance": "haute"
+   },
+   {
+    "de": "justfile",
+    "vers": "just/obs.just",
+    "type": "importe",
+    "preuve": "justfile:50",
+    "confiance": "haute"
+   },
+   {
+    "de": "justfile",
+    "vers": "just/sandbox/mod.just",
+    "type": "importe",
+    "preuve": "justfile:47",
+    "confiance": "haute"
+   },
+   {
+    "de": "justfile",
+    "vers": ".env",
+    "type": "lit",
+    "preuve": "justfile:1",
+    "confiance": "haute",
+    "produit_a_l_execution": true,
+    "note": "set dotenv-load ; fichier ignore par git (.gitignore)"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "justfile",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sandbox-exe-dev/SKILL.md",
+    "vers": "justfile",
+    "type": "decrit",
+    "preuve": ".claude/skills/sandbox-exe-dev/SKILL.md:332",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/cookbooks/just_command_model.md",
+    "vers": "justfile",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/cookbooks/just_command_model.md:30",
+    "confiance": "haute",
+    "occurrences": 5
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": "justfile",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:25",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/config.md",
+    "vers": "justfile",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/config.md:5",
+    "confiance": "faible",
+    "pourquoi_faible": "'the justfile' cite sans chemin."
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": "justfile",
+    "type": "ecrit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:81",
+    "confiance": "haute",
+    "note": "Destination relative au cwd (depot cible) ; ici le chemin existe parce que ce depot a deja ete installe."
+   },
+   {
+    "de": ".claude/skills/sssf/templates/justfile",
+    "vers": "justfile",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/justfile:1",
+    "confiance": "haute",
+    "note": "different : +75 -42 lignes"
+   },
+   {
+    "de": "README.md",
+    "vers": "justfile",
+    "type": "decrit",
+    "preuve": "README.md:248",
+    "confiance": "haute"
+   },
+   {
+    "de": "TREE.md",
+    "vers": "justfile",
+    "type": "decrit",
+    "preuve": "TREE.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": "ai_docs/exedev_sandbox_mounting.md",
+    "vers": "justfile",
+    "type": "decrit",
+    "preuve": "ai_docs/exedev_sandbox_mounting.md:236",
+    "confiance": "haute"
+   },
+   {
+    "de": "specs/sandbox-mount-system.html",
+    "vers": "justfile",
+    "type": "decrit",
+    "preuve": "specs/sandbox-mount-system.html:220",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "just/obs.just",
+  "fiche_carte": {
+   "chemin": "just/obs.just",
+   "type": "recette_just",
+   "langage": "just",
+   "lignes": 73,
+   "role": "Module `obs` : lit la base de traces adws/adw_data/sssf.db avec sqlite3 (sessions, phases, events, processes), liste les rosters yaml, tue les processus d'un run bloque et demarre l'UI visualizer.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Requetes de lecture de la trace ; le comportement de `kill` (motifs de commandes autorisees) est le seul point sensible."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "rosters",
+     "lignes": "18-32",
+     "ce_quelle_fait": "Pour chaque adws/adw_sssf_config/*.yaml, extrait avec awk le modele par defaut et les agents."
+    },
+    {
+     "nom": "sessions",
+     "lignes": "35-36",
+     "ce_quelle_fait": "10 dernieres sessions (sqlite3 sur sssf.db)."
+    },
+    {
+     "nom": "phases",
+     "lignes": "39-40",
+     "ce_quelle_fait": "Phases d'un adw_id."
+    },
+    {
+     "nom": "tail",
+     "lignes": "43-44",
+     "ce_quelle_fait": "25 derniers evenements d'un adw_id."
+    },
+    {
+     "nom": "procs",
+     "lignes": "47-48",
+     "ce_quelle_fait": "Processus vivants (ended_at null) d'un adw_id."
+    },
+    {
+     "nom": "kill",
+     "lignes": "53-66",
+     "ce_quelle_fait": "Envoie kill aux pids enregistres (agents d'abord) si la commande ps contient pi, adw_ ou python."
+    },
+    {
+     "nom": "ui",
+     "lignes": "72-73",
+     "ce_quelle_fait": "bun install puis serveur visualizer (SSSF_DB) en arriere-plan et vite."
+    }
+   ],
+   "lit": [
+    {
+     "quoi": "adws/adw_sssf_config/*.yaml",
+     "ligne": 20
+    },
+    {
+     "quoi": "adws/adw_data/sssf.db",
+     "ligne": 36
+    }
+   ],
+   "ecrit": [],
+   "lance": [
+    {
+     "commande": "sqlite3 adws/adw_data/sssf.db ...",
+     "ligne": 36
+    },
+    {
+     "commande": "ps -p <pid> -o command=",
+     "ligne": 60
+    },
+    {
+     "commande": "kill <pid>",
+     "ligne": 63
+    },
+    {
+     "commande": "bun install; bun run server/index.ts; bunx vite (dans .claude/skills/sssf/apps/visualizer)",
+     "ligne": 73
+    }
+   ],
+   "reseau": [],
+   "variables_env": [
+    {
+     "nom": "SSSF_DB",
+     "ligne": 73,
+     "lue_ou_ecrite": "ecrite"
+    }
+   ],
+   "cles_config": [
+    {
+     "cle": "agents / model / name (parse awk du yaml)",
+     "ligne": 22
+    }
+   ],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": "just/obs.just",
+    "vers": ".claude/skills/sssf/apps/visualizer/server/index.ts",
+    "type": "lance",
+    "preuve": "just/obs.just:73",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/obs.just",
+    "vers": "adws/adw_data/sssf.db",
+    "type": "lit",
+    "preuve": "just/obs.just:36",
+    "confiance": "haute",
+    "produit_a_l_execution": true,
+    "occurrences": 5
+   },
+   {
+    "de": "just/obs.just",
+    "vers": "adws/adw_sssf_config/*.yaml",
+    "type": "lit",
+    "preuve": "just/obs.just:20",
+    "confiance": "haute",
+    "motif": true
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:32",
+    "confiance": "haute",
+    "occurrences": 2
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:27",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/cookbooks/fan_out_n.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/cookbooks/fan_out_n.md:107",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/cookbooks/observe_and_report.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/cookbooks/observe_and_report.md:113",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/references/kickoff_paths.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/references/kickoff_paths.md:75",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md:108",
+    "confiance": "faible",
+    "pourquoi_faible": "La doc cite 'just phases' sans fichier ; recette trouvee dans just/obs.just:39 (module obs)."
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:31",
+    "confiance": "faible",
+    "pourquoi_faible": "Les recettes rosters/phases/procs/kill sont citees sans fichier ; trouvees dans just/obs.just."
+   },
+   {
+    "de": ".claude/skills/sssf/references/observability.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/observability.md:130",
+    "confiance": "faible",
+    "pourquoi_faible": "Cite 'just procs/kill' sans fichier ; recettes dans just/obs.just:47,53."
+   },
+   {
+    "de": "TREE.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": "TREE.md:37",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/console.py",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": "adws/adw_modules/console.py:65",
+    "confiance": "faible",
+    "pourquoi_faible": "Le panneau final affiche seulement le texte `just phases <adw_id>` ; la recette existe (just/obs.just:39) mais le code ne la lit ni ne la lance."
+   },
+   {
+    "de": "justfile",
+    "vers": "just/obs.just",
+    "type": "importe",
+    "preuve": "justfile:50",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "just/inkwell.just",
+  "fiche_carte": {
+   "chemin": "just/inkwell.just",
+   "type": "recette_just",
+   "langage": "just",
+   "lignes": 34,
+   "role": "Module `inkwell` : demarre l'application Inkwell avec bun (run, dev en watch) et lance sa suite de tests.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Mecanique de lancement de l'app ; le port par defaut 4501 est le seul parametre."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "default",
+     "lignes": "15-16",
+     "ce_quelle_fait": "Liste les commandes inkwell."
+    },
+    {
+     "nom": "run",
+     "lignes": "19-23",
+     "ce_quelle_fait": "PORT=<port> bun run apps/inkwell/server.ts."
+    },
+    {
+     "nom": "dev",
+     "lignes": "26-30",
+     "ce_quelle_fait": "Idem avec bun --watch."
+    },
+    {
+     "nom": "test",
+     "lignes": "33-34",
+     "ce_quelle_fait": "bun test apps/inkwell/server.test.ts."
+    }
+   ],
+   "lit": [
+    {
+     "quoi": ".env",
+     "ligne": 12
+    }
+   ],
+   "ecrit": [],
+   "lance": [
+    {
+     "commande": "bun run apps/inkwell/server.ts",
+     "ligne": 23
+    },
+    {
+     "commande": "bun --watch run apps/inkwell/server.ts",
+     "ligne": 30
+    },
+    {
+     "commande": "bun test apps/inkwell/server.test.ts",
+     "ligne": 34
+    }
+   ],
+   "reseau": [],
+   "variables_env": [
+    {
+     "nom": "PORT",
+     "ligne": 23,
+     "lue_ou_ecrite": "ecrite"
+    },
+    {
+     "nom": "INKWELL_DB",
+     "ligne": 18,
+     "lue_ou_ecrite": "lue"
+    }
+   ],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": "just/inkwell.just:8",
+     "code": "just/inkwell.just:33",
+     "resume": "Le commentaire dit que les recettes tournent en bash ; seules run et dev ont un shebang bash, `test` (ligne 33) n'en a pas et tourne sous le shell par defaut de just (sh)."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": "just/inkwell.just",
+    "vers": "apps/inkwell/server.test.ts",
+    "type": "lance",
+    "preuve": "just/inkwell.just:34",
+    "confiance": "haute"
+   },
+   {
+    "de": "just/inkwell.just",
+    "vers": "apps/inkwell/server.ts",
+    "type": "lance",
+    "preuve": "just/inkwell.just:23",
+    "confiance": "haute",
+    "occurrences": 2
+   },
+   {
+    "de": "just/inkwell.just",
+    "vers": ".env",
+    "type": "lit",
+    "preuve": "just/inkwell.just:12",
+    "confiance": "haute",
+    "produit_a_l_execution": true
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "just/inkwell.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:32",
+    "confiance": "haute",
+    "occurrences": 4
+   },
+   {
+    "de": "justfile",
+    "vers": "just/inkwell.just",
+    "type": "importe",
+    "preuve": "justfile:38",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": "just/local.just",
+  "fiche_carte": {
+   "chemin": "just/local.just",
+   "type": "recette_just",
+   "langage": "just",
+   "lignes": 35,
+   "role": "Module `local` : demarre un agent orchestrateur (claude, pi ou ipi) sur cette machine avec pour consigne de lire et executer .claude/skills/sssf/SKILL.md. Prevu pour tourner a l'interieur d'une sandbox.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Le prompt d'amorcage et le drapeau --dangerously-skip-permissions de l'orchestrateur du niveau factory sont fixes ici."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "default",
+     "lignes": "22-23",
+     "ce_quelle_fait": "Liste les commandes local."
+    },
+    {
+     "nom": "cc",
+     "lignes": "26-27",
+     "ce_quelle_fait": "claude --dangerously-skip-permissions 'Read and Execute .claude/skills/sssf/SKILL.md'."
+    },
+    {
+     "nom": "pi",
+     "lignes": "30-31",
+     "ce_quelle_fait": "pi 'Read and Execute .claude/skills/sssf/SKILL.md'."
+    },
+    {
+     "nom": "ipi",
+     "lignes": "34-35",
+     "ce_quelle_fait": "ipi (fonction zsh) avec --no-skills."
+    }
+   ],
+   "lit": [
+    {
+     "quoi": ".claude/skills/sssf/SKILL.md",
+     "ligne": 27
+    }
+   ],
+   "ecrit": [],
+   "lance": [
+    {
+     "commande": "claude --dangerously-skip-permissions",
+     "ligne": 27
+    },
+    {
+     "commande": "pi",
+     "ligne": 31
+    },
+    {
+     "commande": "ipi --no-skills",
+     "ligne": 35
+    }
+   ],
+   "reseau": [],
+   "variables_env": [
+    {
+     "nom": "SHELL_SESSIONS_DISABLE",
+     "ligne": 19,
+     "lue_ou_ecrite": "ecrite"
+    }
+   ],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": "just/local.just",
+    "vers": ".claude/skills/sssf/SKILL.md",
+    "type": "lit",
+    "preuve": "just/local.just:27",
+    "confiance": "faible",
+    "pourquoi_faible": "La recette ne lit pas le fichier ; elle passe son chemin dans le prompt de l'agent claude/pi qui le lit."
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "just/local.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:51",
+    "confiance": "haute",
+    "occurrences": 2
+   },
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/references/phases.md",
+    "vers": "just/local.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/references/phases.md:73",
+    "confiance": "haute"
+   },
+   {
+    "de": "TREE.md",
+    "vers": "just/local.just",
+    "type": "decrit",
+    "preuve": "TREE.md:34",
+    "confiance": "haute"
+   },
+   {
+    "de": "justfile",
+    "vers": "just/local.just",
+    "type": "importe",
+    "preuve": "justfile:41",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/templates/justfile",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/templates/justfile",
+   "type": "modele",
+   "lignes": 89,
+   "role": "Modele de justfile de depart : recettes demo, prompt, scout, plan, plan-build, sdlc, simple-sdlc, sessions, phases, tail, procs, obs.",
+   "copie_de": "justfile",
+   "differences": [
+    {
+     "lignes_modele": "1-14",
+     "lignes_original": "1-19",
+     "resume": "En-tete et reglages (set shell zsh -ic, SHELL_SESSIONS_DISABLE) de l'original remplaces par des commentaires et la variable db."
+    },
+    {
+     "lignes_modele": "17-35",
+     "lignes_original": "20-52",
+     "resume": "default, demo ajoutes ; l'original declare les modules inkwell, local, adw, sbx, obs (mod ... 'just/...') et n'a pas demo."
+    },
+    {
+     "lignes_modele": "40-61",
+     "lignes_original": "37-52",
+     "resume": "Recettes a la racine prompt/scout/plan/plan-build/sdlc/simple-sdlc (uv run adws/adw_*.py) ; dans l'original ces recettes vivent dans le module adw."
+    },
+    {
+     "lignes_modele": "67-89",
+     "lignes_original": "53-56",
+     "resume": "Recettes sessions, phases, tail, procs, obs ajoutees a la racine ; l'original les renvoie au module obs (just/obs.just) et n'a ni tail ni obs racine ; le modele n'a pas kill ni rosters."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/templates/justfile",
+    "vers": "justfile",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/justfile:1",
+    "confiance": "haute",
+    "note": "different : +75 -42 lignes"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/templates/justfile",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:25",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/install.py",
+    "vers": ".claude/skills/sssf/templates/justfile",
+    "type": "lit",
+    "preuve": ".claude/skills/sssf/scripts/install.py:81",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/scripts/make_adw.py",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/scripts/make_adw.py",
+   "type": "script",
+   "langage": "python",
+   "lignes": 119,
+   "role": "Genere adws/adw_<name>.py : un ADW a une phase par agent nomme, chainee par previous=, avec le type de sortie du roster de depart (GenericOutput sinon). Le squelette est inline dans le script, aucun modele lu.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Modifier le squelette HEADER/PHASE ou la table OUTPUT_TYPES pour changer les ADW generes."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "main",
+     "lignes": "76-115",
+     "ce_quelle_fait": "Parse --name/--agents/--force, formate PHASE par agent, ecrit adws/adw_<name>.py, refuse d'ecraser sans --force."
+    }
+   ],
+   "lit": [],
+   "ecrit": [
+    {
+     "quoi": "adws/adw_<name>.py",
+     "ligne": 110,
+     "note": "dest = cwd/adws/adw_<name>.py (ligne 105), motif"
+    }
+   ],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": ".claude/skills/sssf/scripts/make_adw.py:55",
+     "code": "adws/adw_modules/runner.py:114",
+     "resume": "Le squelette genere finit par 'return 0 if run.succeeded else 1' ; runner.py:114-122 definit run.finish(accepted=) en remplacement de la propriete succeeded (absente du module) et SKILL.md:72 impose run.finish() ; l'ADW genere risque d'echouer a l'execution."
+    },
+    {
+     "doc": ".claude/skills/sssf/scripts/make_adw.py:25",
+     "code": "adws/adw_plan_build.py:3",
+     "resume": "Les dependances du squelette genere omettent 'rich' alors que console.py importe rich (console.py:11) et que le squelette de create_adw.md:57 et les ADW du depot l'incluent."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/scripts/make_adw.py",
+    "vers": "adws/adw_<name>.py",
+    "type": "ecrit",
+    "preuve": ".claude/skills/sssf/scripts/make_adw.py:110",
+    "confiance": "haute",
+    "motif": true,
+    "note": "Le chemin vient de --name (ligne 105)."
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": ".claude/skills/sssf/scripts/make_adw.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:45",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/scripts/make_config.py",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/scripts/make_config.py",
+   "type": "script",
+   "langage": "python",
+   "lignes": 35,
+   "role": "Copie templates/sssf.config.yaml vers adws/adw_sssf_config/sssf.config.yaml dans le cwd, sans ecraser sauf --force.",
+   "levier": {
+    "valeur": false,
+    "pourquoi": "Mecanique de copie ; le contenu se personnalise dans le modele ou la config copiee."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "main",
+     "lignes": "19-31",
+     "ce_quelle_fait": "Cree le dossier et copie le modele ; refuse si la cible existe sans --force."
+    }
+   ],
+   "lit": [
+    {
+     "quoi": ".claude/skills/sssf/templates/sssf.config.yaml",
+     "ligne": 16
+    }
+   ],
+   "ecrit": [
+    {
+     "quoi": "adws/adw_sssf_config/sssf.config.yaml",
+     "ligne": 29
+    }
+   ],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/scripts/make_config.py",
+    "vers": "adws/adw_sssf_config/sssf.config.yaml",
+    "type": "ecrit",
+    "preuve": ".claude/skills/sssf/scripts/make_config.py:29",
+    "confiance": "haute",
+    "note": "Destination relative au cwd (depot cible) ; ici le chemin existe parce que ce depot a deja ete installe."
+   },
+   {
+    "de": ".claude/skills/sssf/scripts/make_config.py",
+    "vers": ".claude/skills/sssf/templates/sssf.config.yaml",
+    "type": "lit",
+    "preuve": ".claude/skills/sssf/scripts/make_config.py:16",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_config.md",
+    "vers": ".claude/skills/sssf/scripts/make_config.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_config.md:8",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/config.md",
+    "vers": ".claude/skills/sssf/scripts/make_config.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/config.md:5",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/commands/install.md",
+  "fiche_carte": {
+   "chemin": ".claude/commands/install.md",
+   "type": "prompt",
+   "langage": "markdown",
+   "lignes": 94,
+   "role": "Commande slash /install : verifie la toolchain (git, bun, uv, just, python3, ssh), cree `.env`, installe les deps de l'app et du visualiseur, verifie rosters/modeles/skills, lance `just inkwell test` et le preflight `just sbx manage doctor`, sans demarrer de serveur ni monter de VM, puis imprime un tableau de statut.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Prompt de setup : on y change les prerequis, les verifications et les prochaines etapes proposees."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "Etapes",
+     "lignes": "37-82",
+     "ce_quelle_fait": "Prerequis, environnement, dependances, configuration, readiness, rapport."
+    }
+   ],
+   "lit": [],
+   "ecrit": [],
+   "lance": [
+    {
+     "commande": "curl -fsSL https://bun.sh/install | bash",
+     "ligne": 42
+    },
+    {
+     "commande": "curl -LsSf https://astral.sh/uv/install.sh | sh",
+     "ligne": 46
+    },
+    {
+     "commande": "curl ... https://just.systems/install.sh | bash -s -- --to ~/.local/bin",
+     "ligne": 47
+    },
+    {
+     "commande": "cd apps/inkwell && bun install",
+     "ligne": 65
+    },
+    {
+     "commande": "just inkwell test",
+     "ligne": 79
+    },
+    {
+     "commande": "just sbx manage doctor",
+     "ligne": 2
+    },
+    {
+     "commande": "cp .env.sample .env",
+     "ligne": 57
+    }
+   ],
+   "reseau": [
+    {
+     "hote": "bun.sh",
+     "ligne": 42
+    },
+    {
+     "hote": "astral.sh",
+     "ligne": 46
+    },
+    {
+     "hote": "just.systems",
+     "ligne": 47
+    },
+    {
+     "hote": "openrouter.ai",
+     "ligne": 58
+    }
+   ],
+   "variables_env": [
+    {
+     "nom": "OPENROUTER_PROVISIONING_KEY",
+     "ligne": 58,
+     "lue_ou_ecrite": "verifiee non vide, jamais affichee"
+    },
+    {
+     "nom": "OPENROUTER_API_KEY",
+     "ligne": 60,
+     "lue_ou_ecrite": "mentionnee (optionnelle)"
+    },
+    {
+     "nom": "ANTHROPIC_API_KEY",
+     "ligne": 61,
+     "lue_ou_ecrite": "mentionnee (optionnelle)"
+    }
+   ],
+   "cles_config": [],
+   "secrets": "Interdit de lire ou imprimer les valeurs de cles (ligne 31) ; verifie seulement qu'OPENROUTER_PROVISIONING_KEY est non vide (ligne 58).",
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/commands/install.md",
+    "vers": ".claude/skills/sssf-sandbox-orchestrator/SKILL.md",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:73",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": ".claude/skills/sssf/SKILL.md",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:73",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": ".claude/skills/sssf/apps/visualizer",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:23",
+    "confiance": "haute",
+    "occurrences": 2
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": ".env.sample",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:21",
+    "confiance": "haute",
+    "occurrences": 2
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "adws/adw_sssf_config",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:24",
+    "confiance": "haute",
+    "occurrences": 2
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "apps/inkwell",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:22",
+    "confiance": "haute",
+    "occurrences": 2
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "apps/inkwell/server.test.ts",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:79",
+    "confiance": "faible",
+    "pourquoi_faible": "install.md:78 parle de '30 tests' pour `just inkwell test` ; le fichier de test est celui lance par la recette inkwell (just/inkwell.just), 30 appels test()/it() comptes."
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "just/inkwell.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:32",
+    "confiance": "haute",
+    "occurrences": 4
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "just/local.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:51",
+    "confiance": "haute",
+    "occurrences": 2
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:32",
+    "confiance": "haute",
+    "occurrences": 2
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "just/sandbox/manage/mod.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:72",
+    "confiance": "haute",
+    "occurrences": 3
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "just/sandbox/mount.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:32",
+    "confiance": "haute",
+    "occurrences": 3
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "sandbox_mount/guest/models.json.tmpl",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:72",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/install.md",
+    "vers": "sandbox_mount/host/run_record.py",
+    "type": "decrit",
+    "preuve": ".claude/commands/install.md:48",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": "README.md",
+    "vers": ".claude/commands/install.md",
+    "type": "decrit",
+    "preuve": "README.md:35",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/commands/prime.md",
+  "fiche_carte": {
+   "chemin": ".claude/commands/prime.md",
+   "type": "prompt",
+   "langage": "markdown",
+   "lignes": 29,
+   "role": "Commande slash /prime : oriente l'agent dans les trois couches (Inkwell, la Super Simple Software Factory, le systeme de montage de sandbox) en lui faisant lister les espaces de noms just, lire TREE.md, README.md, la spec sandbox-mount-system.html, ai_docs, justfile, create.just, run_record.py, provision.sh, les deux skills, la config de roster, verifier l'etat vivant puis resumer et attendre.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Liste ordonnee de lecture et de verifications ; on y ajoute/retire les fichiers d'orientation."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "Workflow",
+     "lignes": "9",
+     "ce_quelle_fait": "Neuf etapes : surface, TREE/README/spec, ai_docs, justfile et mod.just, une phase, skill orchestrateur, skill sssf + roster, etat vivant, resume."
+    }
+   ],
+   "lit": [],
+   "ecrit": [],
+   "lance": [
+    {
+     "commande": "just --list sbx / adw / obs / local",
+     "ligne": 11
+    },
+    {
+     "commande": "git ls-files | head -60",
+     "ligne": 11
+    },
+    {
+     "commande": "just sbx manage doctor; just sbx manage list; ssh exe.dev ls --json",
+     "ligne": 27
+    }
+   ],
+   "reseau": [],
+   "variables_env": [
+    {
+     "nom": "OPENROUTER_PROVISIONING_KEY",
+     "ligne": 19,
+     "lue_ou_ecrite": "citee"
+    }
+   ],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": ".claude/commands/prime.md:11",
+     "code": "justfile:38",
+     "resume": "prime.md annonce quatre espaces de noms ; le justfile racine en declare cinq (`inkwell`, `local`, `adw`, `sbx`, `obs`, lignes 38-50). install.md:32 et :78 listent bien les cinq. La phrase du resume (ligne 29) repete \"four namespaces\"."
+    },
+    {
+     "doc": ".claude/commands/prime.md:21",
+     "code": "just/sandbox/lifecycle/create.just:17",
+     "resume": "prime.md cite `just/sandbox/create.just` ; la recette create est dans `just/sandbox/lifecycle/create.just` (les phases sont sous lifecycle/)."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": ".claude/skills/sssf-sandbox-orchestrator/SKILL.md",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:23",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": ".claude/skills/sssf-sandbox-orchestrator/cookbooks/just_command_model.md",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:23",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": ".claude/skills/sssf-sandbox-orchestrator/references/gotchas.md",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:23",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": ".claude/skills/sssf/SKILL.md",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:25",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "README.md",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:15",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "TREE.md",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:13",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "adws/adw_sssf_config/sssf.config.yaml",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:25",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "ai_docs/exedev_sandbox_mounting.md",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:17",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:27",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "just/sandbox",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:11",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "just/sandbox/lifecycle/create.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:21",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "just/sandbox/lifecycle/teardown.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:27",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "just/sandbox/manage/list.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:27",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "just/sandbox/manage/mod.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:27",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "just/sandbox/mod.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "just/sandbox/mount.just",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "justfile",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "sandbox_mount/guest",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:11",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "sandbox_mount/guest/provision.sh",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:21",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "sandbox_mount/host",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:11",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "sandbox_mount/host/run_record.py",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:21",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/commands/prime.md",
+    "vers": "specs/sandbox-mount-system.html",
+    "type": "decrit",
+    "preuve": ".claude/commands/prime.md:15",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": "README.md",
+    "vers": ".claude/commands/prime.md",
+    "type": "decrit",
+    "preuve": "README.md:35",
+    "confiance": "haute"
+   },
+   {
+    "de": "TREE.md",
+    "vers": ".claude/commands/prime.md",
+    "type": "decrit",
+    "preuve": "TREE.md:115",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/cookbooks/create_adw.md",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/cookbooks/create_adw.md",
+   "type": "doc",
+   "langage": "markdown",
+   "lignes": 120,
+   "role": "Procedure pour composer un nouvel ADW : choisir les agents et gates, regles de proprietaire de phase, generation par make_adw.py, squelette canonique et regles non negociables.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Modifier le squelette et les regles de composition des ADW que l'orchestrateur applique."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": ".claude/skills/sssf/cookbooks/create_adw.md:27",
+     "code": "adws/adw_modules/quality.py:198",
+     "resume": "Cite quality.run_tests(run) ; dans le depot installe la fonction s'appelle run_inkwell_tests (quality.py:198), run_tests n'existe que dans le modele templates/adws/adw_modules/quality.py:177."
+    },
+    {
+     "doc": ".claude/skills/sssf/cookbooks/create_adw.md:48",
+     "code": ".claude/skills/sssf/scripts/make_adw.py:25",
+     "resume": "Annonce que make_adw genere le squelette canonique ; son en-tete declare dependencies sans 'rich' (le squelette doc ligne 57 et adws/adw_plan_build.py:3 l'incluent) et finit par run.succeeded (make_adw.py:55) alors que la doc impose run.finish() (ligne 94) et que runner.py:114-122 a remplace succeeded."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:29",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_config.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:21",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:113",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": ".claude/skills/sssf/scripts/make_adw.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:45",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_<name>.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:118",
+    "confiance": "haute",
+    "motif": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_data/sessions/*/*/envelope.json",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:120",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_data/sssf.db",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:119",
+    "confiance": "haute",
+    "produit_a_l_execution": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:64",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_modules/changes.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:27",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_modules/data_types.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:109",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_modules/gates.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:31",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_modules/git_helper.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:114",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_modules/quality.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:27",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_modules/runner.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:94",
+    "confiance": "faible",
+    "pourquoi_faible": "La ligne montre run.finish() sans nommer runner.py."
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_modules/session.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:64",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_simple_sdlc.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:114",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_sssf_config/sssf.config.yaml",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:9",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/SKILL.md",
+    "vers": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/SKILL.md:50",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+    "vers": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md:83",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/sssf_overview.md",
+    "vers": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/sssf_overview.md:81",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:55",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/cookbooks/create_config.md",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/cookbooks/create_config.md",
+   "type": "doc",
+   "langage": "markdown",
+   "lignes": 61,
+   "role": "Explique comment generer sssf.config.yaml avec make_config.py, le schema minimal (defaults, observability, agents), la regle un agent/un prompt/un but et les verifications apres generation.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Modifier les consignes de creation du roster d'agents."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": ".claude/skills/sssf/cookbooks/create_config.md:53",
+     "code": ".claude/skills/sssf/references/config.md:110",
+     "resume": "Dit que les outils integres de Pi sont read, bash, edit, write ; references/config.md:110 et update_config.md:32 en listent sept (grep, find, ls en plus)."
+    },
+    {
+     "doc": ".claude/skills/sssf/cookbooks/create_config.md:24",
+     "code": "adws/adw_modules/agent_pi.py:264",
+     "resume": "Decrit harness_engineering comme des 'pi extension names' ; le code passe chaque entree telle quelle a 'pi -e' (chemins de fichier, cf. adws/adw_sssf_config/sssf.config.yaml:49)."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_config.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_config.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_config.md:11",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_config.md",
+    "vers": ".claude/skills/sssf/references/config.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_config.md:61",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_config.md",
+    "vers": ".claude/skills/sssf/scripts/make_config.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_config.md:8",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_config.md",
+    "vers": "adws/adw_data/prompt_engineering/",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_config.md:11",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_config.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_config.md:57",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_config.md",
+    "vers": "adws/adw_sssf_config/sssf.config.yaml",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_config.md:11",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/SKILL.md",
+    "vers": ".claude/skills/sssf/cookbooks/create_config.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/SKILL.md:52",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/sssf_overview.md",
+    "vers": ".claude/skills/sssf/cookbooks/create_config.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/sssf_overview.md:83",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/cookbooks/install.md",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/cookbooks/install.md",
+   "type": "doc",
+   "langage": "markdown",
+   "lignes": 56,
+   "role": "Mode d'emploi de /sssf install : lancement de install.py, tableau de ce qui est copie depuis templates/, idempotence et --force, checklist post-installation et test de fumee.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Modifier la procedure d'installation dans un depot cible."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": ".claude/skills/sssf/cookbooks/install.md:25",
+     "code": "justfile:50",
+     "resume": "Annonce les recettes 'just demo' et 'just obs' a la racine ; le justfile modele (templates/justfile:29,88) les a, mais le justfile du depot n'a pas 'demo' (just/obs.just est un module : 'just obs <recette>')."
+    },
+    {
+     "doc": ".claude/skills/sssf/cookbooks/install.md:40",
+     "code": ".claude/skills/sssf/templates/sssf.config.yaml:5",
+     "resume": "Dit que le defaut est gemini-3.6-flash ; la config stampee a pour defaut openrouter/deepseek/deepseek-v4-flash-0731."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/references/config.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:40",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/scripts/install.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:8",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/templates",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:15",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/templates/adws",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:21",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/templates/adws/adw_modules",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:22",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/templates/env.sample",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:20",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/templates/harness_engineering",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:24",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/templates/harness_engineering/subagents.ts",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:30",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/templates/justfile",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:25",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/templates/prompt_engineering",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:23",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".claude/skills/sssf/templates/sssf.config.yaml",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".env.sample",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:20",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": ".gitignore",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:41",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": "adws/adw_data/sssf.db",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:26",
+    "confiance": "haute",
+    "produit_a_l_execution": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": "adws/adw_document.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:42",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": "adws/adw_modules/git_helper.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:42",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": "adws/adw_plan_build.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:42",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": "adws/adw_plan_build_test.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:42",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": "adws/adw_prompt.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:47",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": "adws/adw_simple_sdlc.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:42",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": "adws/adw_sssf_config/sssf.config.yaml",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": "justfile",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:25",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/install.md",
+    "vers": "~/.pi/agent/models.json",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/install.md:40",
+    "confiance": "haute",
+    "hors_depot": true
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/SKILL.md",
+    "vers": ".claude/skills/sssf/cookbooks/install.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/SKILL.md:49",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/sssf_overview.md",
+    "vers": ".claude/skills/sssf/cookbooks/install.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/sssf_overview.md:80",
+    "confiance": "haute"
+   },
+   {
+    "de": "ai_docs/exedev_sandbox_mounting.md",
+    "vers": ".claude/skills/sssf/cookbooks/install.md",
+    "type": "decrit",
+    "preuve": "ai_docs/exedev_sandbox_mounting.md:237",
+    "confiance": "haute"
+   },
+   {
+    "de": "app_docs/306a0046_prevent-overwriting-specs-docs.md",
+    "vers": ".claude/skills/sssf/cookbooks/install.md",
+    "type": "decrit",
+    "preuve": "app_docs/306a0046_prevent-overwriting-specs-docs.md:7",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/cookbooks/run_adw.md",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/cookbooks/run_adw.md",
+   "type": "doc",
+   "langage": "markdown",
+   "lignes": 122,
+   "role": "Procedure pour lancer un ADW et l'observer sans jamais faire le travail : choix du roster/config, requetes sqlite de suivi, cas d'un run bloque (phases/procs/kill) et format du compte rendu.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Modifier la posture d'observation, les requetes de suivi et la gestion des rosters."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": ".claude/skills/sssf/cookbooks/run_adw.md:31",
+     "code": "just/obs.just:18",
+     "resume": "Cite 'just rosters', 'just phases', 'just procs', 'just kill' a la racine ; dans le depot ce sont des recettes du module obs (just/obs.just:18,39,47,53, donc 'just obs rosters'). Le justfile modele (templates/justfile) n'a ni rosters ni kill (templates/justfile:5 les renvoie a une 'example branch')."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": ".claude/skills/sssf/apps/visualizer",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:122",
+    "confiance": "faible",
+    "pourquoi_faible": "Cite 'the visualizer app in the skill' sans chemin."
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:7",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": ".claude/skills/sssf/references/observability.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:98",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": "adws/adw_data/sessions/*/*/raw_output.jsonl",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:102",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": "adws/adw_data/sessions/*/agent_map.json",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:65",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": "adws/adw_data/sssf.db",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:71",
+    "confiance": "haute",
+    "produit_a_l_execution": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:65",
+    "confiance": "faible",
+    "pourquoi_faible": "Le texte parle de la config du modele par agent / agent_map.json, pas d'agents.py nommement."
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": "adws/adw_sssf_config/sssf.config.yaml",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:37",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": "adws/adw_sssf_config/sssf.frontier.config.yaml",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:40",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": "just/obs.just",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:31",
+    "confiance": "faible",
+    "pourquoi_faible": "Les recettes rosters/phases/procs/kill sont citees sans fichier ; trouvees dans just/obs.just."
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/SKILL.md",
+    "vers": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/SKILL.md:55",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md",
+    "vers": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/how_to_prompt_for_the_eng.md:92",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/sssf_overview.md",
+    "vers": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/sssf_overview.md:86",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/cookbooks/update_adw.md",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/cookbooks/update_adw.md",
+   "type": "doc",
+   "langage": "markdown",
+   "lignes": 90,
+   "role": "Explique comment modifier un ADW existant : ajouter/retirer une phase, ajouter des gates, boucle de correction bornee, distinction retries de gate / JSON / phase, et maintien des scripts minces.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Modifier les patrons de chaine (boucle de correction, commit) recommandes."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": ".claude/skills/sssf/cookbooks/update_adw.md:58",
+     "code": "adws/adw_modules/quality.py:198",
+     "resume": "Utilise quality.run_tests(run) et dit que les blocs stampes sont des placeholders echo (ligne 80) ; le quality.py du depot expose run_inkwell_tests (ligne 198) avec de vraies commandes bun ; seul le modele (templates/.../quality.py:177) correspond a la doc."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_adw.md:45",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "vers": "adws/adw_build_test.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_adw.md:49",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "vers": "adws/adw_data/sssf.db",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_adw.md:43",
+    "confiance": "faible",
+    "pourquoi_faible": "Cite la table gate_results sans nommer le fichier db.",
+    "produit_a_l_execution": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_adw.md:84",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "vers": "adws/adw_modules/gates.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_adw.md:45",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "vers": "adws/adw_modules/git_helper.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_adw.md:25",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "vers": "adws/adw_modules/quality.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_adw.md:80",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "vers": "adws/adw_plan_build.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_adw.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "vers": "adws/adw_plan_build_test.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_adw.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "vers": "adws/adw_simple_sdlc.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_adw.md:28",
+    "confiance": "haute"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/SKILL.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/SKILL.md:51",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:29",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/sssf_overview.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/sssf_overview.md:82",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/cookbooks/update_config.md",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/cookbooks/update_config.md",
+   "type": "doc",
+   "langage": "markdown",
+   "lignes": 103,
+   "role": "Explique comment ajuster le roster : modele et thinking, couleur de voie, outils (resolution et pieges des outils d'extension), extensions harness, ajout d'un nouvel agent en trois etapes.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Modifier les consignes de reglage des agents dans le roster."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": ".claude/skills/sssf/cookbooks/update_config.md:68",
+     "code": ".claude/skills/sssf/templates/sssf.config.yaml:49",
+     "resume": "Dit que le roster de depart n'a aucune extension harness ; la config modele (lignes 49 et 88) livre subagents.ts pour planner et scout (confirme par install.md:30)."
+    },
+    {
+     "doc": ".claude/skills/sssf/cookbooks/update_config.md:26",
+     "code": ".claude/skills/sssf/templates/sssf.config.yaml:109",
+     "resume": "'violet/cyan/amber/green' : les couleurs du modele sont violet (43), cyan (65), ambre (82), rose (109), fuchsia (126) ; pas de vert."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_config.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_config.md:93",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_config.md",
+    "vers": ".claude/skills/sssf/references/config.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_config.md:15",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_config.md",
+    "vers": "adws/adw_data/prompt_engineering/*/system.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_config.md:91",
+    "confiance": "haute",
+    "motif": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_config.md",
+    "vers": "adws/adw_data/prompt_engineering/*/user.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_config.md:91",
+    "confiance": "haute",
+    "motif": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_config.md",
+    "vers": "adws/adw_data/sessions/*/agent_map.json",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_config.md:19",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_config.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_config.md:15",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_config.md",
+    "vers": "adws/adw_modules/data_types.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_config.md:93",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_config.md",
+    "vers": "adws/adw_sssf_config/sssf.config.yaml",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_config.md:3",
+    "confiance": "faible",
+    "pourquoi_faible": "Cite 'sssf.config.yaml' sans chemin."
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_config.md",
+    "vers": "~/.pi/agent/models.json",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_config.md:17",
+    "confiance": "haute",
+    "hors_depot": true
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/SKILL.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_config.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/SKILL.md:53",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_config.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:21",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_config.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_config.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_config.md:11",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/sssf_overview.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_config.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/sssf_overview.md:84",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ },
+ {
+  "chemin": ".claude/skills/sssf/cookbooks/update_modules.md",
+  "fiche_carte": {
+   "chemin": ".claude/skills/sssf/cookbooks/update_modules.md",
+   "type": "doc",
+   "langage": "markdown",
+   "lignes": 100,
+   "role": "Explique comment etendre adws/adw_modules/ : table du role de chaque module, regle de ne jamais print(), regle des quatre parametres, ajout d'un type de sortie (triade synchronisee) et d'un gate.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Modifier les conventions imposees aux modules de bas niveau."
+   },
+   "fonctions_cles": [],
+   "lit": [],
+   "ecrit": [],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": ".claude/skills/sssf/cookbooks/update_modules.md:24",
+     "code": ".claude/skills/sssf/cookbooks/update_modules.md:23",
+     "resume": "console.py est liste deux fois avec deux descriptions presque identiques (lignes 23 et 24) ; doublon interne."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": ".claude/skills/sssf/references/handoff.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:62",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_data/sssf.db",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:22",
+    "confiance": "haute",
+    "produit_a_l_execution": true
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/agent_cc.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:17",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:16",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:14",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/changes.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:19",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/console.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:23",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/data_types.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:13",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/gates.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:18",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/git_helper.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:25",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/prompts.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:20",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/runner.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:15",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/session.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:21",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/tracer.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:22",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/utils.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:26",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_prompt.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:100",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "~/.pi/agent/models.json",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:16",
+    "confiance": "haute",
+    "hors_depot": true
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/SKILL.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/SKILL.md:54",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:113",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/sssf_overview.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/sssf_overview.md:85",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_adw.md:45",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_config.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_config.md:93",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:63",
+    "confiance": "haute"
+   }
+  ],
+  "absent_de_la_carte": false
+ }
+]
