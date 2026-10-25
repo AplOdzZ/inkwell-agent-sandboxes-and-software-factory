@@ -1,0 +1,17 @@
+[
+ {
+  "p": "adws/adw_modules/agents.py",
+  "fate": "adapter",
+  "reason": "La mécanique (sortie typée, relance dans la même session, portes, comptage) est bonne et à garder. Mais l'ordre portes puis droits, le contrôle sauté en cas d'échec, la config non stricte, la trace sans masquage et l'audit incomplet imposent de l'adapter avant usage chez nous."
+ },
+ {
+  "p": "adws/adw_modules/permissions.py",
+  "fate": "adapter",
+  "reason": "Le principe (photo avant et après, droits par agent, retour arrière, arrêt) est le bon et à garder. Mais l'empreinte ne voit que les compteurs de git, le retour arrière n'est pas vérifié et restaure depuis l'index, data_dir passe avant tout, et une erreur de git vaut « aucun changement » : à refaire avant tout usage chez nous."
+ },
+ {
+  "p": "adws/adw_modules/agent_pi.py",
+  "fate": "adapter",
+  "reason": "La mécanique (flux lu en direct, un événement par appel d'outil, coût lu dans Pi) est bonne. Mais il faut chez nous un binaire épinglé, un modèle exact chez OpenRouter seul, --no-extensions, un délai et un arrêt sûr de Pi, le code de retour contrôlé et des clés masquées dans la trace."
+ }
+]

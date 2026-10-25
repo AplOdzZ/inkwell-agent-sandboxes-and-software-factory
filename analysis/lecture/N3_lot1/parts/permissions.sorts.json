@@ -1,0 +1,7 @@
+[
+  {
+    "p": "adws/adw_modules/permissions.py",
+    "fate": "adapter",
+    "reason": "Le principe (photo avant et après, droits par agent, retour arrière, arrêt) est le bon et à garder. Mais l'empreinte ne voit que les compteurs de git, le retour arrière n'est pas vérifié et restaure depuis l'index, data_dir passe avant tout, et une erreur de git vaut « aucun changement » : à refaire avant tout usage chez nous."
+  }
+]

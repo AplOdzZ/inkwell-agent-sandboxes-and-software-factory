@@ -1,0 +1,7 @@
+[
+  {
+    "p": "adws/adw_modules/agent_pi.py",
+    "fate": "adapter",
+    "reason": "La mécanique (flux lu en direct, un événement par appel d'outil, coût lu dans Pi) est bonne. Mais il faut chez nous un binaire épinglé, un modèle exact chez OpenRouter seul, --no-extensions, un délai et un arrêt sûr de Pi, le code de retour contrôlé et des clés masquées dans la trace."
+  }
+]

@@ -1,0 +1,30 @@
+[
+  {
+    "ou": "adws/adw_modules/agents.py l.148-191",
+    "ecrit": "« anything the agent introduced outside its allowlist is rolled back before the phase dies » (adws/adw_modules/permissions.py:227-229) ; « unauthorized changes are rolled back and the phase dies » (.claude/skills/sssf/SKILL.md:71) ; « Permission is checked after every send is done » (agents.py l.179-181).",
+    "realite": "enforce n'est appelé qu'à l.183, après les envois, la lecture du JSON et les portes, sans try/finally autour (seul try du bloc : l.182). Toute exception avant l.183 le saute : GateFailure (l.168), JSON jamais valide (l.291), erreur de Pi (agent_pi.py:320), porte qui plante (l.155, appel sans try) ou un arrêt par signal transformé en SystemExit (session.py:30-32). runner.py:88-103 marque alors la phase en échec et relance l'erreur ; aucun ADW ne l'attrape (aucun except dans adws/adw_*.py). Aucun retour arrière, aucun événement permission_breach.",
+    "impact": "Une phase qui échoue (cas typique d'un agent qui déraille) laisse ses écritures hors droits dans l'arbre, fichiers protégés compris. Le passage suivant les prend pour l'état de départ (snapshot, l.145) et ne les attribue à personne. Chez nous : contrôle des droits dans un finally.",
+    "type": "faille"
+  },
+  {
+    "ou": "adws/adw_modules/agents.py l.226-230",
+    "ecrit": "Docstring l.227 : « Accept a GateReport, or a legacy gate that returned a violations list ». Contrat des portes : « gate(envelope, run) -> GateReport » (adws/adw_modules/gates.py:3) ; mais « gate(envelope, run) -> list[str] » dans .claude/skills/sssf/SKILL.md:65 et adws/adw_modules/data_types.py:294.",
+    "realite": "Tout ce qui n'est pas un GateReport est parcouru comme une liste (l.230, `result or []`). Une porte qui rend None donne zéro vérification, donc aucune violation : elle passe. Une porte qui rend une chaîne donne une violation par caractère. Vérifié par une réécriture à l'identique de la fonction (script autonome dans le scratchpad, lot1/exp_agents.py).",
+    "impact": "Une porte maison qui oublie son `return` laisse tout passer, sans message (fail-open). La doc lue par l'orchestrateur décrit encore l'ancien contrat. Chez nous : refuser tout retour qui n'est pas un GateReport.",
+    "type": "bug"
+  },
+  {
+    "ou": "adws/adw_modules/agents.py l.197, l.288, l.309-313",
+    "ecrit": "envelope.json = « the final valid-JSON response — captured, validated, persisted by code » (.claude/skills/sssf/references/handoff.md:141) ; « envelope.json (the parsed final response) » (.claude/skills/sssf/cookbooks/run_adw.md:102).",
+    "realite": "Un seul envelope.json par agent (l.313), réécrit à chaque phase réussie du même agent, et seulement sur le chemin du succès (l.197). Une enveloppe lue correctement mais rejetée par les portes n'est enregistrée nulle part (ni table envelopes, ni fichier) : seules les erreurs de lecture le sont (l.288). Quand fix_2 échoue aux portes, envelope.json montre encore l'enveloppe de fix_1 ou de build.",
+    "impact": "En déboguant une phase ratée depuis les fichiers, on lit l'enveloppe d'une autre phase sans le savoir, et la réponse fautive n'est que dans raw_output.jsonl. Chez nous : une enveloppe par phase et par tentative, rejetées comprises.",
+    "type": "bug"
+  },
+  {
+    "ou": ".claude/skills/sssf/cookbooks/update_modules.md:14, :21 ; .claude/skills/sssf/cookbooks/sssf_overview.md:24 ; TREE.md:85 ; .claude/skills/sssf/references/handoff.md:144",
+    "ecrit": "agents.py = « load_config, validate, resolving an entry » (update_modules.md:14, sssf_overview.md:24), « roster + validation » (TREE.md:85) ; session.py « maintain agent_map.json, create session dirs » (update_modules.md:21) ; « session.ensure(cfg, adw_id) … creates these dirs » (handoff.md:144).",
+    "realite": "agents.py contient aussi execute (l.78-221) : lancement de Pi, relances, portes, contrôle des droits, persistance. agent_map.json est lu et écrit par runner.py:56-63 à la demande d'agents.py (l.203, l.234). session.ensure crée bien le dossier de session et context_handoff/ (via Run, runner.py:54-55), mais les dossiers par agent sont créés par agents.py:82, prompts.py:18 et Pi (pi_sessions/), pas par session.py.",
+    "impact": "Un lecteur, humain ou orchestrateur, qui suit ces docs pour modifier la boucle de contrôle cherche au mauvais endroit. Nos docs doivent dire qu'agents.py porte toute la boucle.",
+    "type": "doc"
+  }
+]

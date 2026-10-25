@@ -1,0 +1,1064 @@
+{
+ "adws/adw_modules/agent_pi.py": {
+  "fiche": {
+   "chemin": "adws/adw_modules/agent_pi.py",
+   "type": "code",
+   "langage": "python",
+   "lignes": 321,
+   "role": "Interface avec le coding agent Pi : resout le modele via `pi --list-models`, lance `pi -p --mode json` dans le depot, lit son JSONL ligne par ligne (ecrit en brut dans raw_output.jsonl) et normalise les evenements (appels d'outils, messages, tokens, cout).",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Ici se construit la ligne de commande de Pi (--tools, -e extensions, --thinking, --system-prompt, --session-id) ; changer PI_PATH/PI_MODELS_PATH ou les flags passes a Pi change ce que les agents peuvent faire. Le reste (parsing des evenements) est de la mecanique."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "_pi_catalog",
+     "lignes": "43-64",
+     "ce_quelle_fait": "Lance `pi --list-models` (cache lru) et parse fournisseur / modele / fenetre de contexte."
+    },
+    {
+     "nom": "resolve_model",
+     "lignes": "67-90",
+     "ce_quelle_fait": "Transforme un motif de modele en (fournisseur, id) exact ; ValueError si introuvable ou ambigu."
+    },
+    {
+     "nom": "context_window",
+     "lignes": "108-117",
+     "ce_quelle_fait": "Lit ~/.pi/agent/models.json (PI_MODELS_PATH) puis le catalogue pour trouver la fenetre de contexte."
+    },
+    {
+     "nom": "assistant_message_records",
+     "lignes": "131-163",
+     "ce_quelle_fait": "Extrait pensee et texte d'un message_end assistant en enregistrements de trace."
+    },
+    {
+     "nom": "ToolCallTracker",
+     "lignes": "176-240",
+     "ce_quelle_fait": "Fusionne les evenements tool_execution_* de Pi en un enregistrement par appel d'outil termine."
+    },
+    {
+     "nom": "run",
+     "lignes": "243-321",
+     "ce_quelle_fait": "Construit la commande pi (--tools, -e), la lance avec cwd=repo, stdin=DEVNULL, ecrit raw_output.jsonl, cumule tokens/cout et leve RuntimeError si code != 0 sans texte."
+    }
+   ],
+   "lit": [
+    {
+     "quoi": "~/.pi/agent/models.json (ou $PI_MODELS_PATH)",
+     "ligne": 110
+    }
+   ],
+   "ecrit": [
+    {
+     "quoi": "request.raw_output_path = adws/adw_data/sessions/<adw_id>/<agent>/raw_output.jsonl",
+     "ligne": 284
+    }
+   ],
+   "lance": [
+    {
+     "commande": "pi --list-models",
+     "ligne": 48
+    },
+    {
+     "commande": "pi -p --mode json --provider --model --thinking --session-id --session-dir --system-prompt [--tools a,b] [-e ext]... <prompt>",
+     "ligne": 253
+    }
+   ],
+   "reseau": [],
+   "variables_env": [
+    {
+     "nom": "PI_PATH",
+     "ligne": 22,
+     "lue_ou_ecrite": "lue"
+    },
+    {
+     "nom": "PI_MODELS_PATH",
+     "ligne": 23,
+     "lue_ou_ecrite": "lue"
+    }
+   ],
+   "cles_config": [
+    {
+     "cle": "agents[].model",
+     "ligne": 252
+    },
+    {
+     "cle": "agents[].thinking",
+     "ligne": 256
+    },
+    {
+     "cle": "agents[].tools",
+     "ligne": 261
+    },
+    {
+     "cle": "agents[].harness_engineering",
+     "ligne": 263
+    }
+   ],
+   "secrets": "Aucune cle manipulee ici, mais l'environnement complet de l'operateur (operator_env, utils.py:31) est transmis au processus Pi (agent_pi.py:49 et :281) : les cles API qui s'y trouvent (ex. OPENROUTER_API_KEY, .env.sample:24) sont donc visibles de Pi et de son outil bash.",
+   "copie_de": null,
+   "contradictions": []
+  },
+  "liens_sortants": [
+   {
+    "de": "adws/adw_modules/agent_pi.py",
+    "vers": "adws/adw_modules/utils.py",
+    "type": "appelle",
+    "preuve": "adws/adw_modules/agent_pi.py:49",
+    "confiance": "haute",
+    "occurrences": 4
+   },
+   {
+    "de": "adws/adw_modules/agent_pi.py",
+    "vers": "adws/adw_data/harness_engineering/subagents.ts",
+    "type": "charge_extension",
+    "preuve": "adws/adw_modules/agent_pi.py:264",
+    "confiance": "haute",
+    "note": "Dynamique : une option `-e <chemin>` par entree de request.extensions = agents[].harness_engineering ; dans sssf.config.yaml le planner (ligne 49) et le scout (ligne 88) listent subagents.ts."
+   },
+   {
+    "de": "adws/adw_modules/agent_pi.py",
+    "vers": "adws/adw_data/sessions/<adw_id>/<agent>/raw_output.jsonl",
+    "type": "ecrit",
+    "preuve": "adws/adw_modules/agent_pi.py:284",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   },
+   {
+    "de": "adws/adw_modules/agent_pi.py",
+    "vers": "adws/adw_modules/data_types.py",
+    "type": "importe",
+    "preuve": "adws/adw_modules/agent_pi.py:19",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/agent_pi.py",
+    "vers": "adws/adw_modules/utils.py",
+    "type": "importe",
+    "preuve": "adws/adw_modules/agent_pi.py:20",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/agent_pi.py",
+    "vers": "adws/adw_sssf_config/*.config.yaml",
+    "type": "lit",
+    "preuve": "adws/adw_modules/agent_pi.py:262",
+    "confiance": "haute",
+    "motif": true,
+    "indirect": true,
+    "cles": [
+     "defaults.tools"
+    ],
+    "note": "Lit ces clés dans l'objet SSSFConfig que agents.load_config construit depuis le profil choisi par --config (défaut sssf.config.yaml, agents.py:33). agent_pi.py:262 transforme la liste tools en --tools ; :264 les extensions en -e (tools = valeur résolue agent/defaults)"
+   },
+   {
+    "de": "adws/adw_modules/agent_pi.py",
+    "vers": "~/.pi/agent/models.json",
+    "type": "lit",
+    "preuve": "adws/adw_modules/agent_pi.py:110",
+    "confiance": "haute",
+    "hors_depot": true,
+    "note": "Chemin surchargeable par PI_MODELS_PATH (agent_pi.py:23-24)."
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/cookbooks/debug_a_failed_gate.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/cookbooks/debug_a_failed_gate.md:205",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/references/gotchas.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/references/gotchas.md:26",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf-sandbox-orchestrator/references/models.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf-sandbox-orchestrator/references/models.md:116",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/sssf_overview.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/sssf_overview.md:26",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:16",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/config.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/config.md:92",
+    "confiance": "faible",
+    "pourquoi_faible": "Parle de 'the Pi interface' sans nom de fichier."
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:78",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/observability.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/observability.md:46",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/templates/adws/adw_modules/agent_pi.py",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/adws/adw_modules/agent_pi.py:1",
+    "confiance": "haute",
+    "note": "different : +0 -35 lignes"
+   },
+   {
+    "de": "TREE.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": "TREE.md:85",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "appelle",
+    "preuve": "adws/adw_modules/agents.py:69",
+    "confiance": "haute",
+    "occurrences": 3
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "importe",
+    "preuve": "adws/adw_modules/agents.py:18",
+    "confiance": "haute"
+   },
+   {
+    "de": "app_docs/27ef9462_model-routing-context.md",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": "app_docs/27ef9462_model-routing-context.md:16",
+    "confiance": "haute"
+   },
+   {
+    "de": "specs/sandbox-mount-system.html",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "decrit",
+    "preuve": "specs/sandbox-mount-system.html:317",
+    "confiance": "haute"
+   }
+  ],
+  "suivi_note": null,
+  "suivi_fate": []
+ },
+ "adws/adw_modules/agents.py": {
+  "fiche": {
+   "chemin": "adws/adw_modules/agents.py",
+   "type": "code",
+   "langage": "python",
+   "lignes": 313,
+   "role": "Charge/valide la config SSSF et execute un appel d'agent : rend les prompts, lance Pi, parse l'enveloppe JSON avec relances, applique les portes (gates), puis verifie les permissions d'ecriture avant d'accepter l'enveloppe et de tracer le resultat.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Coeur du comportement d'un agent : chemin de config par defaut, JSON_FIX_ATTEMPTS, texte des corrections, ordre portes -> permissions -> enveloppe. Personnaliser ici change la boucle de controle de tous les ADW."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "load_config",
+     "lignes": "33-41",
+     "ce_quelle_fait": "Lit le YAML, injecte les `defaults` (coding_agent, model, thinking, color, tools, writes, harness_engineering) dans chaque agent puis construit SSSFConfig."
+    },
+    {
+     "nom": "validate",
+     "lignes": "52-73",
+     "ce_quelle_fait": "Echoue vite : agent defini, coding_agent == pi, fichiers prompt system/user existants, modele resolvable."
+    },
+    {
+     "nom": "execute",
+     "lignes": "78-221",
+     "ce_quelle_fait": "Un appel d'agent complet : prompts -> snapshot -> pi -> parse -> portes -> permissions.enforce -> persistance enveloppe -> trace."
+    },
+    {
+     "nom": "_parse_with_retries",
+     "lignes": "280-300",
+     "ce_quelle_fait": "Re-prompt la meme session (2 fois max) si le JSON ne correspond pas au type de sortie."
+    },
+    {
+     "nom": "_event_forwarder",
+     "lignes": "240-263",
+     "ce_quelle_fait": "Transforme les evenements Pi en evenements de trace (tool_call, thinking, agent_message)."
+    },
+    {
+     "nom": "_agent_session_id",
+     "lignes": "233-237",
+     "ce_quelle_fait": "Reutilise la session Pi d'un agent si le modele n'a pas change (agent_map), sinon en cree une."
+    },
+    {
+     "nom": "_persist_envelope",
+     "lignes": "303-313",
+     "ce_quelle_fait": "Ecrit l'enveloppe en base et envelope.json dans le dossier de l'agent."
+    }
+   ],
+   "lit": [
+    {
+     "quoi": "adws/adw_sssf_config/sssf.config.yaml (chemin par defaut ; --config des ADW peut en donner un autre)",
+     "ligne": 34
+    },
+    {
+     "quoi": "adws/adw_data/prompt_engineering/<agent>/system.md et user.md (existence verifiee)",
+     "ligne": 66
+    }
+   ],
+   "ecrit": [
+    {
+     "quoi": "adws/adw_data/sessions/<adw_id>/<agent>/ (dossier)",
+     "ligne": 82
+    },
+    {
+     "quoi": "adws/adw_data/sessions/<adw_id>/<agent>/prompts/system.md et user.md (copie d'audit, via prompts.save)",
+     "ligne": 91
+    },
+    {
+     "quoi": "adws/adw_data/sessions/<adw_id>/<agent>/envelope.json",
+     "ligne": 313
+    }
+   ],
+   "lance": [],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [
+    {
+     "cle": "defaults.coding_agent / model / thinking / color / tools / writes",
+     "ligne": 37
+    },
+    {
+     "cle": "defaults.harness_engineering",
+     "ligne": 40
+    },
+    {
+     "cle": "agents[].prompt_engineering.system / .user",
+     "ligne": 64
+    },
+    {
+     "cle": "agents[].model",
+     "ligne": 69
+    },
+    {
+     "cle": "agents[].tools",
+     "ligne": 123
+    },
+    {
+     "cle": "agents[].harness_engineering",
+     "ligne": 124
+    },
+    {
+     "cle": "agents[].writes",
+     "ligne": 189
+    },
+    {
+     "cle": "defaults.protected_files",
+     "ligne": 190
+    },
+    {
+     "cle": "agents[].purpose",
+     "ligne": 101
+    }
+   ],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": "adws/adw_modules/data_types.py:294",
+     "code": "adws/adw_modules/agents.py:155",
+     "resume": "Le commentaire d'AgentCall dit gate(envelope, run) -> list[str], mais le code attend un GateReport et n'accepte une liste que comme porte 'legacy' (_as_report, agents.py:226-230)."
+    },
+    {
+     "doc": "adws/adw_modules/agents.py:37",
+     "code": "adws/adw_modules/data_types.py:325-338",
+     "resume": "load_config propage `defaults.writes` aux agents, mais ConfigDefaults n'a pas de champ writes : la cle n'est ni validee ni documentee dans le schema (aucune config du depot ne l'utilise)."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "appelle",
+    "preuve": "adws/adw_modules/agents.py:69",
+    "confiance": "haute",
+    "occurrences": 3
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/console.py",
+    "type": "appelle",
+    "preuve": "adws/adw_modules/agents.py:104",
+    "confiance": "faible",
+    "pourquoi_faible": "Appels via run.console (objet Console injecte).",
+    "occurrences": 6
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/permissions.py",
+    "type": "appelle",
+    "preuve": "adws/adw_modules/agents.py:145",
+    "confiance": "haute",
+    "occurrences": 3
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/prompts.py",
+    "type": "appelle",
+    "preuve": "adws/adw_modules/agents.py:89",
+    "confiance": "haute",
+    "occurrences": 4
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/runner.py",
+    "type": "appelle",
+    "preuve": "adws/adw_modules/agents.py:134",
+    "confiance": "faible",
+    "pourquoi_faible": "run.add_usage / run.save_agent_map via l'objet Run, pas d'import (runner importe agents, pas l'inverse).",
+    "occurrences": 2
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/tracer.py",
+    "type": "appelle",
+    "preuve": "adws/adw_modules/agents.py:95",
+    "confiance": "faible",
+    "pourquoi_faible": "Appels via l'attribut run.tracer (objet Tracer injecte), pas d'import direct.",
+    "occurrences": 12
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/utils.py",
+    "type": "appelle",
+    "preuve": "adws/adw_modules/agents.py:237",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_data/sessions/<adw_id>/<agent>/envelope.json",
+    "type": "ecrit",
+    "preuve": "adws/adw_modules/agents.py:313",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_data/sessions/<adw_id>/<agent>/prompts/{system,user}.md",
+    "type": "ecrit",
+    "preuve": "adws/adw_modules/agents.py:91",
+    "confiance": "haute",
+    "motif": true,
+    "produit_a_l_execution": true,
+    "occurrences": 2
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/agent_pi.py",
+    "type": "importe",
+    "preuve": "adws/adw_modules/agents.py:18",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/data_types.py",
+    "type": "importe",
+    "preuve": "adws/adw_modules/agents.py:19",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/permissions.py",
+    "type": "importe",
+    "preuve": "adws/adw_modules/agents.py:18",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/prompts.py",
+    "type": "importe",
+    "preuve": "adws/adw_modules/agents.py:18",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/utils.py",
+    "type": "importe",
+    "preuve": "adws/adw_modules/agents.py:22",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_sssf_config/*.config.yaml",
+    "type": "lit",
+    "preuve": "adws/adw_modules/agents.py:37",
+    "confiance": "haute",
+    "motif": true,
+    "indirect": true,
+    "cles": [
+     "defaults.coding_agent",
+     "defaults.model",
+     "defaults.thinking",
+     "defaults.tools",
+     "defaults.harness_engineering"
+    ],
+    "note": "Lit ces clés dans l'objet SSSFConfig que agents.load_config construit depuis le profil choisi par --config (défaut sssf.config.yaml, agents.py:33). load_config recopie defaults.{coding_agent, model, thinking, color, tools, writes} dans chaque agent qui ne les définit pas (agents.py:37-39) et harness_engineering (agents.py:40) ; agents.py:64-65 vérifie les fichiers de prompt"
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_sssf_config/sssf.config.yaml",
+    "type": "lit",
+    "preuve": "adws/adw_modules/agents.py:33",
+    "confiance": "haute",
+    "note": "chemin de config par défaut (argument --config / SSSF_CONFIG)",
+    "occurrences": 2
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_data/prompt_engineering/<agent>/{system,user}.md",
+    "type": "rend_prompt",
+    "preuve": "adws/adw_modules/agents.py:89",
+    "confiance": "haute",
+    "motif": true,
+    "note": "Chemins pris dans agents[].prompt_engineering.system/user de la config ; rendus avec {{prompt}}, {{previous_envelope}}, {{context_handoff_dir}} puis envoyes a Pi (agents.py:148, 176)."
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/SKILL.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/SKILL.md:62",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_adw.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_adw.md:64",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/create_config.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/create_config.md:57",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/run_adw.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/run_adw.md:65",
+    "confiance": "faible",
+    "pourquoi_faible": "Le texte parle de la config du modele par agent / agent_map.json, pas d'agents.py nommement."
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/sssf_overview.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/sssf_overview.md:24",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_adw.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_adw.md:84",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_config.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_config.md:15",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/cookbooks/update_modules.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/cookbooks/update_modules.md:14",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/config.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/config.md:78",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/handoff.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/handoff.md:76",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/templates/adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/adws/adw_modules/agents.py:1",
+    "confiance": "haute",
+    "note": "different : +3 -16 lignes"
+   },
+   {
+    "de": "TREE.md",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "decrit",
+    "preuve": "TREE.md:85",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_build.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_build.py:23",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_build.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_build.py:16",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_build_review.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_build_review.py:34",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_build_review.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_build_review.py:25",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_build_test.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_build_test.py:34",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_build_test.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_build_test.py:25",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_document.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_document.py:38",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_document.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_document.py:25",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/runner.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_modules/runner.py:39",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/runner.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_modules/runner.py:16",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_plan.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_plan.py:23",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_plan.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_plan.py:16",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_plan_build.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_plan_build.py:23",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_plan_build.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_plan_build.py:16",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_plan_build_test.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_plan_build_test.py:28",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_plan_build_test.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_plan_build_test.py:20",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_plan_build_test_quality.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_plan_build_test_quality.py:30",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_plan_build_test_quality.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_plan_build_test_quality.py:22",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_prompt.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_prompt.py:22",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_prompt.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_prompt.py:16",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_quality.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_quality.py:23",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_quality.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_quality.py:16",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_scout.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_scout.py:23",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_scout.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_scout.py:16",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_simple_sdlc.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "appelle",
+    "preuve": "adws/adw_simple_sdlc.py:62",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_simple_sdlc.py",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "adws/adw_simple_sdlc.py:47",
+    "confiance": "haute"
+   },
+   {
+    "de": "sandbox_mount/guest/provision.sh",
+    "vers": "adws/adw_modules/agents.py",
+    "type": "importe",
+    "preuve": "sandbox_mount/guest/provision.sh:145",
+    "confiance": "haute",
+    "note": "import dans le script python temporaire (heredoc) execute par uv run ligne 157"
+   }
+  ],
+  "suivi_note": null,
+  "suivi_fate": []
+ },
+ "adws/adw_modules/permissions.py": {
+  "fiche": {
+   "chemin": "adws/adw_modules/permissions.py",
+   "type": "code",
+   "langage": "python",
+   "lignes": 256,
+   "role": "Verifie APRES COUP ce qu'un agent a modifie : fingerprint de l'arbre git avant/apres, comparaison avec la liste `writes` de l'agent, `protected_files` du roster et le dossier runtime `data_dir`. Annule (unlink / git checkout / restauration des octets) les ecritures hors perimetre et leve PermissionBreach si c'est irrecuperable ou plus de 3.",
+   "levier": {
+    "valeur": true,
+    "pourquoi": "Seul endroit qui borne ce qu'un agent peut changer : RECOVERED_LIMIT (3), always_writable (tout data_dir), ordre de decision de permitted(), mecanique de snapshot. Les valeurs des listes sont dans sssf.config.yaml."
+   },
+   "fonctions_cles": [
+    {
+     "nom": "snapshot",
+     "lignes": "65-83",
+     "ce_quelle_fait": "dict chemin -> 'ajouts,suppressions' (git diff HEAD --numstat) ou 'untracked' (git ls-files --others --exclude-standard) ; ignores git absents."
+    },
+    {
+     "nom": "changed_paths",
+     "lignes": "86-89",
+     "ce_quelle_fait": "Chemins dont l'empreinte differe entre avant et apres (apparu, disparu, reecrit)."
+    },
+    {
+     "nom": "_matches / _glob",
+     "lignes": "92-122",
+     "ce_quelle_fait": "Prefixe si le motif finit par '/', glob si * ou ? (* ne franchit pas '/', ** oui), sinon egalite exacte."
+    },
+    {
+     "nom": "always_writable",
+     "lignes": "125-139",
+     "ce_quelle_fait": "Renvoie [data_dir + '/'] : tout adws/adw_data/ est ecrivable par tout agent."
+    },
+    {
+     "nom": "permitted",
+     "lignes": "142-150",
+     "ce_quelle_fait": "Ordre : always_writable -> writes de l'agent -> protected_files -> (writes is None)."
+    },
+    {
+     "nom": "preserve / _restore",
+     "lignes": "153-188",
+     "ce_quelle_fait": "Garde en memoire les octets (<= 1 Mio) des chemins deja sales pour les restaurer."
+    },
+    {
+     "nom": "_roll_back",
+     "lignes": "191-217",
+     "ce_quelle_fait": "Restaure, supprime (non suivi) ou `git checkout -- path`."
+    },
+    {
+     "nom": "enforce",
+     "lignes": "220-256",
+     "ce_quelle_fait": "Compare, annule, continue avec une note si tout annule et <= 3 chemins, sinon leve PermissionBreach."
+    }
+   ],
+   "lit": [
+    {
+     "quoi": "octets de chaque chemin deja modifie du depot (motif dynamique)",
+     "ligne": 172
+    }
+   ],
+   "ecrit": [
+    {
+     "quoi": "restauration des octets d'un chemin deja sale (motif dynamique)",
+     "ligne": 185
+    },
+    {
+     "quoi": "suppression d'un fichier non suivi cree par l'agent (motif dynamique)",
+     "ligne": 211
+    }
+   ],
+   "lance": [
+    {
+     "commande": "git diff HEAD --numstat",
+     "ligne": 74
+    },
+    {
+     "commande": "git ls-files --others --exclude-standard",
+     "ligne": 79
+    },
+    {
+     "commande": "git checkout -- <path>",
+     "ligne": 215
+    }
+   ],
+   "reseau": [],
+   "variables_env": [],
+   "cles_config": [
+    {
+     "cle": "defaults.data_dir",
+     "ligne": 139
+    },
+    {
+     "cle": "agents[].writes",
+     "ligne": 146
+    },
+    {
+     "cle": "defaults.protected_files",
+     "ligne": 148
+    }
+   ],
+   "secrets": null,
+   "copie_de": null,
+   "contradictions": [
+    {
+     "doc": "adws/adw_modules/permissions.py:23-25",
+     "code": "adws/adw_modules/permissions.py:248-253",
+     "resume": "Le haut du module dit qu'une violation 'aborts the phase' ; le code tolere jusqu'a 3 chemins tous annules (RECOVERED) et continue avec une simple note console."
+    },
+    {
+     "doc": "adws/adw_modules/permissions.py:70-71",
+     "code": "adws/adw_modules/permissions.py:125-139",
+     "resume": "snapshot dit que le runtime sous data_dir 'needs no special case' car ignore par git ; mais always_writable le traite explicitement, et data_dir (adws/adw_data/) contient des fichiers SUIVIS (prompts, extensions) qui ne sont pas ignores."
+    }
+   ]
+  },
+  "liens_sortants": [
+   {
+    "de": "adws/adw_modules/permissions.py",
+    "vers": "<tout chemin du depot modifie hors perimetre>",
+    "type": "ecrit",
+    "preuve": "adws/adw_modules/permissions.py:185",
+    "confiance": "haute",
+    "motif": true,
+    "occurrences": 3,
+    "note": "Restauration (185), suppression (211) ou git checkout (215) des chemins hors perimetre ; chemins issus du snapshot git."
+   },
+   {
+    "de": "adws/adw_modules/permissions.py",
+    "vers": "adws/adw_modules/data_types.py",
+    "type": "importe",
+    "preuve": "adws/adw_modules/permissions.py:38",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/permissions.py",
+    "vers": "<tout chemin du depot deja modifie avant la phase>",
+    "type": "lit",
+    "preuve": "adws/adw_modules/permissions.py:172",
+    "confiance": "haute",
+    "motif": true,
+    "note": "preserve() lit les octets (<= 1 Mio) des chemins sales."
+   },
+   {
+    "de": "adws/adw_modules/permissions.py",
+    "vers": "adws/adw_sssf_config/*.config.yaml",
+    "type": "lit",
+    "preuve": "adws/adw_modules/permissions.py:139",
+    "confiance": "haute",
+    "motif": true,
+    "indirect": true,
+    "cles": [
+     "defaults.protected_files",
+     "defaults.data_dir",
+     "agents.planner.writes",
+     "agents.scout.writes",
+     "agents.reviewer.writes",
+     "agents.documenter.writes"
+    ],
+    "note": "Lit ces clés dans l'objet SSSFConfig que agents.load_config construit depuis le profil choisi par --config (défaut sssf.config.yaml, agents.py:33). permissions.py:148 lit defaults.protected_files, :139 lit defaults.data_dir, :146/:150 lisent agent.writes"
+   }
+  ],
+  "liens_entrants": [
+   {
+    "de": ".claude/skills/sssf/SKILL.md",
+    "vers": "adws/adw_modules/permissions.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/SKILL.md:71",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/references/config.md",
+    "vers": "adws/adw_modules/permissions.py",
+    "type": "decrit",
+    "preuve": ".claude/skills/sssf/references/config.md:134",
+    "confiance": "haute"
+   },
+   {
+    "de": ".claude/skills/sssf/templates/adws/adw_modules/permissions.py",
+    "vers": "adws/adw_modules/permissions.py",
+    "type": "copie",
+    "preuve": ".claude/skills/sssf/templates/adws/adw_modules/permissions.py:1",
+    "confiance": "haute",
+    "note": "different : +10 -81 lignes"
+   },
+   {
+    "de": "TREE.md",
+    "vers": "adws/adw_modules/permissions.py",
+    "type": "decrit",
+    "preuve": "TREE.md:88",
+    "confiance": "haute"
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/permissions.py",
+    "type": "appelle",
+    "preuve": "adws/adw_modules/agents.py:145",
+    "confiance": "haute",
+    "occurrences": 3
+   },
+   {
+    "de": "adws/adw_modules/agents.py",
+    "vers": "adws/adw_modules/permissions.py",
+    "type": "importe",
+    "preuve": "adws/adw_modules/agents.py:18",
+    "confiance": "haute"
+   }
+  ],
+  "suivi_note": {
+   "status": "apercu",
+   "role": "Contrôle après coup de ce qu'un agent a modifié dans le dépôt : photo des changements avant l'appel, comparaison après, retour arrière de ce qui est hors droits, arrêt de la phase si le dégât n'est pas réparable.",
+   "points": [
+    "Incident d'origine (l.6-8) : un builder a lancé `git checkout adws/` et effacé des changements non commités sur le contrôle qui allait le juger.",
+    "`snapshot()` (l.65-83) : liste des fichiers modifiés ou non suivis selon git. Les fichiers ignorés par `.gitignore` n'apparaissent jamais.",
+    "`always_writable()` (l.125-139) renvoie TOUT `data_dir` (`adws/adw_data/`), vérifié EN PREMIER par `permitted()` (l.142-150), avant même `protected_files`.",
+    "`preserve()` (l.153-175) garde en mémoire les fichiers déjà modifiés (jusqu'à 1 Mo chacun) pour pouvoir les remettre.",
+    "`enforce()` (l.220-256) : jusqu'à 3 écritures hors droits réparées par phase, le passage continue avec un avertissement ; au-delà, ou si une réparation échoue, `PermissionBreach` arrête la phase.",
+    "Une violation de droits n'est pas une violation de porte : on ne la corrige pas en redemandant à l'agent (l.23-25)."
+   ],
+   "deps": [
+    "Lit `writes` et `protected_files` de `sssf.config.yaml` via `data_types.py`. Appelé autour de chaque appel d'agent (C3 `runner.py`, à confirmer)."
+   ],
+   "vigilance": [
+    "TROU CONFIRMÉ : tout `adws/adw_data/` est inscriptible par tous les agents, y compris `prompt_engineering/` (les prompts) et `harness_engineering/` (le code TypeScript des extensions, chargé dans le Pi d'autres agents). Le reviewer « en lecture seule » peut réécrire son propre prompt ou injecter du code dans `subagents.ts`.",
+    "Angle mort : les fichiers ignorés par git (`.env`, `node_modules/`…) et tout ce qui est hors du dépôt (`~/.pi/agent/models.json`, le reste de la VM) ne sont jamais vus.",
+    "Trois écarts « pardonnés » par phase (l.53)."
+   ],
+   "chez_nous": [
+    "Garder le principe : comparer les changements avant / après, réparer, puis arrêter.",
+    "Corriger : n'exempter que `adws/adw_data/sessions/` ; protéger `prompt_engineering/`, `harness_engineering/`, `.claude/`. Combiner avec nos murs Pi (blocage avant) et la sandbox (le reste de la machine)."
+   ],
+   "a_verifier": [
+    "Analyse complète en C2 : qui appelle `snapshot`, `preserve`, `enforce`, et à quel moment."
+   ]
+  },
+  "suivi_fate": []
+ }
+}

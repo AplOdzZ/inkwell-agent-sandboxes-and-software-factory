@@ -1,0 +1,7 @@
+[
+  {
+    "p": "adws/adw_modules/agents.py",
+    "fate": "adapter",
+    "reason": "La mécanique (sortie typée, relance dans la même session, portes, comptage) est bonne et à garder. Mais l'ordre portes puis droits, le contrôle sauté en cas d'échec, la config non stricte, la trace sans masquage et l'audit incomplet imposent de l'adapter avant usage chez nous."
+  }
+]

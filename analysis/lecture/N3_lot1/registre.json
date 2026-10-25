@@ -1,0 +1,212 @@
+[
+ {
+  "n": 49,
+  "lecteur": "agents",
+  "ou": "adws/adw_modules/agents.py l.148-191",
+  "ecrit": "« anything the agent introduced outside its allowlist is rolled back before the phase dies » (adws/adw_modules/permissions.py:227-229) ; « unauthorized changes are rolled back and the phase dies » (.claude/skills/sssf/SKILL.md:71) ; « Permission is checked after every send is done » (agents.py l.179-181).",
+  "realite": "enforce n'est appelé qu'à l.183, après les envois, la lecture du JSON et les portes, sans try/finally autour (seul try du bloc : l.182). Toute exception avant l.183 le saute : GateFailure (l.168), JSON jamais valide (l.291), erreur de Pi (agent_pi.py:320), porte qui plante (l.155, appel sans try) ou un arrêt par signal transformé en SystemExit (session.py:30-32). runner.py:88-103 marque alors la phase en échec et relance l'erreur ; aucun ADW ne l'attrape (aucun except dans adws/adw_*.py). Aucun retour arrière, aucun événement permission_breach.",
+  "impact": "Une phase qui échoue (cas typique d'un agent qui déraille) laisse ses écritures hors droits dans l'arbre, fichiers protégés compris. Le passage suivant les prend pour l'état de départ (snapshot, l.145) et ne les attribue à personne. Chez nous : contrôle des droits dans un finally.",
+  "type": "faille"
+ },
+ {
+  "n": 50,
+  "lecteur": "agents",
+  "ou": "adws/adw_modules/agents.py l.226-230",
+  "ecrit": "Docstring l.227 : « Accept a GateReport, or a legacy gate that returned a violations list ». Contrat des portes : « gate(envelope, run) -> GateReport » (adws/adw_modules/gates.py:3) ; mais « gate(envelope, run) -> list[str] » dans .claude/skills/sssf/SKILL.md:65 et adws/adw_modules/data_types.py:294.",
+  "realite": "Tout ce qui n'est pas un GateReport est parcouru comme une liste (l.230, `result or []`). Une porte qui rend None donne zéro vérification, donc aucune violation : elle passe. Une porte qui rend une chaîne donne une violation par caractère. Vérifié par une réécriture à l'identique de la fonction (script autonome dans le scratchpad, lot1/exp_agents.py).",
+  "impact": "Une porte maison qui oublie son `return` laisse tout passer, sans message (fail-open). La doc lue par l'orchestrateur décrit encore l'ancien contrat. Chez nous : refuser tout retour qui n'est pas un GateReport.",
+  "type": "bug"
+ },
+ {
+  "n": 51,
+  "lecteur": "agents",
+  "ou": "adws/adw_modules/agents.py l.197, l.288, l.309-313",
+  "ecrit": "envelope.json = « the final valid-JSON response — captured, validated, persisted by code » (.claude/skills/sssf/references/handoff.md:141) ; « envelope.json (the parsed final response) » (.claude/skills/sssf/cookbooks/run_adw.md:102).",
+  "realite": "Un seul envelope.json par agent (l.313), réécrit à chaque phase réussie du même agent, et seulement sur le chemin du succès (l.197). Une enveloppe lue correctement mais rejetée par les portes n'est enregistrée nulle part (ni table envelopes, ni fichier) : seules les erreurs de lecture le sont (l.288). Quand fix_2 échoue aux portes, envelope.json montre encore l'enveloppe de fix_1 ou de build.",
+  "impact": "En déboguant une phase ratée depuis les fichiers, on lit l'enveloppe d'une autre phase sans le savoir, et la réponse fautive n'est que dans raw_output.jsonl. Chez nous : une enveloppe par phase et par tentative, rejetées comprises.",
+  "type": "bug"
+ },
+ {
+  "n": 52,
+  "lecteur": "agents",
+  "ou": ".claude/skills/sssf/cookbooks/update_modules.md:14, :21 ; .claude/skills/sssf/cookbooks/sssf_overview.md:24 ; TREE.md:85 ; .claude/skills/sssf/references/handoff.md:144",
+  "ecrit": "agents.py = « load_config, validate, resolving an entry » (update_modules.md:14, sssf_overview.md:24), « roster + validation » (TREE.md:85) ; session.py « maintain agent_map.json, create session dirs » (update_modules.md:21) ; « session.ensure(cfg, adw_id) … creates these dirs » (handoff.md:144).",
+  "realite": "agents.py contient aussi execute (l.78-221) : lancement de Pi, relances, portes, contrôle des droits, persistance. agent_map.json est lu et écrit par runner.py:56-63 à la demande d'agents.py (l.203, l.234). session.ensure crée bien le dossier de session et context_handoff/ (via Run, runner.py:54-55), mais les dossiers par agent sont créés par agents.py:82, prompts.py:18 et Pi (pi_sessions/), pas par session.py.",
+  "impact": "Un lecteur, humain ou orchestrateur, qui suit ces docs pour modifier la boucle de contrôle cherche au mauvais endroit. Nos docs doivent dire qu'agents.py porte toute la boucle.",
+  "type": "doc"
+ },
+ {
+  "n": 53,
+  "lecteur": "permissions",
+  "ou": "adws/adw_modules/permissions.py l.65-83 (l.78)",
+  "ecrit": "« Appearing, disappearing, and changing all count » (l.20-21) ; « an edit to an already-dirty file still registers as a change » (l.68-69) ; « Any path that appeared, vanished, or changed is attributed to that agent » (.claude/skills/sssf/references/config.md:137-138).",
+  "realite": "L'empreinte d'un fichier suivi n'est que « ajouts,suppressions » de `git diff HEAD --numstat` (l.74-78). Une nouvelle réécriture d'un fichier déjà modifié qui garde les mêmes compteurs ne change pas l'empreinte. Un binaire vaut toujours « -,- ». Un chmod seul vaut « 0,0 ». Le contenu d'un dépôt imbriqué reste « untracked ». L'index n'entre pas dans l'empreinte. Expérience : dirty.txt v2 puis v3 → « 1,1 » les deux fois ; binaire modifié deux fois → « -,- » ; dépôt imbriqué modifié → « sub/: untracked » inchangé.",
+  "impact": "Sur un arbre déjà sale, un agent peut réécrire le travail non commité de l'opérateur sans être vu, et preserve, qui a les octets, ne sert pas. Chez nous : empreinte du contenu et du mode, index compris.",
+  "type": "faille"
+ },
+ {
+  "n": 54,
+  "lecteur": "permissions",
+  "ou": "adws/adw_modules/permissions.py l.191-217, l.237-253",
+  "ecrit": "« The `_roll_back` outcomes that leave the repo byte-for-byte as it was » (l.45-49) ; « the tree is exactly what it would have been had the agent stayed in scope — so the run continues » (l.245-246).",
+  "realite": "Un chemin suivi refusé est remis par `git checkout -- <chemin>` (l.215), qui recopie la version de l'index, pas celle de HEAD ni celle d'avant la phase. Expérience : fichier modifié puis `git add`, et nouveau fichier `git add`, puis `git checkout -- …` → code 0 (« rolled back »), les deux changements restent. Aucun appel à snapshot après le retour arrière (l.237-253) : l'issue n'est jamais vérifiée, et la phase continue si au plus 3 chemins sont dans RECOVERED (l.249).",
+  "impact": "Un changement interdit déjà inscrit dans l'index est déclaré réparé et reste dans l'arbre ; la phase continue et commit_all le commite (git_helper.py:49). Chez nous : remettre depuis notre propre photo et revérifier l'arbre après.",
+  "type": "faille"
+ },
+ {
+  "n": 55,
+  "lecteur": "permissions",
+  "ou": "adws/adw_modules/permissions.py l.74-82, l.117-122, l.168-172",
+  "ecrit": "protected_files : « Paths no agent may modify unless it names them in its own writes » (.claude/skills/sssf/references/config.md:51) ; writes « only those paths » (config.md:72).",
+  "realite": "Les motifs sont comparés au texte que git affiche, pas au vrai chemin (l.77, l.82, l.117-122). Git met entre guillemets les noms non ASCII (expérience : `\"specs/caf\\303\\251.md\"`) et écrit un renommage inscrit dans l'index sous une seule clé (expérience : `{adws => x}/adw_plan.py`, qu'aucun motif protégé ne reconnaît). Ces clés ne sont reconnues ni par protected_files ni par writes. Path(repo_root)/clé ne désigne pas le fichier : preserve ne le garde pas (l.171) et le retour arrière échoue (l.211, l.215).",
+  "impact": "Dans un sens, la disparition d'un fichier protégé par renommage peut ne pas être reconnue comme touchant un chemin protégé. Dans l'autre, un nom accentué légitime (fréquent en français, ex. specs/créer-compte.md écrit par le planner) est refusé, ne peut pas être annulé et arrête le passage. Chez nous : `-z`, `--no-renames`, options git fixées.",
+  "type": "faille"
+ },
+ {
+  "n": 56,
+  "lecteur": "permissions",
+  "ou": "adws/adw_modules/permissions.py l.77, l.81-82, l.209-212",
+  "ecrit": "« discarding an operator's work to tidy up would be the same harm this module exists to prevent, committed by the cleanup instead of the agent » (l.198-200).",
+  "realite": "strip() retire les espaces de début et de fin des chemins (l.77, l.81-82), et l'empreinte « untracked » écrase celle du diff pour la même clé (l.82 après l.78). Expérience : un fichier non suivi « keep.md » suivi d'une espace donne la clé « keep.md », qui écrase l'empreinte du fichier suivi keep.md ; de même `git rm --cached keep.md` donne `{\"keep.md\": \"untracked\"}`. Le retour arrière traite alors la clé comme un fichier créé par l'agent et supprime keep.md du disque (l.211), puis compte « deleted » comme réparé (l.49, l.249).",
+  "impact": "Le nettoyage peut supprimer un fichier suivi qui n'est pas celui que l'agent a créé (récupérable depuis HEAD s'il était propre), laisser en place celui que l'agent a créé, et continuer la phase. Chez nous : ne jamais modifier les chemins lus, et vérifier la nature du chemin avant toute suppression.",
+  "type": "bug"
+ },
+ {
+  "n": 57,
+  "lecteur": "permissions",
+  "ou": "adws/adw_modules/permissions.py l.74, l.79",
+  "ecrit": "« permission is verified … after the fact, against the repo itself » (l.13-14).",
+  "realite": "Le contrôle ne voit rien sous .git/, car git ne liste jamais son propre dossier (l.74, l.79). Or ce dossier contient la config locale, les exclusions locales et les hooks, qui décident de ce que git rapporte au contrôle et de ce qui s'exécute au prochain `git commit` (git_helper.py:52). Expérience : une ligne dans .git/info/exclude retire un fichier non suivi de la photo (`{\"specs/hidden.md\": \"untracked\"}` → `{}`). Le registre n°19 ne couvre que les fichiers ignorés par .gitignore.",
+  "impact": "Ce que mesure le contrôle peut être changé, sans trace, par l'agent mesuré, et cela vaut pour les phases et passages suivants. Chez nous : sortir .git de la portée de l'agent ou le surveiller, et fixer les options de git dans chaque commande.",
+  "type": "faille"
+ },
+ {
+  "n": 58,
+  "lecteur": "permissions",
+  "ou": "adws/adw_modules/permissions.py l.60-62",
+  "ecrit": "« enforce() compares it afterwards and fails the phase if the agent touched anything outside its allowlist » (l.15-16).",
+  "realite": "_git rend \"\" dès que git sort en erreur (l.62), et snapshot lit cela comme « aucun changement ». Git hérite aussi de tout os.environ (pas d'env=, l.61), donc de .env (utils.py:11-13), invisible au contrôle (.gitignore:112). Expérience : HEAD vers une branche inexistante → `git diff HEAD` sort en 128 et la partie suivie de la photo est vide ; GIT_DIR=/nonexistent → snapshot rend `{}` malgré un fichier suivi modifié. Avec core.quotePath=false, un nom non UTF-8 lève UnicodeDecodeError (l.61), qui n'est pas une PermissionBreach : pas de retour arrière ni d'événement (agents.py:185).",
+  "impact": "Le contrôle échoue ouvert : un dépôt dans un état que git refuse donne « rien n'a changé ». Chez nous : toute erreur de git arrête la phase, environnement de git fixé (décision 1), délai sur chaque commande.",
+  "type": "faille"
+ },
+ {
+  "n": 59,
+  "lecteur": "permissions",
+  "ou": "adws/adw_modules/permissions.py l.248-253 ; adws/adw_modules/console.py l.19-24, l.40-46, l.94-96",
+  "ecrit": "« the run continues, loudly » (l.246) ; « What it cannot undo, it names » (l.229).",
+  "realite": "Un pardon n'est écrit que par run.console.note (l.250-252). console.note coupe à 160 caractères et met le texte sur une ligne (console.py:19, :22-24, :96), puis l'écrit dans la trace comme un `log` ordinaire au nom de la phase (console.py:43-46). Le scope seul d'un agent limité prend déjà une bonne part de ces 160 caractères (l.240). Il n'y a pas d'événement permission_breach, et les chemins pardonnés sont retirés de la liste rendue (l.253), donc de paths_touched (agents.py:192-195).",
+  "impact": "Une écriture hors droits pardonnée peut ne laisser dans la trace qu'une ligne tronquée, sans le nom du chemin, et sous un type `log` que le visualiseur ne colore pas comme une erreur (couleurs réservées à error et gate_fail : .claude/skills/sssf/apps/visualizer/src/lib/events.ts:14-15). Chez nous : un événement dédié, avec la liste complète, pour chaque pardon.",
+  "type": "faille"
+ },
+ {
+  "n": 60,
+  "lecteur": "permissions",
+  "ou": "adws/adw_data/prompt_engineering/builder/system.md l.14",
+  "ecrit": "« Send scratch output to /tmp, never into the repo. A redirect like `bun test > out.txt` inside the working tree is an out-of-scope write and will be undone. »",
+  "realite": "Le builder n'a pas de writes (sssf.config.yaml:70-71), donc out.txt lui est permis (permissions.py:150) ; out.txt n'est pas ignoré (git check-ignore out.txt : rien). Le fichier n'est ni annulé ni signalé, sauf dans paths_touched (agents.py:192-195), et commit_all le commite (git_helper.py:49). La phrase est vraie pour les 4 autres agents, qui ont un writes limité.",
+  "impact": "Prompt lu par l'agent qui promet un contrôle qui n'existe pas pour lui. Chez nous : un prompt par agent qui décrit ses vrais droits, ou des droits réels qui tiennent la promesse.",
+  "type": "doc"
+ },
+ {
+  "n": 61,
+  "lecteur": "permissions",
+  "ou": "adws/adw_modules/permissions.py l.92-122 ; .claude/skills/sssf/references/config.md:72",
+  "ecrit": "« a trailing / is a directory prefix, * matches within one path segment, ** crosses segments, anything else is an exact path » (config.md:72).",
+  "realite": "Un motif qui finit par / est toujours un préfixe littéral, même avec `*` : `apps/*/` ne couvre rien (l.118-119). `a/**/b` ne couvre pas `a/b` (l.102-103 : `.*` entre deux /). `[` est littéral (l.112). La casse compte. Aucun motif n'est validé au chargement. Expérience avec une copie de _glob et _matches.",
+  "impact": "Un protected_files mal écrit ne protège rien, sans message ; un writes mal écrit fait annuler des écritures légitimes. À garder en tête quand on ajoutera la protection des tests (registre n°16). Chez nous : sémantique documentée et motifs validés au chargement.",
+  "type": "doc"
+ },
+ {
+  "n": 62,
+  "lecteur": "permissions",
+  "ou": "adws/adw_modules/permissions.py l.79, l.215, l.249 ; .gitignore",
+  "ecrit": "« anything the agent introduced outside its allowlist is rolled back before the phase dies » (l.227-229).",
+  "realite": "La photo d'après liste les non-suivis avec --exclude-standard (l.79). Si le .gitignore suivi est modifié dans la phase, un fichier qu'il masque n'apparaît pas : seul .gitignore est vu, remis par git checkout (l.215) et compté réparé (l.49, l.249), la phase continue. Le fichier reste sur disque ; la photo de la phase suivante le prend pour l'état de départ (agents.py:145) et preserve le garde (l.168-172). Reproduit par le vérificateur sur un dépôt jetable (lot1/verif/exp_gitignore.py).",
+  "impact": "Une écriture hors droits peut survivre au retour arrière et n'être attribuée à personne. Chez nous : reprendre une photo après le retour arrière, et ne pas laisser la liste des ignorés sous la main des agents.",
+  "type": "faille",
+  "source": "vérificateur"
+ },
+ {
+  "n": 63,
+  "lecteur": "permissions",
+  "ou": "adws/adw_modules/permissions.py l.178-188 (l.185)",
+  "ecrit": "_restore : « Put a preserved path back exactly as it was. True if it is now restored » (l.179).",
+  "realite": "Path.write_bytes suit les liens symboliques (l.185). Si un chemin sale a été remplacé par un lien, les octets de l'opérateur sont écrits à la cible du lien, éventuellement hors du dépôt, et la fonction rend « restored » alors que le chemin reste un lien. Expérience des deux lecteurs (permissions point 50, vérificateur).",
+  "impact": "Le retour arrière peut écrire hors du dépôt avec les droits de l'opérateur et déclarer réparé un chemin qui ne l'est pas. Chez nous : vérifier la nature du chemin (lstat) avant d'écrire.",
+  "type": "faille",
+  "source": "vérificateur (noté par le lecteur, point 50, sans entrée au registre)"
+ },
+ {
+  "n": 64,
+  "lecteur": "agent_pi",
+  "ou": "adws/adw_modules/agent_pi.py l.278-316",
+  "ecrit": "La docstring l.248-250 dit que le pid est enregistré pour qu'un agent bloqué puisse être tué ; rien ne promet de délai.",
+  "realite": "Aucun délai : la boucle sur stdout (l.286) puis process.wait() (l.316) attendent sans limite. stderr n'est lu qu'après la fin de stdout (l.315) : plus de 64 Kio sur stderr bloquent Pi et l'ADW ensemble (reproduit dans le dossier d'expériences, deadlock.py). Aucun try/finally : si la boucle lève une exception, Pi n'est ni tué ni attendu, et on_exit (l.317-318) n'est pas appelé. `just obs kill` ne tue que le pid de Pi (just/obs.just:53-66).",
+  "impact": "Un tour peut bloquer un ADW pour toujours, ou laisser un Pi orphelin travailler avec ses outils et les clés après l'échec de la phase. Chez nous : délai par tour, stderr lu en parallèle, arrêt du groupe de processus dans un finally.",
+  "type": "bug"
+ },
+ {
+  "n": 65,
+  "lecteur": "agent_pi",
+  "ou": "adws/adw_modules/agent_pi.py l.319-321",
+  "ecrit": "Rien ne promet de contrôle du code de retour ; PiResult.returncode existe (adws/adw_modules/data_types.py:438).",
+  "realite": "RuntimeError n'est levée que si le code est non nul ET qu'aucun texte n'a été reçu (l.319). Un Pi qui plante ou est tué après un premier message assistant rend un résultat normal. returncode n'est lu par aucun appelant (git grep ; agents.py ne lit que text, tokens, cost, usage et context_*). stderr est jeté en cas de succès (l.315).",
+  "impact": "Un tour interrompu peut être accepté si son dernier texte se parse en JSON valide. Chez nous : tout code non nul est un échec tracé, avec stderr conservé.",
+  "type": "bug"
+ },
+ {
+  "n": 66,
+  "lecteur": "agent_pi",
+  "ou": "adws/adw_modules/agent_pi.py l.108-117 et l.270-271 ; .env.sample:45",
+  "ecrit": "app_docs/27ef9462_model-routing-context.md:14 : context_window « préfère models.json, puis se replie sur le catalogue de Pi ». .env.sample:45 propose PI_MODELS_PATH=~/.pi/agent/models.json.",
+  "realite": "context_window lit le fichier sans try (l.110) : s'il est absent, illisible ou mal formé, l'exception remonte de run() (l.271) avant le lancement de Pi ; le repli (l.114-116) n'a lieu que si le fichier existe. Le « ~ » de .env.sample:45 n'est développé ni par python-dotenv 1.2.3 ni par Path (expérience) : décommenter cette ligne fait échouer chaque tour. Un modèle présent sans contextWindow rend 0 sans essayer le catalogue (l.113).",
+  "impact": "Une machine qui n'utilise que les fournisseurs intégrés de Pi, ou une ligne copiée de .env.sample, empêche tout agent de démarrer. Chez nous : fenêtre lue dans notre registre, absence tolérée.",
+  "type": "bug"
+ },
+ {
+  "n": 67,
+  "lecteur": "agent_pi",
+  "ou": "adws/adw_modules/agent_pi.py l.67-90",
+  "ecrit": "references/config.md:92-99 : écrire toujours « provider/model-id » ; le premier segment est cherché parmi les fournisseurs, et un motif ambigu lève une erreur « plutôt que de facturer le mauvais fournisseur ».",
+  "realite": "Si le couple fournisseur/id n'existe pas tel quel (l.77), le motif entier est cherché comme sous-chaîne des ids de tous les fournisseurs (l.79-86). « openai/gpt-5.6-terra » ou « google/gemini-3.6-flash » partent donc en direct si ce fournisseur est au catalogue, sinon chez OpenRouter (id identique). Une sous-chaîne unique (« sonnet », « luna ») est acceptée sans avertissement (l.85-86). Prouvé sur la logique recopiée (resolve_reimpl.py, catalogue inventé). Le couple choisi n'est pas tracé (agents.py:97 garde le motif).",
+  "impact": "Un motif sans préfixe openrouter/ (modèle du skill, exemples de la doc, nom court) peut partir chez un autre fournisseur selon le catalogue de la machine, contre la règle « OpenRouter seul ». La config d'Inkwell, toute en openrouter/…, n'est touchée que si openrouter manque au catalogue. Chez nous : correspondance exacte et fournisseur openrouter exigé.",
+  "type": "faille"
+ },
+ {
+  "n": 68,
+  "lecteur": "agent_pi",
+  "ou": "adws/adw_modules/agent_pi.py l.253-265",
+  "ecrit": "references/config.md:49 et cookbooks/update_config.md:68 : harness_engineering liste les extensions chargées, « applied to that agent only ».",
+  "realite": "La commande ne passe pas --no-extensions (l.253-265), alors que les sous-agents le font (adws/adw_data/harness_engineering/subagents.ts:233). D'après references/gotchas.md:29, l'extension globale d'exe.dev (~/.pi/agent/extensions/exe-dev/) tourne à « chaque appel d'agent ». Le chargement de .pi/ ou AGENTS.md du dossier courant (cwd = repo_root, l.280) n'est pas coupé non plus ; le builder et le documenter peuvent créer ces fichiers (permissions.py:150, sssf.config.yaml:135). Comportement exact de Pi 1.3.0 à confirmer.",
+  "impact": "Un agent peut tourner avec du code ou des consignes que la config ne déclare pas, y compris laissés par un agent précédent. Chez nous : --no-extensions puis seulement nos -e, fichiers de contexte coupés.",
+  "type": "faille"
+ },
+ {
+  "n": 69,
+  "lecteur": "agent_pi",
+  "ou": ".claude/skills/sssf/references/handoff.md:161 ; .claude/skills/sssf/references/observability.md:7 ; .claude/skills/sssf/cookbooks/run_adw.md:102",
+  "ecrit": "« Les fichiers sont l'enregistrement brut » : perdre sssf.db ne perd rien qu'on ne puisse reconstruire depuis raw_output.jsonl, envelope.json et agent_map.json.",
+  "realite": "Sur la VM, raw_output.jsonl (agent_pi.py l.284-288), pi_sessions/ (l.258), envelope.json et agent_map.json ne sont pas rapatriés : teardown ne rapporte que specs, app_docs, sssf.db et run.log (just/sandbox/lifecycle/teardown.just:109). Pour leur modification par les agents, voir n°14 et n°19.",
+  "impact": "L'enregistrement présenté comme la source de vérité disparaît avec la VM. Chez nous : le rapatrier avec la copie des prompts (décision 3), hors de portée des agents.",
+  "type": "doc"
+ },
+ {
+  "n": 70,
+  "lecteur": "agent_pi",
+  "ou": ".claude/skills/sssf/cookbooks/update_modules.md:16 ; specs/scaffold.md:75 ; .claude/skills/sssf/references/config.md:46 ; .claude/skills/sssf/cookbooks/install.md:40",
+  "ecrit": "Le modèle est résolu contre ~/.pi/agent/models.json ; il doit y être enregistré.",
+  "realite": "Le modèle est résolu contre la sortie de `pi --list-models` (agent_pi.py l.47-48, l.74), qui mêle models.json et les fournisseurs intégrés de Pi. models.json ne sert qu'à la fenêtre de contexte (l.110-113). references/config.md:92 et app_docs/27ef9462_model-routing-context.md:12 décrivent correctement le code.",
+  "impact": "Faible. Mais un modèle absent de models.json peut être accepté, et facturé sur un fournisseur intégré. Nos docs doivent décrire le vrai catalogue.",
+  "type": "doc"
+ },
+ {
+  "n": 71,
+  "lecteur": "agent_pi",
+  "ou": ".claude/skills/sssf/references/config.md:106",
+  "ecrit": "« The resolved model is recorded per session in agent_map.json and mirrored into the agent_sessions table. »",
+  "realite": "C'est le motif de la config qui est enregistré, pas le couple résolu : agents.py:203-204 (agent.model) et tracer.py:269. resolve_model (agent_pi.py:67-90) n'est tracé nulle part.",
+  "impact": "Avec le repli par sous-chaîne (n°67), rien ne dit quel fournisseur a vraiment reçu les données. Chez nous : tracer le couple fournisseur/modèle résolu.",
+  "type": "doc",
+  "source": "vérificateur"
+ }
+]

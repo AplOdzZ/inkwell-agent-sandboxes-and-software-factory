@@ -1,0 +1,65 @@
+[
+  {
+    "ou": "adws/adw_modules/permissions.py l.65-83 (l.78)",
+    "ecrit": "« Appearing, disappearing, and changing all count » (l.20-21) ; « an edit to an already-dirty file still registers as a change » (l.68-69) ; « Any path that appeared, vanished, or changed is attributed to that agent » (.claude/skills/sssf/references/config.md:137-138).",
+    "realite": "L'empreinte d'un fichier suivi n'est que « ajouts,suppressions » de `git diff HEAD --numstat` (l.74-78). Une nouvelle réécriture d'un fichier déjà modifié qui garde les mêmes compteurs ne change pas l'empreinte. Un binaire vaut toujours « -,- ». Un chmod seul vaut « 0,0 ». Le contenu d'un dépôt imbriqué reste « untracked ». L'index n'entre pas dans l'empreinte. Expérience : dirty.txt v2 puis v3 → « 1,1 » les deux fois ; binaire modifié deux fois → « -,- » ; dépôt imbriqué modifié → « sub/: untracked » inchangé.",
+    "impact": "Sur un arbre déjà sale, un agent peut réécrire le travail non commité de l'opérateur sans être vu, et preserve, qui a les octets, ne sert pas. Chez nous : empreinte du contenu et du mode, index compris.",
+    "type": "faille"
+  },
+  {
+    "ou": "adws/adw_modules/permissions.py l.191-217, l.237-253",
+    "ecrit": "« The `_roll_back` outcomes that leave the repo byte-for-byte as it was » (l.45-49) ; « the tree is exactly what it would have been had the agent stayed in scope — so the run continues » (l.245-246).",
+    "realite": "Un chemin suivi refusé est remis par `git checkout -- <chemin>` (l.215), qui recopie la version de l'index, pas celle de HEAD ni celle d'avant la phase. Expérience : fichier modifié puis `git add`, et nouveau fichier `git add`, puis `git checkout -- …` → code 0 (« rolled back »), les deux changements restent. Aucun appel à snapshot après le retour arrière (l.237-253) : l'issue n'est jamais vérifiée, et la phase continue si au plus 3 chemins sont dans RECOVERED (l.249).",
+    "impact": "Un changement interdit déjà inscrit dans l'index est déclaré réparé et reste dans l'arbre ; la phase continue et commit_all le commite (git_helper.py:49). Chez nous : remettre depuis notre propre photo et revérifier l'arbre après.",
+    "type": "faille"
+  },
+  {
+    "ou": "adws/adw_modules/permissions.py l.74-82, l.117-122, l.168-172",
+    "ecrit": "protected_files : « Paths no agent may modify unless it names them in its own writes » (.claude/skills/sssf/references/config.md:51) ; writes « only those paths » (config.md:72).",
+    "realite": "Les motifs sont comparés au texte que git affiche, pas au vrai chemin (l.77, l.82, l.117-122). Git met entre guillemets les noms non ASCII (expérience : `\"specs/caf\\303\\251.md\"`) et écrit un renommage inscrit dans l'index sous une seule clé (expérience : `{adws => x}/adw_plan.py`, qu'aucun motif protégé ne reconnaît). Ces clés ne sont reconnues ni par protected_files ni par writes. Path(repo_root)/clé ne désigne pas le fichier : preserve ne le garde pas (l.171) et le retour arrière échoue (l.211, l.215).",
+    "impact": "Dans un sens, la disparition d'un fichier protégé par renommage peut ne pas être reconnue comme touchant un chemin protégé. Dans l'autre, un nom accentué légitime (fréquent en français, ex. specs/créer-compte.md écrit par le planner) est refusé, ne peut pas être annulé et arrête le passage. Chez nous : `-z`, `--no-renames`, options git fixées.",
+    "type": "faille"
+  },
+  {
+    "ou": "adws/adw_modules/permissions.py l.77, l.81-82, l.209-212",
+    "ecrit": "« discarding an operator's work to tidy up would be the same harm this module exists to prevent, committed by the cleanup instead of the agent » (l.198-200).",
+    "realite": "strip() retire les espaces de début et de fin des chemins (l.77, l.81-82), et l'empreinte « untracked » écrase celle du diff pour la même clé (l.82 après l.78). Expérience : un fichier non suivi « keep.md » suivi d'une espace donne la clé « keep.md », qui écrase l'empreinte du fichier suivi keep.md ; de même `git rm --cached keep.md` donne `{\"keep.md\": \"untracked\"}`. Le retour arrière traite alors la clé comme un fichier créé par l'agent et supprime keep.md du disque (l.211), puis compte « deleted » comme réparé (l.49, l.249).",
+    "impact": "Le nettoyage peut supprimer un fichier suivi qui n'est pas celui que l'agent a créé (récupérable depuis HEAD s'il était propre), laisser en place celui que l'agent a créé, et continuer la phase. Chez nous : ne jamais modifier les chemins lus, et vérifier la nature du chemin avant toute suppression.",
+    "type": "bug"
+  },
+  {
+    "ou": "adws/adw_modules/permissions.py l.74, l.79",
+    "ecrit": "« permission is verified … after the fact, against the repo itself » (l.13-14).",
+    "realite": "Le contrôle ne voit rien sous .git/, car git ne liste jamais son propre dossier (l.74, l.79). Or ce dossier contient la config locale, les exclusions locales et les hooks, qui décident de ce que git rapporte au contrôle et de ce qui s'exécute au prochain `git commit` (git_helper.py:52). Expérience : une ligne dans .git/info/exclude retire un fichier non suivi de la photo (`{\"specs/hidden.md\": \"untracked\"}` → `{}`). Le registre n°19 ne couvre que les fichiers ignorés par .gitignore.",
+    "impact": "Ce que mesure le contrôle peut être changé, sans trace, par l'agent mesuré, et cela vaut pour les phases et passages suivants. Chez nous : sortir .git de la portée de l'agent ou le surveiller, et fixer les options de git dans chaque commande.",
+    "type": "faille"
+  },
+  {
+    "ou": "adws/adw_modules/permissions.py l.60-62",
+    "ecrit": "« enforce() compares it afterwards and fails the phase if the agent touched anything outside its allowlist » (l.15-16).",
+    "realite": "_git rend \"\" dès que git sort en erreur (l.62), et snapshot lit cela comme « aucun changement ». Git hérite aussi de tout os.environ (pas d'env=, l.61), donc de .env (utils.py:11-13), invisible au contrôle (.gitignore:112). Expérience : HEAD vers une branche inexistante → `git diff HEAD` sort en 128 et la partie suivie de la photo est vide ; GIT_DIR=/nonexistent → snapshot rend `{}` malgré un fichier suivi modifié. Avec core.quotePath=false, un nom non UTF-8 lève UnicodeDecodeError (l.61), qui n'est pas une PermissionBreach : pas de retour arrière ni d'événement (agents.py:185).",
+    "impact": "Le contrôle échoue ouvert : un dépôt dans un état que git refuse donne « rien n'a changé ». Chez nous : toute erreur de git arrête la phase, environnement de git fixé (décision 1), délai sur chaque commande.",
+    "type": "faille"
+  },
+  {
+    "ou": "adws/adw_modules/permissions.py l.248-253 ; adws/adw_modules/console.py l.19-24, l.40-46, l.94-96",
+    "ecrit": "« the run continues, loudly » (l.246) ; « What it cannot undo, it names » (l.229).",
+    "realite": "Un pardon n'est écrit que par run.console.note (l.250-252). console.note coupe à 160 caractères et met le texte sur une ligne (console.py:19, :22-24, :96), puis l'écrit dans la trace comme un `log` ordinaire au nom de la phase (console.py:43-46). Le scope seul d'un agent limité prend déjà une bonne part de ces 160 caractères (l.240). Il n'y a pas d'événement permission_breach, et les chemins pardonnés sont retirés de la liste rendue (l.253), donc de paths_touched (agents.py:192-195).",
+    "impact": "Une écriture hors droits pardonnée peut ne laisser dans la trace qu'une ligne tronquée, sans le nom du chemin, et sous un type `log` que le visualiseur ne colore pas comme une erreur (couleurs réservées à error et gate_fail : .claude/skills/sssf/apps/visualizer/src/lib/events.ts:14-15). Chez nous : un événement dédié, avec la liste complète, pour chaque pardon.",
+    "type": "faille"
+  },
+  {
+    "ou": "adws/adw_data/prompt_engineering/builder/system.md l.14",
+    "ecrit": "« Send scratch output to /tmp, never into the repo. A redirect like `bun test > out.txt` inside the working tree is an out-of-scope write and will be undone. »",
+    "realite": "Le builder n'a pas de writes (sssf.config.yaml:70-71), donc out.txt lui est permis (permissions.py:150) ; out.txt n'est pas ignoré (git check-ignore out.txt : rien). Le fichier n'est ni annulé ni signalé, sauf dans paths_touched (agents.py:192-195), et commit_all le commite (git_helper.py:49). La phrase est vraie pour les 4 autres agents, qui ont un writes limité.",
+    "impact": "Prompt lu par l'agent qui promet un contrôle qui n'existe pas pour lui. Chez nous : un prompt par agent qui décrit ses vrais droits, ou des droits réels qui tiennent la promesse.",
+    "type": "doc"
+  },
+  {
+    "ou": "adws/adw_modules/permissions.py l.92-122 ; .claude/skills/sssf/references/config.md:72",
+    "ecrit": "« a trailing / is a directory prefix, * matches within one path segment, ** crosses segments, anything else is an exact path » (config.md:72).",
+    "realite": "Un motif qui finit par / est toujours un préfixe littéral, même avec `*` : `apps/*/` ne couvre rien (l.118-119). `a/**/b` ne couvre pas `a/b` (l.102-103 : `.*` entre deux /). `[` est littéral (l.112). La casse compte. Aucun motif n'est validé au chargement. Expérience avec une copie de _glob et _matches.",
+    "impact": "Un protected_files mal écrit ne protège rien, sans message ; un writes mal écrit fait annuler des écritures légitimes. À garder en tête quand on ajoutera la protection des tests (registre n°16). Chez nous : sémantique documentée et motifs validés au chargement.",
+    "type": "doc"
+  }
+]

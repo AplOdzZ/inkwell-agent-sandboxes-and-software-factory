@@ -1,0 +1,694 @@
+{
+  "registre": [
+    {
+      "fichier": "agents",
+      "index": 0,
+      "verdict": "exact",
+      "detail": "enforce n'est appelé qu'à agents.py:183. Aucun try/finally autour des envois et des portes (seul try : agents.py:182). Les sorties sans contrôle existent bien : GateFailure agents.py:168, RuntimeError agents.py:291, agent_pi.py:320, porte appelée sans try agents.py:155, SystemExit du signal session.py:30-32. runner.py:88-103 relance l'erreur ; aucun try/except dans adws/adw_*.py (grep vide). SKILL.md:71 et permissions.py:227-229 contiennent bien la promesse. Nouveau : le n°17 parle de l'ordre portes/droits, pas du contrôle sauté. Type faille juste.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "index": 1,
+      "verdict": "exact",
+      "detail": "agents.py:230 itère `result or []` : None donne 0 vérification, une chaîne une violation par caractère (refait : exp_misc.py). Contrat GateReport à gates.py:3 ; list[str] à SKILL.md:65 et data_types.py:294. Nouveau dans le registre (la moitié doc figure déjà dans les contradictions de la carte, pas dans les 48). Type bug acceptable.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "index": 2,
+      "verdict": "exact",
+      "detail": "envelope.json n'est écrit que si envelope n'est pas None (agents.py:309-313), et l'appel valid=True n'existe qu'à agents.py:197. Une enveloppe parsée puis rejetée par les portes (agents.py:149, :177) n'est persistée nulle part ; seuls ses checks partent dans gate_fail (agents.py:158-162). handoff.md:141 et run_adw.md:102 disent bien ce qui est cité. Nouveau.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "index": 3,
+      "verdict": "exact",
+      "detail": "update_modules.md:14, :21, sssf_overview.md:24, TREE.md:85 et handoff.md:144 disent bien cela. execute occupe agents.py:78-221 ; agent_map.json est lu et écrit par runner.py:56-63 ; dossiers par agent créés par agents.py:82 et prompts.py:18. Distinct du n°3 (liste incomplète de TREE). Type doc juste.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "index": 0,
+      "verdict": "exact",
+      "detail": "Empreinte = compteurs de numstat (permissions.py:74-78). Refait sur dépôt jetable : v2 puis v3 d'un fichier sale → « 1,1 » deux fois, aucun changement ; binaire « -,- » ; chmod « 0,0 » ; dépôt imbriqué « sub/: untracked » inchangé ; git add sans effet sur l'empreinte. La docstring permissions.py:68-69 et config.md:137-138 promettent l'inverse. Nouveau (n°19 et n°20 ne couvrent pas ce cas).",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "index": 1,
+      "verdict": "exact",
+      "detail": "permissions.py:215 lance git checkout -- <chemin>, qui recopie l'index. Refait : fichier modifié + git add, et nouveau fichier + git add → « rolled back » pour les deux, les deux changements restent, la photo suivante est identique. Aucun snapshot après le retour arrière (permissions.py:237-253). commit_all fait git add -A (git_helper.py:49). Nouveau.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "index": 2,
+      "verdict": "exact",
+      "detail": "Refait : un nom accentué non suivi donne la clé `\"specs/caf\\303\\251.md\"`, refusée par `specs/`, et l'effacement échoue (« could not delete ») → arrêt. git mv adws/adw_plan.py x/adw_plan.py donne `{adws => x}/adw_plan.py`, non reconnu par les motifs protégés. Précision utile : la forme sans accolades (`adws/adw_plan.py => x_plan.py`) est, elle, reconnue par adws/adw_*.py ; le « peut ne pas » de l'impact est donc juste.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "index": 3,
+      "verdict": "exact",
+      "detail": "Refait : un fichier « keep.md » suivi d'une espace donne la clé « keep.md » (strip, permissions.py:81-82) ; le retour arrière supprime le vrai keep.md suivi (permissions.py:211), « deleted » compte comme réparé (l.49), et le fichier de l'agent reste. git rm --cached keep.md donne bien {\"keep.md\": \"untracked\"} (l.82 écrase l.78). Type bug juste.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "index": 4,
+      "verdict": "exact",
+      "detail": "Refait : une ligne dans .git/info/exclude fait passer {\"hidden.md\": \"untracked\"} à {}. Hooks lancés au git commit de git_helper.py:52. Distinct du n°19 (.gitignore). Type faille juste.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "index": 5,
+      "verdict": "exact",
+      "detail": "permissions.py:62 rend \"\" si git échoue, sans env= (l.61). Refait : HEAD vers une branche inexistante → git diff HEAD sort en 128, photo vide alors qu'un fichier suivi est modifié ; core.quotePath=false + nom non UTF-8 → UnicodeDecodeError, qui n'est pas une PermissionBreach (agents.py:185). load_dotenv à utils.py:13. Nouveau.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "index": 6,
+      "verdict": "exact",
+      "detail": "Le pardon n'écrit que run.console.note (permissions.py:250-252) ; note coupe à 160 caractères sur une ligne (console.py:19, :22-24, :96) et écrit un événement log niveau info (console.py:43-46). Rouge réservé à error et gate_fail (events.ts:14-15). Chemins pardonnés retirés de touched (permissions.py:253). Distinct du n°26 (qui ne parle que de l'existence du pardon).",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "index": 7,
+      "verdict": "exact",
+      "detail": "builder/system.md:14 dit bien cela ; le builder n'a pas de writes (sssf.config.yaml:70-71), donc permitted rend True (permissions.py:150) ; git check-ignore out.txt ne renvoie rien. Prompt lu par l'agent : type doc juste. Distinct du n°16.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "index": 8,
+      "verdict": "exact",
+      "detail": "Refait avec une copie de _glob/_matches : `apps/*/` ne couvre rien (permissions.py:118-119), `a/**/b` ne couvre pas a/b, `[x].md` est littéral, la casse compte, `**/*.md` ne couvre pas un .md à la racine. config.md:72 promet la sémantique citée.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "index": 0,
+      "verdict": "exact",
+      "detail": "Aucun délai (agent_pi.py:286, :316), stderr lu seulement après stdout (l.315), aucun try/finally (l.284-318). Refait : un enfant qui écrit 200 Ko sur stderr bloque la boucle de lecture de stdout. Précision de détail : `just obs kill` tue les pid enregistrés, Pi et l'ADW (just/obs.just:53-66), mais pas les enfants de Pi ; c'est ce qui laisse des orphelins. Que Pi écrive autant sur stderr dépend de Pi (gotchas.md:29 montre qu'une extension y écrit à chaque appel).",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "index": 1,
+      "verdict": "exact",
+      "detail": "agent_pi.py:319 : erreur seulement si code non nul ET texte vide. git grep returncode : aucun appelant ne lit PiResult.returncode (data_types.py:438). stderr jeté sinon (l.315). Nouveau.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "index": 2,
+      "verdict": "exact",
+      "detail": "context_window lit models.json sans try (agent_pi.py:110), appelé à l.270-271 avant Popen (l.278). Repli catalogue seulement si le fichier existe (l.114-116) ; modèle sans contextWindow → 0 (l.113). Refait : python-dotenv (non épinglé dans le dépôt ; 1.2.3 installé ici) laisse « ~/.pi/agent/models.json » tel quel, chemin non absolu. .env.sample:45 et app_docs/27ef9462_model-routing-context.md:14 disent bien ce qui est cité.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "index": 3,
+      "verdict": "a_nuancer",
+      "detail": "Logique juste (refaite sur catalogue inventé) : « openai/gpt-5.6-terra » va chez openai s'il est au catalogue, sinon chez openrouter ; « sonnet » est accepté. Deux réserves. (1) La phrase « rather than silently billing the wrong provider » et « leading segment is matched against the provider list first » sont à config.md:99, pas 92-96. (2) La config d'Inkwell écrit tout en openrouter/… (sssf.config.yaml:5, :41, :107, :125) : avec openrouter au catalogue, le couple est exact (agent_pi.py:77). Le risque touche les motifs sans ce préfixe (modèle du skill, registre n°13) et les noms courts.",
+      "correction": "Écrit : config.md:92-99. Impact : un motif sans préfixe openrouter/ (modèle du skill, exemples de la doc, nom court) peut partir chez un autre fournisseur selon le catalogue de la machine. La config d'Inkwell, toute en openrouter/…, n'est touchée que si openrouter manque au catalogue."
+    },
+    {
+      "fichier": "agent_pi",
+      "index": 4,
+      "verdict": "a_nuancer",
+      "detail": "Faits de code justes : pas de --no-extensions (agent_pi.py:253-265), alors que subagents.ts:233 le passe ; gotchas.md:29 (sssf-sandbox-orchestrator) confirme l'extension exe-dev à chaque appel. Mais la citation config.md:48 est fausse : l.48 parle de color ; harness_engineering est à l.49, et « applied to that agent only » n'est qu'à update_config.md:68. Le chargement de .pi/ et AGENTS.md dépend de Pi : non vérifiable ici.",
+      "correction": "Écrit : references/config.md:49 et cookbooks/update_config.md:68. Garder « comportement de Pi 1.3.0 à confirmer » dans la réalité."
+    },
+    {
+      "fichier": "agent_pi",
+      "index": 5,
+      "verdict": "a_nuancer",
+      "detail": "Faits justes : raw_output.jsonl et pi_sessions/ sous adws/adw_data/sessions/, ignoré (.gitignore:149) ; teardown ne rapatrie que specs, app_docs, sssf.db, run.log (teardown.just:109). Mais « modifiable par tout agent et jamais contrôlé » est déjà le n°14 (data_dir exempté) et le n°19 (fichiers ignorés invisibles, trace falsifiable). Le seul apport neuf est la perte de ces fichiers avec la VM, face à la promesse « files are the raw record ».",
+      "correction": "Recentrer : « Sur la VM, raw_output.jsonl, pi_sessions/, envelope.json et agent_map.json ne sont pas rapatriés (teardown.just:109) : l'enregistrement présenté comme source de vérité (handoff.md:161, observability.md:7) disparaît avec la VM. Pour la modification par les agents, voir n°14 et n°19. »"
+    },
+    {
+      "fichier": "agent_pi",
+      "index": 6,
+      "verdict": "a_nuancer",
+      "detail": "Fond juste : la résolution lit `pi --list-models` (agent_pi.py:47-48, :74) ; models.json ne sert qu'à la fenêtre (l.110-113). update_modules.md:16, specs/scaffold.md:75, install.md:40 disent bien « models.json ». Mais config.md:45 parle de coding_agent : la phrase sur models.json est à config.md:46.",
+      "correction": "Remplacer references/config.md:45 par references/config.md:46."
+    }
+  ],
+  "registre_existant": [
+    {
+      "fichier": "agents",
+      "numero": 42,
+      "verdict": "exact",
+      "detail": "Point 6. Aucun extra= dans data_types.py (grep vide) ; SSSFConfig(**raw) à agents.py:41 ; pydantic ignore les clés inconnues par défaut."
+    },
+    {
+      "fichier": "agents",
+      "numero": 29,
+      "verdict": "exact",
+      "detail": "Point 7 (nuancé). defaults.writes est copié dans chaque agent avant validation (agents.py:37-39) puis typé par AgentConfig.writes (data_types.py:322). Absent de ConfigDefaults (data_types.py:325-338) et de config.md:43-52. La nuance « effectif mais non documenté » tient."
+    },
+    {
+      "fichier": "agents",
+      "numero": 36,
+      "verdict": "exact",
+      "detail": "Point 13. Literal pi/claude_code à data_types.py:306 et :326 ; refus à agents.py:61-63 ; git grep agent_cc dans les .py : rien."
+    },
+    {
+      "fichier": "agents",
+      "numero": 47,
+      "verdict": "exact",
+      "detail": "Point 18. str(run.context_handoff_dir) sans resolve (agents.py:87), chemin relatif construit à runner.py:54-55 ; les chemins de Pi sont résolus (agents.py:121-122)."
+    },
+    {
+      "fichier": "agents",
+      "numero": 46,
+      "verdict": "exact",
+      "detail": "Point 21. Noms fixes system.md/user.md par agent (agents.py:91-92) ; corrections de portes (l.173-176) et de JSON (l.297-300) jamais copiées ; copie faite avant l'envoi (l.148)."
+    },
+    {
+      "fichier": "agents",
+      "numero": 17,
+      "verdict": "exact",
+      "detail": "Point 31. Portes l.152-177, enforce l.183, pardon permissions.py:248-253, enveloppe persistée l.197 et passée en previous_envelope (l.86). Les chemins annulés sortent de touched (permissions.py:253)."
+    },
+    {
+      "fichier": "agents",
+      "numero": 26,
+      "verdict": "exact",
+      "detail": "Point 32. Le commentaire agents.py:179-181 est démenti par permissions.py:248-253 ; même écart que le n°26."
+    },
+    {
+      "fichier": "agents",
+      "numero": 19,
+      "verdict": "exact",
+      "detail": "Point 40. agent_map.json sous adws/adw_data/sessions/ (runner.py:56), ignoré (.gitignore:149) ; session_id relu sans contrôle (agents.py:236)."
+    },
+    {
+      "fichier": "agents",
+      "numero": 37,
+      "verdict": "exact",
+      "detail": "Point 43. type=message.pop(\"kind\") à agents.py:250 ; liste des 10 types à data_types.py:359 ; tableau d'observability.md:15-26 sans thinking ni agent_message ; types.ts:24-25 les connaît."
+    },
+    {
+      "fichier": "agents",
+      "numero": 27,
+      "verdict": "exact",
+      "detail": "Point 52. diff -u : -16 +3 ; sans preserve, enforce sans octets (modèle l.179) ; _event_forwarder sans thinking/agent_message. Ordre portes puis enforce identique."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 20,
+      "verdict": "exact",
+      "detail": "Point 4. git diff HEAD (permissions.py:74) contre le HEAD courant ; après un commit la photo est vide : conséquence directe de la commande."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 26,
+      "verdict": "exact",
+      "detail": "Point 5. RECOVERED l.49, RECOVERED_LIMIT l.53, pardon l.248-253 ; SKILL.md:71 dit bien « the phase dies » : ajout justifié à la colonne « Où »."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 19,
+      "verdict": "exact",
+      "detail": "Point 21. --exclude-standard (l.79) ; .env (.gitignore:112), sssf.db* (:153), sessions (:149), node_modules/ (:67), dist/ (:9) bien ignorés."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 14,
+      "verdict": "exact",
+      "detail": "Point 37. Ordre l.144 puis l.146 puis l.148 ; scout et reviewer writes: [] (sssf.config.yaml:89, :114) ; git ls-files adws/adw_data : 10 prompts et 2 .ts, suivis."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 14,
+      "verdict": "exact",
+      "detail": "Point 38 (nuancé). always_writable rend data_dir + \"/\" sans contrôle (l.139) et passe avant protected_files (l.144 avant l.148) : un data_dir « adws » couvrirait adws/adw_modules/."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 19,
+      "verdict": "exact",
+      "detail": "Point 39 (nuancé). Les deux docstrings (l.70-71, l.134-137) se contredisent ; .gitignore:149 n'ignore que sessions/, donc les fichiers suivis sous adws/adw_data/ sont vus mais toujours permis."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 42,
+      "verdict": "exact",
+      "detail": "Point 43. writes absent → None → True (permissions.py:150)."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 18,
+      "verdict": "exact",
+      "detail": "Point 43. Même mécanique pour un profil sans writes (l.150)."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 16,
+      "verdict": "exact",
+      "detail": "Point 44. Builder sans writes (sssf.config.yaml:70-71) ; protected_files par défaut data_types.py:335-337 ne couvre ni apps/, ni justfile, ni just/, ni .claude/, ni sandbox_mount/."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 26,
+      "verdict": "exact",
+      "detail": "Point 58. Pardon l.248-253 ; le commentaire l.245-246 n'est vérifié par aucun snapshot (voir registre permissions[1])."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 40,
+      "verdict": "exact",
+      "detail": "Point 58. config.md:147-152 dit « left untouched » et « the phase fails » ; le code restaure (l.205-206) et pardonne (l.249)."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 17,
+      "verdict": "exact",
+      "detail": "Point 61. Renvoi au point d'agents.notes.json ; l.253 confirmé."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 21,
+      "verdict": "exact",
+      "detail": "Point 62. Une seule photo (l.231), aucune attente des processus ; la photo d'avant de la phase suivante (agents.py:145) et preserve (l.168-172) prennent tout ce qui est sale. Raisonnement juste ; le moment réel des écritures des sous-agents dépend de Pi."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 27,
+      "verdict": "exact",
+      "detail": "Point 64. Modèle de 185 lignes, diff -u : -81 +10 (recompté) ; différences listées exactes."
+    },
+    {
+      "fichier": "permissions",
+      "numero": 40,
+      "verdict": "exact",
+      "detail": "Point 65 (nuancé). Le modèle du skill fait exactement ce que décrit config.md:147-152 (_roll_back sans octets, pas de pardon) : la doc est juste pour lui, fausse pour Inkwell."
+    },
+    {
+      "fichier": "agent_pi",
+      "numero": 37,
+      "verdict": "a_nuancer",
+      "detail": "Point 24. Fond juste, mais data_types.py:357 est le champ adw_id : la liste des types est à data_types.py:359. Correction : remplacer :357 par :359."
+    },
+    {
+      "fichier": "agent_pi",
+      "numero": 43,
+      "verdict": "exact",
+      "detail": "Point 33. --thinking request.thinking (agent_pi.py:256) ; PiRequest.thinking: str (data_types.py:379) ; aucune vérification."
+    },
+    {
+      "fichier": "agent_pi",
+      "numero": 19,
+      "verdict": "exact",
+      "detail": "Point 35 (nuancé). pi_sessions/ sous sessions/ (agents.py:121), ignoré (.gitignore:149), toujours permis (permissions.py:144) ; reprise par --session-id (agent_pi.py:257). Format du fichier de session : dépend de Pi, non vérifiable."
+    },
+    {
+      "fichier": "agent_pi",
+      "numero": 39,
+      "verdict": "exact",
+      "detail": "Point 36. --tools seulement si la liste est non vide (agent_pi.py:261-262) ; config.md:124 promet le contraire."
+    },
+    {
+      "fichier": "agent_pi",
+      "numero": 14,
+      "verdict": "exact",
+      "detail": "Point 38. subagents.ts et themeMap.ts suivis sous adws/adw_data/ (git ls-files) ; import à subagents.ts:25 ; chargés par -e (agent_pi.py:263-264)."
+    },
+    {
+      "fichier": "agent_pi",
+      "numero": 36,
+      "verdict": "exact",
+      "detail": "Point 60. Seul import réel : agents.py:18, appels l.69, :127, :245, :248 ; refus des autres coding_agent agents.py:61-63."
+    },
+    {
+      "fichier": "agent_pi",
+      "numero": 21,
+      "verdict": "exact",
+      "detail": "Point 61 (nuancé). Les sous-agents lancent leur propre pi (subagents.ts:229-241) ; résultat coupé à 8 000 caractères dans pi.sendMessage (subagents.ts:283-285). Ce que Pi en écrit dans le flux du parent : non vérifiable."
+    }
+  ],
+  "echantillon": [
+    {
+      "fichier": "agents",
+      "champ": "points",
+      "index": 4,
+      "verdict": "exact",
+      "detail": "agents.py:33-34 : chemin relatif par défaut, read_text() sans encodage, yaml.safe_load ; SSSFConfig à l.41.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "points",
+      "index": 12,
+      "verdict": "exact",
+      "detail": "agents.py:52-73 : les 4 contrôles et un seul SystemExit (l.72-73) ; Path(ref).is_file() relatif au dossier courant (l.66).",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "points",
+      "index": 14,
+      "verdict": "exact",
+      "detail": "lru_cache agent_pi.py:43, env=operator_env() l.49 ; templates/env.sample:17-19 dit que la clé n'est pas vérifiée.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "points",
+      "index": 24,
+      "verdict": "exact",
+      "detail": "agents.py:134-136 ; agent_pi.py:319-320.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "points",
+      "index": 27,
+      "verdict": "exact",
+      "detail": "agents.py:148-149 ; _parse_with_retries rend (enveloppe, tentative) ou lève (l.291).",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "points",
+      "index": 28,
+      "verdict": "exact",
+      "detail": "range(1, max(1, retries+1)+1) (agents.py:152) donne retries+1 tours ; max ne joue que pour retries < 0 ; porte appelée sans try (l.155) ; GateFailure l.167-169.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "points",
+      "index": 36,
+      "verdict": "exact",
+      "detail": "agents.py:197-204 ; latest posé dans send (l.136) avant tout retour, donc « or result » (l.199) ne sert jamais.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "points",
+      "index": 43,
+      "verdict": "exact",
+      "detail": "agents.py:250 ; data_types.py:359 ; observability.md:15-26 ; types.ts:24-25.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "points",
+      "index": 46,
+      "verdict": "exact",
+      "detail": "range(1, 4) = 3 lectures (l.283) ; except Exception l.287 ; raw[-2000:] l.306 ; EnvelopeBase sans model_config (data_types.py:72-78), donc mode souple et champs inconnus ignorés.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "points",
+      "index": 49,
+      "verdict": "exact",
+      "detail": "13 appels run.tracer recomptés (l.95, 130, 133, 157, 158, 186, 193, 200, 205, 209, 249, 258, 307) ; tout sous adws/adw_data/sessions/ ignoré (.gitignore:149).",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "deps",
+      "index": 1,
+      "verdict": "exact",
+      "detail": "8 event (l.95, 158, 186, 193, 205, 209, 249, 258) ; 6 appels console (l.104, 163, 171, 198, 218, 294) ; runner.py:42-69.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "deps",
+      "index": 4,
+      "verdict": "exact",
+      "detail": "12 ADW et 12 copies appellent load_config et validate (grep) ; make_adw.py:45-46 ; provision.sh:145 et :148.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "deps",
+      "index": 11,
+      "verdict": "exact",
+      "detail": "La fiche « ecrit » de la carte ne cite que l.82, l.91 et l.313 ; agent_map, pi_sessions, raw_output et la trace manquent.",
+      "correction": ""
+    },
+    {
+      "fichier": "agents",
+      "champ": "deps",
+      "index": 13,
+      "verdict": "exact",
+      "detail": "Rôle de la carte vérifié : il ne dit ni l'ordre portes puis droits ni le contrôle sauté (agents.py:152-183).",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "points",
+      "index": 4,
+      "verdict": "exact",
+      "detail": "Voir registre_existant n°20 : permissions.py:74.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "points",
+      "index": 22,
+      "verdict": "exact",
+      "detail": "Refait : .git/info/exclude vide la photo d'un fichier non suivi ; git_helper.py:49 et :52.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "points",
+      "index": 37,
+      "verdict": "exact",
+      "detail": "Voir registre_existant n°14 : l.144, :146, :148 ; 12 fichiers suivis sous adws/adw_data/.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "points",
+      "index": 39,
+      "verdict": "exact",
+      "detail": "permissions.py:70-71 contre :134-137 ; .gitignore:149.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "points",
+      "index": 40,
+      "verdict": "exact",
+      "detail": "data_dir relatif au dossier courant (runner.py:54), chemins git relatifs à la racine (git_helper.py:39) ; motif .gitignore:149 ancré. Bien rangé en « à vérifier ».",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "points",
+      "index": 43,
+      "verdict": "exact",
+      "detail": "permissions.py:150.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "points",
+      "index": 48,
+      "verdict": "exact",
+      "detail": "preserve garde en mémoire (agents.py:146) ; seul _restore lit ces octets (permissions.py:185) ; l'arbre inclut les non suivis (l.79-82).",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "points",
+      "index": 49,
+      "verdict": "exact",
+      "detail": "permissions.py:178-188 : mkdir l.184, write_bytes l.185, aucun contrôle ni chmod.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "points",
+      "index": 56,
+      "verdict": "exact",
+      "detail": "permissions.py:220-256 : le paramètre phase n'apparaît pas dans le corps.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "points",
+      "index": 58,
+      "verdict": "exact",
+      "detail": "permissions.py:244-253.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "deps",
+      "index": 1,
+      "verdict": "exact",
+      "detail": "Commandes l.74, :79, :215 ; checkout seulement si le chemin n'était pas sale (l.202) et n'est pas « untracked » (l.209) ; pas d'env=, pas de timeout.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "deps",
+      "index": 2,
+      "verdict": "exact",
+      "detail": "l.184, :185, :211, :215 ; note l.250 → console.py:40-46.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "deps",
+      "index": 15,
+      "verdict": "exact",
+      "detail": "Les contradictions de la carte (fiche permissions) ne citent que l.23-25/248-253 et l.70-71/125-139 ; les ajouts proposés sont prouvés.",
+      "correction": ""
+    },
+    {
+      "fichier": "permissions",
+      "champ": "deps",
+      "index": 17,
+      "verdict": "exact",
+      "detail": "3 appels agents.py:145, :146, :183 et l'except PermissionBreach l.185.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "points",
+      "index": 1,
+      "verdict": "exact",
+      "detail": "Flux lu ligne à ligne l.286-313 ; « crée ou continue » relève de Pi, bien mis à vérifier.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "points",
+      "index": 2,
+      "verdict": "exact",
+      "detail": "Import utils l.20 (load_dotenv utils.py:13) avant les constantes l.22-24.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "points",
+      "index": 6,
+      "verdict": "exact",
+      "detail": "agent_pi.py:26-28.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "points",
+      "index": 13,
+      "verdict": "exact",
+      "detail": "agent_pi.py:75-78, split(\"/\", 1).",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "points",
+      "index": 16,
+      "verdict": "exact",
+      "detail": "Refait sur la logique recopiée (exp_misc.py) : même motif, fournisseur différent selon le catalogue.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "points",
+      "index": 26,
+      "verdict": "exact",
+      "detail": "_label l.166-173 ; nom de l'événement agents.py:259.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "points",
+      "index": 30,
+      "verdict": "exact",
+      "detail": "l.196 sans « or {} » (contre l.146) ; args.items() l.216 échoue si args n'est pas un objet. Forme réelle des événements : dépend de Pi.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "points",
+      "index": 31,
+      "verdict": "exact",
+      "detail": "agent_pi.py:243-251 ; agents.py:130-133.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "points",
+      "index": 43,
+      "verdict": "exact",
+      "detail": "cmd.append(request.prompt) sans « -- » (l.265) ; les 5 user.md commencent par « # » ; corrections agents.py:173 et :298 commencent par « Your ».",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "points",
+      "index": 61,
+      "verdict": "exact",
+      "detail": "subagents.ts:283-285 (la coupe à 8 000 est à la l.285).",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "deps",
+      "index": 6,
+      "verdict": "exact",
+      "detail": "types.ts:24-25 et :213-225 ; PhaseDetail.vue:209-212 et :663-665.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "deps",
+      "index": 7,
+      "verdict": "exact",
+      "detail": "agent_pi.py:22-23, :281 ; .env.sample:44-45 ; templates/env.sample:26-27.",
+      "correction": ""
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "deps",
+      "index": 8,
+      "verdict": "a_nuancer",
+      "detail": "handoff.md:78, observability.md:46, app_docs …:12, setup.just:206-210 et models.md:116 (sssf-sandbox-orchestrator) disent bien cela. Mais config.md:92-103 n'est pas « correct » sans réserve : config.md:99 promet de ne jamais « silently billing the wrong provider », ce que le repli l.79-86 dément (registre agent_pi[3] du même lecteur). Juste après, config.md:106 dit que le modèle résolu est enregistré : faux (voir bilan).",
+      "correction": "Retirer config.md:92-103 de la liste des docs correctes, ou ajouter : « sauf l.99, démentie par le repli agent_pi.py:79-86 »."
+    },
+    {
+      "fichier": "agent_pi",
+      "champ": "deps",
+      "index": 10,
+      "verdict": "exact",
+      "detail": "context_window charge tout models.json (agent_pi.py:110) ; la clé y est écrite sur la VM (provision.sh:93, :98) ; seul contextWindow est gardé (l.111-113).",
+      "correction": ""
+    }
+  ],
+  "sorts": [
+    {
+      "fichier": "agents",
+      "verdict": "exact",
+      "detail": "« adapter » : un code lu à chaque phase, avec des failles prouvées (registre agents[0]) ; ni garder ni supprimer. Conforme à la règle."
+    },
+    {
+      "fichier": "permissions",
+      "verdict": "exact",
+      "detail": "« adapter » : principe bon, défauts prouvés (permissions[0], [1], [5]). Conforme, et cohérent avec la décision 6 (correction après l'analyse)."
+    },
+    {
+      "fichier": "agent_pi",
+      "verdict": "exact",
+      "detail": "« adapter » : seule interface réellement appelée (agents.py:18), défauts prouvés (agent_pi[0]-[3]). Conforme."
+    }
+  ],
+  "bilan": "97 éléments vérifiés : 91 exacts, 6 à nuancer, 0 faux, 0 doublon. Erreur de fond : aucune ; la plus proche est agent_pi[5], dont la moitié refait les n°14 et n°19. Erreurs de détail : lignes décalées (config.md:48→49, :45→46, :92-96→:99, data_types.py:357→359), impact d'agent_pi[3] non borné à la config d'Inkwell, deps[8] d'agent_pi trop généreux. Manqués : config.md:106 dit enregistrer le modèle résolu alors que le code garde le motif (agents.py:203-204, tracer.py:269) ; un .gitignore suivi modifié cache une écriture qui survit au retour arrière (expérience exp_gitignore.py). Le suivi des liens par _restore (permissions.py:185) est dans les notes (permissions point 50) mais pas au registre : à y porter."
+}
